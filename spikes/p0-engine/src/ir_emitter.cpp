@@ -821,16 +821,22 @@ bool emit_aot_module(const Program &program, std::string *out, std::string *erro
                   [](const Entry &a, const Entry &b) { return a.rip < b.rip; });
 
         os << "@aev_block_count = constant i64 " << entries.size() << "\n";
-        os << "@aev_blocks = constant [" << entries.size() << " x %BlockEntry] [";
+        /* A zero-length array cannot be written with the bracketed
+         * `[zeroinitializer]` form; the valid spelling is the bare
+         * `zeroinitializer` for the whole aggregate.  A function whose blocks
+         * are all JIT-only therefore still produces a compilable module. */
+        os << "@aev_blocks = constant [" << entries.size() << " x %BlockEntry] ";
         if (entries.empty()) {
             os << "zeroinitializer";
         } else {
+            os << "[";
             for (size_t i = 0; i < entries.size(); ++i) {
                 if (i) os << ", ";
                 os << "%BlockEntry { i64 " << entries[i].rip << ", ptr @" << entries[i].fn << " }";
             }
+            os << "]";
         }
-        os << "]\n";
+        os << "\n";
 
         *out = os.str();
         return true;
