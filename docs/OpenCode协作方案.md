@@ -137,3 +137,9 @@ Windows 使用单独的项目工作目录，按 commit 或源码包哈希同步�
 Git/任务文件承载工程状态，OpenCode 会话承载执行上下文。桌面能力不足时保留串行路径；未来若用户明确改变偏好，再单独核查其他调度方式。
 
 官方依据：[V2 Agents](https://opencode.ai/v2/docs/agents/)、[CLI](https://opencode.ai/v2/docs/cli/)、[CLI Commands](https://opencode.ai/v2/docs/cli/commands/)、[Permissions](https://opencode.ai/v2/docs/permissions/)。这是 2026-11-05 查阅的文档；V1/V2 配置字段不同，后续升级要重新核对。
+
+## 10. main 合并与工作树整理（2026-11-05）
+
+ENGINE `b4052dd` 与 UI `847dad7` 已顺序合入 main，当前源码位于根目录 `spikes/`。历史 11 个附加工作树已全部移除，本地分支引用保留；旧 `.worktrees/` 路径不再作为启动目录。未跟踪/忽略的日志、截图、构建与环境材料已归档校验，见 [合并记录](p0/INTEGRATION-20261105.md)。根目录 `.local/results/` 未清理。
+
+后续从 main 新建任务 worktree，不复用已删除工作目录。合入同一仓库不表示 ENGINE 与 GUI 已实现功能连接；共同回调 ABI、双后端核心集成、Trace 和版本失效仍是后续任务。

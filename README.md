@@ -10,6 +10,20 @@ Aevotrace 面向开发者，将已有程序的机器代码与平台依赖转换�
 
 公开仓库：[PeterWind6174/aevotrace](https://github.com/PeterWind6174/aevotrace)。
 
+## 已合入 main 的实验
+
+- [执行核心实验](spikes/p0-engine/README.md)：x64 COFF → ARM64 AOT/JIT，含 F1–F5 正确性修复、空 AOT 表及回归测试。
+- [双 GUI 后端实验](spikes/p0-ui/README.md)：`compat` 自绘与 `native` AppKit 语义验证，仍使用 Unicorn 临时桥接，尚未与执行核心集成。
+- [合并与工作树整理记录](docs/p0/INTEGRATION-20261105.md)：主工作树验证、历史证据归档和工作树移除范围。
+
+执行核心可在项目根目录构建验证（需其 README 列出的本地工具链与依赖）：
+
+```sh
+cmake -S spikes/p0-engine -B .local/build-p0-engine -G Ninja
+cmake --build .local/build-p0-engine
+ctest --test-dir .local/build-p0-engine --output-on-failure
+```
+
 ## 首个版本
 
 - 输入：Windows x86-64 用户态 EXE、DLL 及资源。
@@ -30,7 +44,7 @@ Aevotrace 面向开发者，将已有程序的机器代码与平台依赖转换�
 5. [资料与证据边界](docs/REFERENCES.md)：一手资料与未验证事项。
 6. [项目命名](docs/PROJECT_IDENTITY.md)、[商业授权](COMMERCIAL.md)、[贡献说明](CONTRIBUTING.md)。
 
-项目内提供 [OpenCode 主控配置](.opencode/agents/aevotrace-coordinator.md)和[任务模板](docs/tasks/TASK_TEMPLATE.md)。2026-11-05 已执行 P0 并行任务（独立 worktree/分支/CLI worker、独立 QA 与 reviewer）；尚无自动调度器。
+项目内提供 [OpenCode 主控配置](.opencode/agents/aevotrace-coordinator.md)和[任务模板](docs/tasks/TASK_TEMPLATE.md)。2026-11-05 已执行 P0 并行任务及独立 QA/reviewer；早期 CLI worker 仅保留为历史记录，后续使用桌面端与 Go / DeepSeek V4.1 Flash / Max，见协作方案。
 
 ## 长期方向
 

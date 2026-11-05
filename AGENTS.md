@@ -6,7 +6,7 @@
 
 ## 当前目标
 
-Windows x86-64 EXE/DLL → macOS ARM64 桌面 GUI 应用；AOT 优先且允许 JIT；同时保留 `compat` 与 `native` 两种可选输出。当前尚无可运行实现，不能写成已支持或已提速。
+Windows x86-64 EXE/DLL → macOS ARM64 桌面 GUI 应用；AOT 优先且允许 JIT；同时保留 `compat` 与 `native` 两种可选输出。main 已包含 `spikes/p0-engine` 和 `spikes/p0-ui` 两套实验，尚未连通为产品转换器，不能写成已支持真实应用或已提速。
 
 ## 开发与协作
 
