@@ -51,14 +51,14 @@
 
 | 需求 | P0 相关任务 | 当前证据 | 状态 |
 | --- | --- | --- | --- |
-| R01 Win x64→macOS ARM64 | ENV + ENGINE | Windows x64 编译/运行；待 ARM64 产物 | 部分 |
-| R02 EXE/DLL/资源输入 | SCOPE + ABI + ENGINE | 待 PE 分析/spike | 待证据 |
+| R01 Win x64→macOS ARM64 | ENV + ENGINE | Windows x64 编译/运行；ARM64 AOT/JIT 最小闭环；无完整应用 | 部分 |
+| R02 EXE/DLL/资源输入 | SCOPE + ABI + ENGINE | 真实候选 PE/API 分析；ENGINE 只处理 COFF `.text`，无 PE loader | 部分 |
 | R03 可选符号/元数据 | SCOPE | 未验证 | 未验证 |
-| R04 普通桌面 GUI | UI | 待双后端 spike | 待证据 |
-| R05 独立启动应用 | 未覆盖 | 未做 `.app`/签名/无开发路径 | 未验证 |
-| R06 AOT 优先/JIT 回退 | ENGINE | 待 AOT/JIT spike | 待证据 |
-| R07 性能优化 | 未覆盖 | 不做 P0 性能结论 | 未验证 |
-| R08 compat/native 双输出 | UI | 待双后端 spike | 待证据 |
+| R04 普通桌面 GUI | UI | compat/native 语义 spike 25/25；非产品集成 | 部分 |
+| R05 独立启动应用 | 未覆盖 | 无 `.app`/随包依赖/签名；R05 未满足 | 未满足 |
+| R06 AOT 优先/JIT 回退 | ENGINE | AOT 独立进程 + ORC JIT 回退 + 负例；无完整 PE/失效 | 部分 |
+| R07 性能优化 | 未覆盖 | 仅原始混合路径数据；三类对照未测 | 未验证 |
+| R08 compat/native 双输出 | UI | 双后端语义/回调/截图；D3 未决、未与核心集成 | 部分 |
 | R09 排除驱动/内核 | 范围 | 未做系统级测试 | 范围外 |
 
 ## 5. 执行核心与 AOT/JIT（P0-ENGINE-01）
