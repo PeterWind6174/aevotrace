@@ -32,15 +32,16 @@
 - CLI 日志：`.local/results/P0-TRACE-01/cli.log`（退出 0）
 - 仅方案；无实际 Trace/样例/记录实现；D6 未决。
 
-## P0-ENGINE-01（完成，QA 功能 PASS）
+## P0-ENGINE-01（完成，QA 功能 PASS；F1–F5 修复集成）
 
-- worktree：`.worktrees/p0-engine`，分支 `p0/engine-spike`，commit `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`
+- worktree：`.worktrees/p0-engine`，分支 `p0/engine-spike`，原始 spike `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`；F1–F5 修复后 HEAD `8c0fc15087221e408e84f4b7adf50fc67f2a9abf`
 - 报告：`.worktrees/p0-engine/spikes/p0-engine/REPORT.md`、`README.md`、`ROUTE_B.md`、`THIRD_PARTY.md`
 - 证据：`.worktrees/p0-engine/.local/results/P0-ENGINE-01/final/`；QA 复跑在 `.local/results/P0-QA-01/engine-results/`
 - 输入 COFF `a12fa7ff...7b1e`；AOT dylib/runner 哈希随构建目录变化（install name），IR/object 可复现；QA 三方输出一致。
 - V-1 加载时代码版本/失效未实现；P-1 `.app`/随包依赖未满足。
+- 正确性修复：代码 `9f21649b2a0470d2d6dc4bea576785af22ac6e8c`；报告 `.worktrees/p0-core-fix/spikes/p0-engine/REPORT-CORE-FIX-01.md`；独立 QA `.local/results/P0-CORE-FIX-QA-01/REPORT.md`（F1–F5 PASS，123 PASS + 1 N/A）；集成到 `p0/engine-spike`。
 
-## P0-UI-01（完成，QA 功能 + W-1/W-2 PASS）
+## P0-UI-01（待人工验证；自动部分 QA 功能 + W-1/W-2 PASS）
 
 - worktree：`.worktrees/p0-ui`，分支 `p0/ui-spike`；spike `60ba7a6`，修复 `847dad737a3b8b34138f185167e613e1a194fed3`
 - 报告/证据：`spikes/p0-ui/REPORT.md`、`README.md`、`evidence/`；QA 证据 `.worktrees/p0-qa-ui2/spikes/p0-ui/qa-evidence2/`
