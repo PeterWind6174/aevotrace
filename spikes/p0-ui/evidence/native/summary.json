@@ -246,7 +246,7 @@
     }
   ],
   "guest_execution": {
-    "dll_sha256": "a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602",
+    "dll_sha256": "c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14",
     "main_instructions": 15933,
     "main_api_counts": {
       "RegisterClassExW": 1,
@@ -361,7 +361,7 @@
   "mode": "spike",
   "backend": "native",
   "dll": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/artifacts/p0_gui_test.dll",
-  "dll_sha256": "a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602",
+  "dll_sha256": "c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14",
   "harness_sources": {
     "__init__.py": "602de769d71f52db14946cf12b6da6e1fcbf6d36b4a8fc4a6812f2775a0ba383",
     "compat_backend.py": "9ad8a571254f625e73683394862827050365018b2f30c380fdfe72b454e54655",
@@ -375,7 +375,7 @@
   },
   "repo": {
     "source_root": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui",
-    "git_head": "586662a4ff09465d7d3aa453fb44e5aa6e880c79",
+    "git_head": "60ba7a61acbb332a2840f46e7def744c7f71cdf2",
     "git_branch": "p0/ui-spike"
   },
   "dependencies": {
@@ -402,7 +402,7 @@
     "compat is a P0 semantic harness, not a bundled final compat runtime; D3 remains open",
     "no TLS/SEH/heap/real loader; declared Win32 import subset only"
   ],
-  "started_wall": "2026-11-05T15:59:45+0800",
-  "duration_s": 2.573,
+  "started_wall": "2026-11-05T16:22:13+0800",
+  "duration_s": 2.584,
   "error": null
 }

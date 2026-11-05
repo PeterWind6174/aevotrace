@@ -10,7 +10,7 @@ File Type: DLL
 
     KERNEL32.dll
              180003000 Import Address Table
-             180003658 Import Name Table
+             180003698 Import Name Table
                      0 time date stamp
                      0 Index of first forwarder reference
 
@@ -23,7 +23,7 @@ File Type: DLL
 
     USER32.dll
              180003038 Import Address Table
-             180003690 Import Name Table
+             1800036D0 Import Name Table
                      0 time date stamp
                      0 Index of first forwarder reference
 

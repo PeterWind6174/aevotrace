@@ -21,12 +21,16 @@
 ### Windows 参考
 
 ```text
-ssh win
-cd C:\Users\PeterWind\AevotraceP0\P0-UI-01\guest
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build_msvc.ps1   # EXIT=0
-p0_gui_driver.exe /check                                               # EXIT=0
-p0_gui_driver.exe /auto                                                # EXIT=0
+ssh win 'cmd.exe /c "cd /d C:\Users\PeterWind\AevotraceP0\P0-UI-01\guest && powershell -NoProfile -ExecutionPolicy Bypass -File .\build_msvc.ps1"; exit $LASTEXITCODE'
+# ssh/PS exit=0；脚本内部 BUILD OK，连续两次构建 DLL/driver 哈希一致
+p0_gui_driver.exe /check   # EXIT=0
+p0_gui_driver.exe /auto    # EXIT=0
 ```
+
+W-1 修复：构建脚本不再调用 `Get-FileHash`（在 `cmd.exe /c` 继承 PS7
+`PSModulePath` 时 PS 5.1 无法加载 `Microsoft.PowerShell.Utility`），改用
+`[System.Security.Cryptography.SHA256]::Create()`，不依赖模块自动加载。
+W-2 修复：DLL/driver 链接均加 `/Brepro`，同一源码重编译哈希稳定。
 
 - MSVC：14.51.36260（VS 18 Community，x64）；`/O2 /GS- /utf-8 /W4`
 - `/check`：无窗口，`LoadLibrary` + 导出检查 + `P0Reset/P0GetState`
@@ -74,8 +78,10 @@ PyObjC 13.0。`screencapture -x -o -l<windowNumber>` 返回 0，PNG 已保存并
 ### Guest 输入
 
 - x64 PE32+ DLL，固定 SHA-256：
-  `a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602`
-- 编译命令由 `build_msvc.ps1` 记录；导入表 26 个、导出 7 个（`evidence/dumpbin_*.txt`）。
+  `c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14`
+- driver SHA-256（同次 `/Brepro` 构建）：
+  `ad6007d0b8f35a7361a3ad175769e57812244b0e5fa75d16f069f40e840742af`
+- 编译命令由 `build_msvc.ps1` 记录；DLL 与 driver 的链接均加 `/Brepro`，同一源码连续两次构建哈希一致（`evidence/windows_build_repro.txt`）；导入表 26 个、导出 7 个（`evidence/dumpbin_*.txt`）。
 - 业务逻辑全部在 Guest 机器码中：`P0WndProc`、`P0GetState`、`P0Reset`、
   `P0CreateMainWindow`、`P0RunGui`、`P0ProbeUnsupported`、`P0VersionW`。
 - 控件/菜单/中文/Unicode、`WM_COMMAND`、`SendMessageW(WM_GETTEXT)`、
@@ -197,6 +203,7 @@ WM_CLOSE
    未纳入本 spike。
 4. 失败路径只覆盖 `MessageBeep` 一个负例；未系统枚举所有未支持 API。
 5. compat 最终运行库选型（D3）、目标架构、许可证与嵌入方式未定。
+6. V-1/P-1、性能测量、产品级 AOT/JIT、人工 GUI 验收均不属于本 spike 范围。
 
 ## 8. 建议冻结的契约草案（供 coordinator）
 

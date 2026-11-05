@@ -4,8 +4,8 @@
 
 ## 结论摘要
 
-- Windows x64 测试 DLL 使用 MSVC 14.51 编译；固定 SHA-256
-  `a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602`。
+- Windows x64 测试 DLL 使用 MSVC 14.51 编译，`/Brepro` 可复现；固定 SHA-256
+  `c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14`。
   非交互 `/check`、`/auto`（含按钮、编辑框、模态、工作线程、同步 echo）通过；可见 GUI
   仍需人工在交互桌面确认。
 - macOS arm64 harness 用 Unicorn 2.1.4 实际执行该 DLL 的 x64 机器码。**Unicorn 仅 P0
@@ -45,8 +45,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build_msvc.ps1
 ```
 
 构建脚本通过 `vswhere` 找 VS 18 + MSVC 14.51，使用
-`cl /LD /O2 /GS- /utf-8 /W4 /DUNICODE /D_UNICODE /DP0_GUI_EXPORTS ... /NODEFAULTLIB
-kernel32.lib user32.lib /ENTRY:DllMain`。DLL 不依赖 CRT；导入表见
+`cl /LD /O2 /GS- /utf-8 /W4 /DUNICODE /D_UNICODE /DP0_GUI_EXPORTS ... /link /Brepro /NODEFAULTLIB
+kernel32.lib user32.lib /ENTRY:DllMain`；driver 同样 `/Brepro`。脚本不使用
+`Get-FileHash`，兼容 `cmd.exe /c` 调起 PS 5.1 的 `PSModulePath`。DLL 不依赖 CRT；导入表见
 `evidence/dumpbin_imports.txt`。固定二进制哈希见 `REPORT.md`。
 
 ### 2. macOS harness

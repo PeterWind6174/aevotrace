@@ -9,7 +9,7 @@ File Type: DLL
   Section contains the following exports for p0_gui_test.dll
 
     00000000 characteristics
-    FFFFFFFF time date stamp
+    49AAFCFC time date stamp
         0.00 version
            1 ordinal base
            7 number of functions
