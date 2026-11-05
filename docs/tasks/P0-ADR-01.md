@@ -1,6 +1,6 @@
 # P0-ADR-01：P0 选型 ADR、支持矩阵与 P1 契约草案
 
-状态：未开始（等待 P0-ENV-01、P0-SCOPE-01、P0-ABI-01、P0-ENGINE-01、P0-UI-01 证据）。
+状态：进行中（ADR 草案与 proposed 决策已写；等待 P0-QA-01/P0-REVIEW-01）。
 
 ## 输入与责任
 
