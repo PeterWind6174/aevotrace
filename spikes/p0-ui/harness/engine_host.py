@@ -82,6 +82,7 @@ class EngineGuiHost:
         self.reentry_status = None
         self.reentry_outer_status = None
         self.button_op = 2
+        self._event_update_override = None
         self.closed = False
         self.created = False
 
@@ -230,15 +231,20 @@ class EngineGuiHost:
             raise UnsupportedApi(f"engine host: unknown control id {control_id}")
         text = self.backend.get_text(self.edit_handle)
         op = self.button_op if control_id == IDC_BTN_COMPUTE else 1
+        update_addr = self._event_update_override or IMPORT_UPDATE
+        self._event_update_override = None
         self.logger.event("engine.guest_enter", control_id=control_id,
                           op=op, text=text, source=source,
+                          update_addr=f"0x{update_addr:x}",
                           main_thread=bool(NSThread.isMainThread()))
         try:
-            result = self._call_guest(op, text=text, raise_on_error=False)
+            result = self._call_guest(op, text=text, update_addr=update_addr,
+                                      raise_on_error=False)
         except Exception as exc:  # noqa: BLE001 - report, do not update UI
             self.last_error = str(exc)
             self.logger.event("engine.guest_exception", error=str(exc))
             return 0
+        self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
         if result.status != AEV_BRIDGE_OK:
             # Failure must not commit a result-control update.
             self.logger.event("engine.result_not_committed", status=result.status)

@@ -153,13 +153,13 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
             return -1;
         }
         const HostImport &imp = it->second;
+        b->last_import_id = imp.id;
         uint64_t ret = aev_load(s, s->rsp, 8, 0);
         if (s->error_code) {
             b->last_failure = AEV_BRIDGE_ERR_MEMORY;
             return -1;
         }
         s->rsp += 8;
-        s->rip = ret;
 
         uint64_t out_rax = 0;
         AevBridgeStatus st = AEV_BRIDGE_ERR_HOST;
@@ -168,18 +168,17 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         } catch (...) {
             st = AEV_BRIDGE_ERR_HOST;
         }
+        if (st < AEV_BRIDGE_OK || st > AEV_BRIDGE_ERR_INTERNAL)
+            st = AEV_BRIDGE_ERR_HOST;
         if (st != AEV_BRIDGE_OK) {
-            b->last_failure =
-                (st == AEV_BRIDGE_OK || st > AEV_BRIDGE_ERR_INTERNAL)
-                    ? AEV_BRIDGE_ERR_HOST
-                    : st;
+            b->last_failure = st;
             s->error_pc = rip;
             if (!s->error_code)
                 s->error_code = AEV_ERR_INTERNAL;
             return -1;
         }
+        s->rip = ret;
         s->rax = out_rax;
-        b->last_import_id = imp.id;
         return 0;
     }
 
@@ -446,10 +445,13 @@ int aev_bridge_guest_read(AevBridge *b, uint64_t guest_addr, void *dst,
 int aev_bridge_call(AevBridge *b, uint64_t entry_addr,
                     uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3,
                     AevCallResult *result, char *err, size_t err_cap) {
-    if (!b || !result || result->struct_size != sizeof(AevCallResult) ||
-        result->abi_version != AEV_CALLBACK_ABI_VERSION ||
-        entry_addr != b->entry_addr) {
-        set_error(err, err_cap, "invalid bridge call arguments/result struct");
+    if (!b || !result) {
+        set_error(err, err_cap, "invalid bridge/result pointer");
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    if (result->struct_size != sizeof(AevCallResult) ||
+        result->abi_version != AEV_CALLBACK_ABI_VERSION) {
+        set_error(err, err_cap, "invalid result struct size/ABI");
         return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
     }
     const uint32_t result_size = result->struct_size;
@@ -457,13 +459,22 @@ int aev_bridge_call(AevBridge *b, uint64_t entry_addr,
     std::memset(result, 0, sizeof(*result));
     result->struct_size = result_size;
     result->abi_version = result_abi;
+    result->guest_mem_base = b->mem_base;
+    result->guest_mem_size = b->mem_size;
+    if (entry_addr != b->entry_addr) {
+        result->status = AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+        set_error(err, err_cap, "invalid bridge call entry address");
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
 
     if (std::this_thread::get_id() != b->owner ||
         (b->require_main_thread && !pthread_main_np())) {
+        result->status = AEV_BRIDGE_ERR_WRONG_THREAD;
         set_error(err, err_cap, "guest call must run on the bridge owner/main thread");
         return AEV_BRIDGE_ERR_WRONG_THREAD;
     }
     if (b->in_call) {
+        result->status = AEV_BRIDGE_ERR_REENTRY;
         set_error(err, err_cap, "nested guest call is not supported");
         return AEV_BRIDGE_ERR_REENTRY;
     }

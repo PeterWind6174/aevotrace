@@ -42,7 +42,7 @@ bool CoffObject::load(const std::string &path, std::string *error) {
         return false;
     }
 
-    uint64_t hash = 1469598103934665603ULL;
+    uint64_t hash = 14695981039346656037ULL;
     for (uint8_t byte : file_) {
         hash ^= byte;
         hash *= 1099511628211ULL;

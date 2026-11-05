@@ -16,6 +16,7 @@ constexpr uint64_t kImportUpdate = 0x140010010ULL;
 constexpr uint64_t kImportReentry = 0x140010020ULL;
 constexpr uint64_t kImportFail = 0x140010030ULL;
 constexpr uint64_t kImportThrow = 0x140010040ULL;
+constexpr uint64_t kImportBadStatus = 0x140010050ULL;
 constexpr uint64_t kUnknownImport = 0x1400100f0ULL;
 constexpr uint64_t kBadAddress = 0xdead0000ULL;
 constexpr uint64_t kTextOffset = 0x1000;
@@ -34,6 +35,7 @@ struct HostState {
     AevBridgeStatus destroy_status = AEV_BRIDGE_OK;
     bool throw_next = false;
     bool fail_next = false;
+    bool bad_status_next = false;
     bool pending_valid = false;
     uint64_t pending_result = 0;
 };
@@ -82,6 +84,8 @@ AevBridgeStatus host_update(void *opaque, AevBridge *bridge,
                             uint64_t *out_rax) {
     HostState *h = static_cast<HostState *>(opaque);
     h->calls++;
+    h->pending_valid = false;
+    h->pending_result = 0;
     h->last_hash = a0;
     h->last_len = a1;
     h->last_op = a2;
@@ -95,6 +99,10 @@ AevBridgeStatus host_update(void *opaque, AevBridge *bridge,
     if (h->fail_next) {
         h->fail_next = false;
         return AEV_BRIDGE_ERR_HOST;
+    }
+    if (h->bad_status_next) {
+        h->bad_status_next = false;
+        return static_cast<AevBridgeStatus>(-1);
     }
     if (h->reentry_next) {
         h->reentry_next = false;
@@ -207,6 +215,8 @@ Fixture make_fixture(const std::string &coff, const std::string &aot,
         aev_bridge_register_import(f.bridge, kImportFail, 3, host_update,
                                    &f.host, nullptr, 0) != AEV_BRIDGE_OK ||
         aev_bridge_register_import(f.bridge, kImportThrow, 4, host_update,
+                                   &f.host, nullptr, 0) != AEV_BRIDGE_OK ||
+        aev_bridge_register_import(f.bridge, kImportBadStatus, 5, host_update,
                                    &f.host, nullptr, 0) != AEV_BRIDGE_OK) {
         throw std::runtime_error("register_import failed");
     }
@@ -367,11 +377,25 @@ void run_negative_cases(Fixture &f) {
                          f.base + kCounterOffset, &r);
     check("host_failure", s == AEV_BRIDGE_ERR_HOST, status_name(s));
     check("host_failure_counter", read_u64(f, f.base + kCounterOffset) == fail_counter);
+    check("host_failure_import_id", r.host_import_id == 3,
+          std::to_string((unsigned long long)r.host_import_id));
+    check("host_failure_rip", r.guest_rip == kImportFail,
+          std::to_string((unsigned long long)r.guest_rip));
+    check("host_failure_error_pc", r.error_pc == kImportFail,
+          std::to_string((unsigned long long)r.error_pc));
     f.host.throw_next = true;
     s = call_fixture_ctx(f, 6, text, f.base + kTextOffset, kImportThrow,
                          f.base + kCounterOffset, &r);
     check("host_exception", s == AEV_BRIDGE_ERR_HOST, status_name(s));
     check("host_exception_counter", read_u64(f, f.base + kCounterOffset) == fail_counter);
+    check("host_exception_import_id", r.host_import_id == 4,
+          std::to_string((unsigned long long)r.host_import_id));
+    f.host.bad_status_next = true;
+    s = call_fixture_ctx(f, 6, text, f.base + kTextOffset, kImportBadStatus,
+                         f.base + kCounterOffset, &r);
+    check("host_bad_status", s == AEV_BRIDGE_ERR_HOST, status_name(s));
+    check("host_bad_status_import_id", r.host_import_id == 5,
+          std::to_string((unsigned long long)r.host_import_id));
 
     // Helper succeeds, then Guest counter pointer faults: pending must not commit.
     const uint64_t helper_calls = f.host.calls;
@@ -405,6 +429,28 @@ void run_negative_cases(Fixture &f) {
                           nullptr, 0) == AEV_BRIDGE_ERR_INVALID_ARGUMENT);
     check("bad_guest_write",
           aev_bridge_guest_write(f.bridge, kBadAddress, "x", 1, nullptr, 0) ==
+              AEV_BRIDGE_ERR_INVALID_ARGUMENT);
+    AevCallResult bad_entry{};
+    bad_entry.struct_size = sizeof(bad_entry);
+    bad_entry.abi_version = AEV_CALLBACK_ABI_VERSION;
+    check("bad_entry",
+          aev_bridge_call(f.bridge, kEntry + 0x1000, 0, 0, 0, 0, &bad_entry,
+                          nullptr, 0) == AEV_BRIDGE_ERR_INVALID_ARGUMENT);
+    check("bad_entry_status", bad_entry.status == AEV_BRIDGE_ERR_INVALID_ARGUMENT,
+          std::to_string(bad_entry.status));
+    check("bad_entry_call_index", bad_entry.call_index == 0,
+          std::to_string((unsigned long long)bad_entry.call_index));
+    check("import_id_zero",
+          aev_bridge_register_import(f.bridge, AEV_BRIDGE_IMPORT_BASE, 0,
+                                     host_update, &f.host, nullptr, 0) ==
+              AEV_BRIDGE_ERR_INVALID_ARGUMENT);
+    check("import_addr_mismatch",
+          aev_bridge_register_import(f.bridge, kImportUpdate + 0x10, 1,
+                                     host_update, &f.host, nullptr, 0) ==
+              AEV_BRIDGE_ERR_INVALID_ARGUMENT);
+    check("import_duplicate",
+          aev_bridge_register_import(f.bridge, kImportUpdate, 1, host_update,
+                                     &f.host, nullptr, 0) ==
               AEV_BRIDGE_ERR_INVALID_ARGUMENT);
     AevBridgeConfig bad_cfg{};
     bad_cfg.struct_size = sizeof(bad_cfg) - 1;

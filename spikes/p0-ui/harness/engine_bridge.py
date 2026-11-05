@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-AEV_CALLBACK_ABI_VERSION = 1
+AEV_CALLBACK_ABI_VERSION = 2
 AEV_GUEST_SENTINEL = 0xFFFFFFFFFFFFFF00
 AEV_BRIDGE_IMPORT_BASE = 0x140010000
 AEV_BRIDGE_IMPORT_STRIDE = 0x10

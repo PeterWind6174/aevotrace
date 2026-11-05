@@ -1,4 +1,4 @@
-# P0 最小 Host↔Guest 回调契约（试验 v0）
+# P0 最小 Host↔Guest 回调契约（试验 v2 / 实现版）
 
 日期：2026-11-05。状态：compiler/platform/reviewer 已会签（reviewer 非阻断备注已在 B/C 计划中处理）。本文件只冻结本轮 P0-CALLBACK-INTEGRATION-01 所需的最小边界，不是 P1 的完整 ABI、PE、TSO 或异常契约。
 
@@ -79,7 +79,7 @@ typedef AevBridgeStatus (*AevHostImportFn)(void *host_ctx, AevBridge *bridge,
 新增公开头 `spikes/p0-engine/include/aev_bridge.h`（B 阶段实现）必须包含：
 
 ```c
-#define AEV_CALLBACK_ABI_VERSION 1u
+#define AEV_CALLBACK_ABI_VERSION 2u
 #define AEV_BRIDGE_MAX_ARGS 4u
 #define AEV_GUEST_SENTINEL 0xFFFFFFFFFFFFFF00ull
 
@@ -143,7 +143,7 @@ typedef struct AevCallResult {
 } AevCallResult;
 ```
 
-当前 v1：`sizeof(GuestState)=256`、`sizeof(AevCallResult)=160`、`sizeof(AevBridgeConfig)` 由 `aev_bridge_abi_info`/头文件实际值决定。调用方必须用 `aev_bridge_abi_info` 返回的 ABI/尺寸初始化 `AevBridgeConfig.struct_size/abi_version` 和 `AevCallResult.struct_size/abi_version`；不匹配即 `INVALID_ARGUMENT`/`ABI_MISMATCH`。`trace_aot` 只控制 AOT 块日志，`trace` 控制 JIT IR，`dump_jit` 控制 JIT ARM64 dump；三者都只用于诊断。
+当前 v2：`sizeof(GuestState)=256`、`sizeof(AevCallResult)=160`、`sizeof(AevBridgeConfig)=80`。v1 是实现前的内部草案，从未发布；v2 把 destroy 状态、guest_info 的栈边界、abi_info 的 config_size、AevCallResult 的 total_jit_blocks 和 trace_aot 一起定稿，避免把不同布局当成同一 ABI。调用方必须用 `aev_bridge_abi_info` 返回的 ABI/尺寸初始化 `AevBridgeConfig.struct_size/abi_version` 和 `AevCallResult.struct_size/abi_version`；不匹配即 `INVALID_ARGUMENT`/`ABI_MISMATCH`。`trace_aot` 只控制 AOT 块日志，`trace` 控制 JIT IR，`dump_jit` 控制 JIT ARM64 dump；三者都只用于诊断。
 
 入口/生命周期：
 
@@ -179,7 +179,7 @@ int aev_bridge_set_test_fault(AevBridge *b, uint32_t mode, uint64_t rip,
 
 `aev_bridge_guest_info` 在首次调用前返回 Guest 内存基址/大小以及栈基址/栈顶；Host 必须先通过它取得基址，再写文本、GuestCtx 和计数器。v0 的 Guest 地址就是该 session 的 Host 映射地址（与 `aev_mem.c` 的 `mem_base` 一致），不承诺跨 session/持久化；`guest_write/read` 和 `aev_load/aev_store` 都会检查范围，Host 不得直接解引用 Guest 值。`GuestCtx` 中的 `update`/`counter` 必须落在该范围内或导入保留区；`counter` 必须是 Guest 可写内存。
 
-`struct_size`/`abi_version` 不匹配 → 在装载/调用前失败；`GuestState` 大小、`AevCallResult` 大小和 AOT dylib 导出的 `aev_aot_abi_version` 都必须等于 v1。AOT dylib 必须导出 `aev_aot_run`、`aev_blocks`、`aev_block_count`、`aev_aot_abi_version`、`aev_input_hash`；任一缺失即 `ABI_MISMATCH`。bridge 还必须把 dylib 的 `aev_blocks`/`aev_block_count` 与本次 `Program` 的 AOT 块地址集合逐项比较，并把 `aev_input_hash` 与 COFF 字节哈希比较；同版本但过期/错配的 dylib 不得执行（避免“版本相同、代码不同”）。
+`struct_size`/`abi_version` 不匹配 → 在装载/调用前失败；`GuestState` 大小、`AevCallResult` 大小和 AOT dylib 导出的 `aev_aot_abi_version` 都必须匹配（Guest ABI v1；callback ABI v2）。AOT dylib 必须导出 `aev_aot_run`、`aev_blocks`、`aev_block_count`、`aev_aot_abi_version`、`aev_input_hash`；任一缺失即 `ABI_MISMATCH`。bridge 还必须把 dylib 的 `aev_blocks`/`aev_block_count` 与本次 `Program` 的 AOT 块地址集合逐项比较，并把 `aev_input_hash` 与 COFF 字节哈希比较；同版本但过期/错配的 dylib 不得执行（避免“版本相同、代码不同”）。
 
 调用约定与栈：
 
