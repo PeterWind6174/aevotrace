@@ -35,7 +35,7 @@
 
 ## 完成报告（2026-11-05）
 
-- 被验：`c2e49cd`（代码 `9f21649`）；最终分支头 `8c0fc15` 与 `c2e49cd` 仅差报告一行，代码树相同（QA 已核实 `git diff`）。
+- 被验：`c2e49cd`（代码 `9f21649`）；最终分支头 `8c0fc15` 与 `c2e49cd` 仅差报告一行，代码树相同（QA 已核实 `git diff`）。coordinator 已在 QA worktree checkout `8c0fc15`，复跑 `ctest` 2/2 通过，日志 `.local/results/P0-CORE-FIX-QA-01/ctest-final-head.log`。
 - 报告：`.local/results/P0-CORE-FIX-QA-01/REPORT.md`；独立驱动 `checks.tsv` 124/124 记录，其中 1 项为 N/A（IMUL AOT by design），实质 PASS 123 + 1 N/A。
 - 构建/ctest：configure 0、build 0、ctest 2/2 通过；原 5 case 22 PASS/0 FAIL、`reference.diff` 0 字节，并在 `ssh win` 重新编译/运行参考驱动，输出一致（仅 CRLF/LF）；新 semantics 364 PASS/0 FAIL。
 - F1–F5：PASS（LOCK 10 形式翻译/JIT 拒绝；IMUL 2/3 操作数、16/32/64 位 ORC 执行；F3 load/store/push/pop/ret/call 精确 PC/无副作用，JIT+AOT；F4 pop rsp/16 位拒绝；F5 25 helper + 22 JIT 例，4/2/1 位回归）。
