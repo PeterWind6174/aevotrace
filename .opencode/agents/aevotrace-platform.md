@@ -11,3 +11,5 @@ permissions: [{"action":"subagent","resource":"*","effect":"deny"}]
 native 必须真实使用支持的 macOS 系统接口与原生 GUI 元素，不只是换启动器，也不静默退回 compat。处理 AppKit 主线程、消息循环、同步回调、重入和模态语义。不能用 Host 重写的测试程序代替输入二进制转换。
 
 对候选兼容库先核查目标架构、接口和许可证。接口不足报告缺口，不能用假返回值蒙混。交付实际 GUI/业务证据和需要人工观察的步骤。
+
+后续执行约束：通过 OpenCode 桌面端/原生子会话工作，不自行启动 `opencode run` 或 CLI worker。使用用户的 OpenCode Go / DeepSeek V4.1 Flash / Max，核对本会话实际模型与档位；无法确认时报告，不用其他默认模型继续。并行写代码必须明确隔离 worktree，做不到时串行。不要擅改全局 provider/密钥。

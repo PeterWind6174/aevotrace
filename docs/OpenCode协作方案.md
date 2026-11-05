@@ -1,6 +1,16 @@
 # OpenCode 协作与交接方案
 
-日期：2026-11-05。目标版本：已在本机隔离目录验证的 OpenCode CLI v2.1.3。
+日期：2026-11-05。后续入口：OpenCode 桌面端。CLI v2.1.3 仅保留为早期环境核查及 P0 执行历史，不再作为后续 worker 调度方式。
+
+## 0. 用户最新执行要求
+
+- 使用用户的 OpenCode Go 订阅，模型 DeepSeek V4.1 Flash，档位 Max。
+- 在桌面端组织任务，使用其原生会话/子 agent；不自行启动 `opencode run` 或其他 CLI worker。Git、编译、SSH 仍属于正常工程命令。
+- 主会话、新会话和子 agent 均须核对实际模型与档位，不能假定独立会话继承桌面选择。不能确认时报告，不静默使用别的模型。
+- 并行写代码仍须独立 worktree；桌面端无法明确绑定时串行实施，或给出用户需要打开的工作区与交接任务。
+- 本轮复核 P0 三份 CLI 日志，QA、QA recheck、TRACE 均显示 `hy4`，不符合后续选型。日志没有足够的 variant 信息，Max 未能确认；不据此推断桌面主会话或其他子会话的实际模型。
+
+本节优先于下文的 P0 历史记录。
 
 ## 1. 人与 agent 的分工
 
@@ -42,7 +52,7 @@
 | aevotrace-qa | 双机测试、差分、性能和产物 | 测试基础与指定版本的证据 |
 | aevotrace-reviewer | 独立静态审查 | 只读，无 shell 与文件编辑权限 |
 
-配置不指定模型，使用会话所选模型；不改全局 provider、账号、密钥或桌面设置。worker 不继续派生子 agent，防止任务层级无界扩展。权限与角色约定不等于操作系统沙箱，必须结合工作目录和 worktree 管理。
+配置不硬编码尚未核实的 provider/model ID；在桌面端选择 OpenCode Go / DeepSeek V4.1 Flash / Max，并核对每个子会话实际设置。不能只凭父会话选择或省略 model 字段推定生效。不改全局账号或密钥。worker 不继续派生子 agent。权限与角色约定不等于操作系统沙箱，必须结合工作目录和 worktree 管理。
 
 角色数不等于并发数：先保持主控 + 两个实施任务，QA/审查按需加入。平台模块仍由一个 owner 维护，再按已冻结接口拆 compat/native 子任务。
 
@@ -92,25 +102,21 @@ Windows 使用单独的项目工作目录，按 commit 或源码包哈希同步�
 
 用户确认之前，GUI 项保持“自动部分已测、人工部分待验收”。需要操作时再通知用户，不把整轮开发都阻塞在人工观察上。
 
-## 8. 启动方式
+## 8. 后续桌面端启动
 
-以下是已核对 CLI 帮助支持的 OpenCode 命令，不是 Aevotrace 构建命令。先确认在项目目录：
+在 OpenCode 桌面端打开本项目，选择 `aevotrace-coordinator`、OpenCode Go 的 DeepSeek V4.1 Flash 和 Max。新任务先阅读本节和 `AGENTS.md`，再核对已有工作树、任务记录和上一轮审查，不重复初始化仓库。
 
-```sh
-cd /Users/peterwind/Script/Systems/Aevotrace
-/opt/homebrew/bin/opencode
+给主控的执行约束：
+
+```text
+只在桌面端及原生会话/子 agent 中组织本轮任务，不启动 opencode run/CLI worker。
+确认主会话和每个子会话实际使用 Go / DeepSeek V4.1 Flash / Max；无法确认时报告配置问题。
+按审查报告先修复已接受指令的正确性问题，再收尾 P0 的核心/GUI 集成、Trace 和版本失效。
+并行写代码必须明确绑定独立 worktree；不具备该条件时串行执行。
+记录实际命令、退出码、输入和产物哈希，完成后提交证据；需要 Windows GUI 时给用户具体步骤。
 ```
 
-在桌面端打开同一项目后，可以让当前主 agent 阅读本文件并使用项目角色。桌面端实际连接的 server/version 与角色发现尚未验证，不能仅凭 CLI 版本认定一致。
-
-需要显式选择主控时，可在终端发送首轮任务：
-
-```sh
-/opt/homebrew/bin/opencode run --agent aevotrace-coordinator \
-  '阅读 docs/需求规格.md、docs/项目构想与技术路线.md、docs/开发计划.md 和 docs/OpenCode协作方案.md。只执行 P0：核对现有 main 基线并建立任务记录，再做范围调查和最小技术验证。实施任务必须显式隔离 worktree；不得以兼容模式替代 native 需求。提交 P0 报告，不提前宣称阶段通过。'
-```
-
-不要将临时探测用的 XDG 隔离目录用于正常开发，它没有用户的 provider 配置。若正常启动有权限或 provider 问题，先修复实际环境，不能把 agent 配置文件存在当成集群已启动。
+没有启动新模型任务，不代表上述设置已经自动生效；实际运行时仍须核对。不要把临时 XDG 探测目录用于正常开发，它不包含用户 provider 配置。
 
 ## 8.1 P0 实际执行补充（2026-11-05）
 
@@ -124,10 +130,10 @@ cd /Users/peterwind/Script/Systems/Aevotrace
 - Mac 当前进程已验证 `screencapture` 与 System Events 窗口读取可用；仍需在报告中区分自动截图/日志与人工观感验收。
 - P0 结果：功能路径经独立 QA 复跑（ENGINE AOT/JIT、UI compat/native、Windows 参考），W-1/W-2 已关闭；但 P0 整体未通过（P0-03/P0-05、V-1/P-1、真实应用/性能/人工未闭合）。见 `docs/p0/P0-REPORT.md`、`docs/adr/ADR-0001-p0-selection.md`。
 
-## 9. 后续自动调度
+## 9. 后续调度
 
-首轮先验证角色加载、一个子任务交接、指定 worktree 的独立会话、SSH 参考测试和报告返回。稳定后再通过 OpenCode CLI 或当前版本 SDK 建立队列、任务依赖、状态、超时和失败恢复。
+先验证桌面端角色加载、模型/Max、生效的子任务交接、worktree 隔离、SSH 参考测试和报告返回。后续自动化优先使用桌面端已有能力，不自行引入 CLI 模型调度。
 
-桌面端适合查看会话和介入，CLI/SDK 适合可复现调度。不要同时建立两套竞争的任务状态源。Git/任务文件承载工程状态，OpenCode 会话承载执行上下文。
+Git/任务文件承载工程状态，OpenCode 会话承载执行上下文。桌面能力不足时保留串行路径；未来若用户明确改变偏好，再单独核查其他调度方式。
 
 官方依据：[V2 Agents](https://opencode.ai/v2/docs/agents/)、[CLI](https://opencode.ai/v2/docs/cli/)、[CLI Commands](https://opencode.ai/v2/docs/cli/commands/)、[Permissions](https://opencode.ai/v2/docs/permissions/)。这是 2026-11-05 查阅的文档；V1/V2 配置字段不同，后续升级要重新核对。

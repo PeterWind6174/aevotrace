@@ -15,7 +15,9 @@ Windows x86-64 EXE/DLL → macOS ARM64 桌面 GUI 应用；AOT 优先且允许 J
 - ABI、artifact 格式、公共构建系统和平台接口变更由 coordinator 协调，先更新契约再分派实现。
 - worker 不自行增加子 agent 层级，不同时改动其他任务拥有的文件。
 - coordinator 顺序集成；实施者提供证据，QA/reviewer 独立验证指定版本。
-- 当前模型由用户的 OpenCode 会话决定，不在项目中写入 provider 密钥或替用户改变模型配置。
+- OpenCode 开发、测试和审查使用用户的 **OpenCode Go / DeepSeek V4.1 Flash / Max**。主会话、新会话和子 agent 都需要核对实际模型与档位；不能以未知默认值或别的模型代替。
+- 后续通过 OpenCode 桌面端及原生会话/子 agent 工作，不自行执行 `opencode run` 或启动其他 CLI worker。Git、编译和 `ssh win` 等普通工程命令仍可使用。若桌面端不能明确隔离并行任务的 worktree，就串行实施，不用 CLI 绕过该约定。
+- 不猜测 Go 的 provider/model ID，不写入密钥或擅改全局账号。仅有文字提示不能证明模型/Max 生效；无法确认时先报告配置问题，不用其他默认模型继续。
 
 ## 正确性与证据
 

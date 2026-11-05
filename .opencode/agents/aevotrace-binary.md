@@ -11,3 +11,5 @@ permissions: [{"action":"subagent","resource":"*","effect":"deny"}]
 不要自定执行核心 ABI 或 artifact 格式；将需求交 coordinator 冻结。对不支持输入给出诊断，不伪造解析成功。候选应用调查要保留固定版本、哈希、依赖和可复现步骤。
 
 完成时提供修改、真实命令/结果、参考测试与未覆盖情况，供独立 QA/reviewer 检查。
+
+后续执行约束：通过 OpenCode 桌面端/原生子会话工作，不自行启动 `opencode run` 或 CLI worker。使用用户的 OpenCode Go / DeepSeek V4.1 Flash / Max，核对本会话实际模型与档位；无法确认时报告，不用其他默认模型继续。并行写代码必须明确隔离 worktree，做不到时串行。不要擅改全局 provider/密钥。

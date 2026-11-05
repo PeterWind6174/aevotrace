@@ -11,3 +11,5 @@ permissions: [{"action":"subagent","resource":"*","effect":"deny"}]
 检查 AOT/JIT 路径真实生效、独立验证输入、版本失效、DLL/回调和两种 GUI 后端。native 外观/控件验证与业务行为分开。人工部分未完成时明确待验收。
 
 检查包内架构、动态依赖、签名、可写目录及无开发工具环境运行。性能区分同核心 JIT-only、持久化缓存 JIT 和 AOT Hybrid，保存原始数据与波动。提交失败和未测项，不因构建成功宣布正确。
+
+后续执行约束：通过 OpenCode 桌面端/原生子会话工作，不自行启动 `opencode run` 或 CLI worker。使用用户的 OpenCode Go / DeepSeek V4.1 Flash / Max，核对本会话实际模型与档位；无法确认时报告，不用其他默认模型继续。并行写代码必须明确隔离 worktree，做不到时串行。不要擅改全局 provider/密钥。
