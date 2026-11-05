@@ -65,7 +65,7 @@
 
 - 分支/提交：`p0/engine-spike`，提交 `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`（`spikes/p0-engine/`，28 文件）。
 - 输入：MSVC x64 COFF `testdata/guest_x64.obj`，SHA-256 `a12fa7fff6087e2e0ae95a09e395cd41874f5871674a4feda0cbff8ca9da7b1e`；`.text` 函数 `guest_kernel` 128 B / `guest_op` 9 B；含循环、分支、数组读写、间接调用、`imul`。
-- AOT：Capstone 解码 → 自建 GuestState/helper ABI → LLVM IR → ARM64 Mach-O object → `libguest_aot.dylib`（ARM64，linker ad-hoc 签名）→ 独立 `aev-runner` 进程 `dlopen`/`dlsym`；`otool -tv` 显示真实 ARM64 块代码；`nm` 显示 `aev_blk_*` 符号。
+- AOT：Capstone 解码 → 自建 GuestState/helper ABI → LLVM IR → ARM64 Mach-O object → `libguest_aot.dylib`（ARM64，linker ad-hoc 签名；引擎报告写“unsigned”指无开发者签名/entitlement，`codesign` 实测为 adhoc/linker-signed）→ 独立 `aev-runner` 进程 `dlopen`/`dlsym`；`otool -tv` 显示真实 ARM64 块代码；`nm` 显示 `aev_blk_*` 符号。
 - JIT：`imul` 块故意不在 AOT 表；LLVM ORC LLJIT 运行时编译 `aev_jit_140001042`，`--dump-jit` 反汇编出 `mul w20,w8,w9` 等 ARM64 指令，执行后设置 RIP=0x140001047 返回 AOT。
 - 结果：5 个用例（prep_a/prep_b/hidden/unaligned/crosspage）与 Windows 参考 stdout 逐字节一致（`reference.diff` 为空）；统计 `aot_blocks=18–38`、`jit_compiles=1`、`jit_execs=2–4`、`error=0`。
 - 独立进程/ASLR：两次 runner 加载 dylib 的基址 `0x104c50000` / `0x102e48000`（不同），`aev_aot_run` host 地址不同。
