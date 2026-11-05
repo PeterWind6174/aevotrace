@@ -20,7 +20,6 @@ from AppKit import NSApplication, NSApplicationActivationPolicyRegular
 from .compat_backend import CompatBackend
 from .engine_host import EngineGuiHost
 from .engine_scenario import EngineScenario
-from .errors import UnsupportedApi
 from .logging_util import RunLogger
 from .native_backend import NativeBackend
 

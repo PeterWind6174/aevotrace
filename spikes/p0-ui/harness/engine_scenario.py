@@ -1,7 +1,6 @@
 """Automated three-sequence + 100-callback scenario for the engine GUI path."""
 from __future__ import annotations
 
-import os
 import re
 
 from .engine_bridge import (
@@ -10,14 +9,6 @@ from .engine_bridge import (
     AEV_BRIDGE_ERR_UNKNOWN_IMPORT,
     AEV_BRIDGE_OK,
 )
-from .engine_host import (
-    IDC_BTN_COMPUTE,
-    IDC_EDIT_INPUT,
-    IDC_RESULT,
-)
-from .errors import UnsupportedApi
-
-MASK64 = 0xFFFFFFFFFFFFFFFF
 
 # Windows reference values from testdata/callback/reference_stdout.txt for the
 # same fixed COFF object and the same helper contract (helper returns op).
