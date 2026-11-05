@@ -1,6 +1,6 @@
 # P0-SCOPE-01：Win32 GUI 测试族与真实应用候选
 
-状态：进行中。
+状态：完成（静态调查与哈希/PE 复核；未在 Windows/macOS 运行候选应用）。
 
 ## 输入与责任
 
@@ -39,3 +39,18 @@
 - 审查问题及修复：
 - 未测项、已知限制、需要用户操作的具体步骤：
 - 后续任务与接口变更：建议的 P1 测试族、真实应用验收任务和需要 coordinator 冻结的接口。
+
+## 完成报告（2026-11-05，静态调查）
+
+- 提交或 diff：无产品源码变更；报告 `.local/results/P0-SCOPE-01/app-candidates.md`，证据在 `evidence/`，fixture 在 `fixtures/`。
+- 实际下载/哈希（包 SHA-256 均与官方发布值匹配）：
+  - 7-Zip 26.05 x64 `7z2605-x64.exe`：`fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0`；`7zFM.exe` `e036ab157806354f877bc33f45c1e11ff8bf4d0116d17301034d250e16c1eaee`；`7z.dll` `78bf6b668d75801e3aa180b4ccb16e6d8395fba80dec8a065055bb6f8dfabb82`。
+  - WinMerge 2.16.60 `winmerge-2.16.60-x64-exe.zip`：`be3f850ed2e450c474928ccb67d2998e812da90dea1240a46352714553342522`。
+  - PuTTY 0.85 `putty-0.85-w64.zip`：`e0b36e5381ecc78dd06a291bab25fb9d95bc991d0d864cf2741a5bde82816668`。
+  - Notepad++ 8.9.8.1 `npp.8.9.8.1.portable.x64.zip`：`beddf5548e75c97930d1575ba1c7d113e6e2b33d0a200310e734ca08e225f414`。
+- 推荐：7-Zip File Manager 26.05（原生 Win32/公共控件；无 MFC/.NET/Chromium；主工作流离线可验证）；备选 WinMerge 2.16.60。PuTTY 0.85（MIT）与 Notepad++ 8.9.8.1（GPL-3.0）作为后续候选。
+- 首轮 7-Zip 工作流：打开 `fixtures/scope-fixture.7z` → 列出 4 文件/2 目录 → 解压 → 校验 4 个成员 SHA-256 → 退出；Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列。
+- fixture：`b1f05255839f7ce6761338e129fc3ed99b0483c391f6efd54c5fc8e62ed82e68`；`7zz t` 自检通过，成员哈希见 `fixtures/MANIFEST.txt`。
+- 独立复核：coordinator 复算 7-Zip 包/主模块哈希、`7zFM.exe` 292 个导入符号、TLS 目录（无）、fixture 哈希与解压；与报告一致。
+- 未测/限制：未运行任何候选 GUI；无 Windows 启动/截图/进程树/退出码；COM/Shell/拖放、`7zG.exe`、注册表、DPI/IME、Authenticode 未验证；`native` 自绘内容边界未验证。
+- 后续：QA 在一次性 Windows VM 执行 7-Zip 工作流并回传截图/进程树/输出哈希；用户确认许可证与 `native` 自绘差异容忍边界。

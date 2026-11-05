@@ -20,13 +20,13 @@
 | 任务 | 状态 | 关键证据 | 失败/未测 |
 | --- | --- | --- | --- |
 | P0-ENV-01 | 完成 | Windows x64 编译/运行/回传，76/76 哈希一致，15 项 Mac 校验 PASS | GUI/AOT/JIT 不在范围 |
-| P0-SCOPE-01 | 进行中 | | |
+| P0-SCOPE-01 | 静态调查完成（待复核） | 4 个候选官方哈希匹配；7-Zip 26.05 推荐、WinMerge 2.16.60 备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
 | P0-ABI-01 | 进行中 | | |
-| P0-TRACE-01 | 进行中 | | |
-| P0-ENGINE-01 | 进行中 | | |
-| P0-UI-01 | 进行中 | | |
-| P0-ADR-01 | 进行中 | `docs/adr/ADR-0001-p0-selection.md` 草案 | 决策待证据 |
-| P0-REVIEW-01 | 未开始 | | |
+| P0-TRACE-01 | 调查完成，未验证 | 三层分工、记录字段草案、准备/验证集隔离方案；CLI 退出 0 | 无实际 Trace/样例/记录实现；D6 未决 |
+| P0-ENGINE-01 | 进行中 | worktree 已有 COFF 输入、translator/runner、隐藏/未对齐/跨页用例 | 待 AOT/JIT 运行证据 |
+| P0-UI-01 | 进行中 | worktree 已有 Guest DLL/driver、compat/native harness、Windows 参考 auto.log | 待 Mac 双后端运行/截图 |
+| P0-ADR-01 | 进行中 | ADR 草案与 proposed 决策 | 待 QA/REVIEW |
+| P0-REVIEW-01 | 未开始 | 预审已完成任务分解审查 | 未审最终证据 |
 
 ## 3. Windows 参考机与双机流程（P0-ENV-01）
 
@@ -37,7 +37,13 @@
 - 关键限制：SSH 默认 PowerShell 会塌缩非零退出码；必须显式 `cmd.exe /c ...; exit $LASTEXITCODE` 或读取每步 `.exit.txt`。
 - GUI：SSH 落在 services/session 0；交互桌面是 console session 1（`PeterWind`），GUI 参考运行需用户在该会话执行。
 
-## 4. 候选应用与支持矩阵（待 P0-SCOPE-01）
+## 4. 候选应用与支持矩阵（P0-SCOPE-01）
+
+- 固定候选与官方哈希：7-Zip 26.05（`fd99e86f...47d0`）、WinMerge 2.16.60（`be3f850e...5222`）、PuTTY 0.85（`e0b36e53...6668`）、Notepad++ 8.9.8.1（`beddf554...f414`）；四个包均与官方发布值匹配。
+- 推荐首选：7-Zip File Manager 26.05，`7zFM.exe` + `7z.dll`；原生 Win32/公共控件，无 MFC/.NET/Chromium；主工作流离线可验证。备选：WinMerge 2.16.60（静态 MFC/ATL + GDI+ + COM，API 面更大）。
+- 后续候选：PuTTY 0.85（MIT，但网络/加密/线程/自绘终端风险高）；Notepad++ 8.9.8.1（GPL-3.0，21 个直接 DLL、插件/更新器、Scintilla 自绘，风险高）。
+- 7-Zip 首轮工作流：打开 `scope-fixture.7z`（SHA-256 `b1f05255...e68`）→ 列出 4 文件/2 目录 → 解压 → 校验成员 SHA-256 → 退出；Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列。
+- 未验证：没有运行任何候选 GUI；COM/Shell/拖放、`7zG.exe`、注册表、DPI/IME、Authenticode、`native` 自绘边界均未测。报告见 `.local/results/P0-SCOPE-01/app-candidates.md`。
 
 ## 4.1 需求覆盖映射（防止把调查当成能力）
 
