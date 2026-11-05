@@ -39,6 +39,20 @@
 
 ## 4. 候选应用与支持矩阵（待 P0-SCOPE-01）
 
+## 4.1 需求覆盖映射（防止把调查当成能力）
+
+| 需求 | P0 相关任务 | 当前证据 | 状态 |
+| --- | --- | --- | --- |
+| R01 Win x64→macOS ARM64 | ENV + ENGINE | Windows x64 编译/运行；待 ARM64 产物 | 部分 |
+| R02 EXE/DLL/资源输入 | SCOPE + ABI + ENGINE | 待 PE 分析/spike | 待证据 |
+| R03 可选符号/元数据 | SCOPE | 未验证 | 未验证 |
+| R04 普通桌面 GUI | UI | 待双后端 spike | 待证据 |
+| R05 独立启动应用 | 未覆盖 | 未做 `.app`/签名/无开发路径 | 未验证 |
+| R06 AOT 优先/JIT 回退 | ENGINE | 待 AOT/JIT spike | 待证据 |
+| R07 性能优化 | 未覆盖 | 不做 P0 性能结论 | 未验证 |
+| R08 compat/native 双输出 | UI | 待双后端 spike | 待证据 |
+| R09 排除驱动/内核 | 范围 | 未做系统级测试 | 范围外 |
+
 ## 5. 执行核心与 AOT/JIT（待 P0-ENGINE-01）
 
 ## 6. 双 GUI 后端（待 P0-UI-01）

@@ -5,7 +5,7 @@
 ## 输入与责任
 
 - 阶段、需求 ID、前置任务：P0；R02/R03/R04/R08；无前置。
-- owner / reviewer / QA：binary + platform / reviewer / qa（后续按选定场景）。
+- owner / reviewer / QA：binary（lead）+ platform（contributor） / reviewer / qa（后续按选定场景）。
 - 基线 commit 或源码包哈希：`373becbdd7a65cafd63a98cb526bb1a9c933f731`。
 - 分支 / worktree / Windows 工作目录：调查任务，不改产品源码；使用 `C:\Users\PeterWind\AevotraceP0\P0-SCOPE-01`；报告在 `.local/results/P0-SCOPE-01/`。
 - 公共 ABI / artifact / 平台接口版本：不冻结；只提出候选和缺口。

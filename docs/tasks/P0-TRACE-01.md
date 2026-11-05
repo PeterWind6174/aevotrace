@@ -5,7 +5,7 @@
 ## 输入与责任
 
 - 阶段、需求 ID、前置任务：P0；R03/R06；依赖 P0-ENGINE-01/P0-ENV-01。
-- owner / reviewer / QA：binary + compiler / reviewer / qa。
+- owner / reviewer / QA：binary（lead）+ compiler（contributor） / reviewer / qa。
 - 基线 commit 或源码包哈希：`586662a4ff09465d7d3aa453fb44e5aa6e880c79` 起。
 - 分支 / worktree / Windows 工作目录：调查与后续 spike；报告在 `.local/results/P0-TRACE-01/`。
 - 公共 ABI / artifact / 平台接口版本：不冻结；只提出记录格式草案。
