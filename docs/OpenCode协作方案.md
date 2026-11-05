@@ -112,6 +112,17 @@ cd /Users/peterwind/Script/Systems/Aevotrace
 
 不要将临时探测用的 XDG 隔离目录用于正常开发，它没有用户的 provider 配置。若正常启动有权限或 provider 问题，先修复实际环境，不能把 agent 配置文件存在当成集群已启动。
 
+## 8.1 P0 实际执行补充（2026-11-05）
+
+- 两个写代码任务使用独立分支/worktree/子会话：`p0/engine-spike`（`.worktrees/p0-engine`）、`p0/ui-spike`（`.worktrees/p0-ui`）。子会话不等于 worktree，任务提示中明确要求所有写入/提交只发生在其 worktree。
+- 另用已验证的 CLI 启动独立调查 worker：cwd 设为 `.worktrees/p0-trace`（分支 `p0/trace-investigation`），命令形式为
+  `opencode run --agent aevotrace-binary --auto --title '<TASK>' '<明确任务、cwd、退出条件>' > .local/results/<TASK>/cli.log 2>&1`。
+  该 worker 只写 `.local/results/`，完成后退出；未递归启动 coordinator。CLI 日志和 shell 句柄记录在 `.local/results/COORDINATION.md`。
+- Windows 默认 SSH shell 是 PowerShell 7.6.9：未包装时远程 `exit 5/7` 会被塌缩成本地 1。后续自动化使用
+  `ssh win 'cmd.exe /c <script>; exit $LASTEXITCODE'`，或读取脚本写出的 `*.exit.txt`。超时用本地包装器强制终止并记录退出码。
+- Windows 交互桌面在 `console` 会话 1（`PeterWind`）；SSH 落在 services/session 0。GUI 参考运行需要用户在会话 1 执行，或由后续会话内启动工具完成；纯 SSH 看不到窗口不等于程序失败。
+- Mac 当前进程已验证 `screencapture` 与 System Events 窗口读取可用；仍需在报告中区分自动截图/日志与人工观感验收。
+
 ## 9. 后续自动调度
 
 首轮先验证角色加载、一个子任务交接、指定 worktree 的独立会话、SSH 参考测试和报告返回。稳定后再通过 OpenCode CLI 或当前版本 SDK 建立队列、任务依赖、状态、超时和失败恢复。
