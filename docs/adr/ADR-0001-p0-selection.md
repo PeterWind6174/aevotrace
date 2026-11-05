@@ -79,7 +79,7 @@
 ### 语言与构建
 
 - 建议：C++20 + C ABI 核心，Objective-C++ 平台适配，Python 编排；CMake + Ninja；macOS 最低版本待定。
-- 工具链已在 P0-ENGINE-01/P0-UI-01 验证；D5 仍待 reviewer/用户确认最低 macOS 版本后冻结。
+- 工具链已在 P0-ENGINE-01/P0-UI-01 验证；D5 仍待用户确认最低 macOS 版本后冻结。
 
 ### 准备执行与记录
 
@@ -96,7 +96,7 @@
 - PE 装载需覆盖 forwarder/API set/delay import/TLS 回调/`.pdata`/load config/CFG/资源；`RELOCS_STRIPPED` + 基址冲突必须诊断。
 - x86-64 TSO 与 ARM64 弱序差异、`LOCK`/原子/未对齐/跨页/权限失败/映射代次全部未实测；P1 必须先声明保证级别，不能默认“同地址映射等价”。
 
-## 决策（proposed，待 reviewer 终审）
+## 决策（reviewer 已审；P0 整体不通过，D3/D6 未决）
 
 - D1 执行核心：优先自建 x64 前端 + LLVM AArch64 后端；ENGINE spike 已验证最小 AOT/JIT 闭环。Remill（Apache-2.0）作为 P1 指令语义覆盖候选，需先做固定版本构建/许可/集成验证；QEMU/FEX/Box64/Rosetta 不作为首版直接执行核心。
 - D2 AOT/JIT 交接与 artifact：AOT 模块优先独立签名 dylib + 模块描述符/调度表；JIT 回退用 LLVM ORC 或等价真实编译；spike 已证明 dlopen/ASLR/JIT return；PE 重定位/TLS/代码失效仍待 P1。
