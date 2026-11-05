@@ -44,7 +44,7 @@
 
 ## 完成报告（2026-11-05，调查阶段）
 
-- 提交或 diff：无产品源码变更；报告 `.local/results/P0-ABI-01/binary-abi.md`（53,507 B），原始探针在 `.local/results/P0-ABI-01/spike/`。
+- 提交或 diff：无产品源码变更；报告 `.local/results/P0-ABI-01/binary-abi.md`（53,507 B，SHA-256 `3e8ca3e8...9bbb4`），原始探针在 `.local/results/P0-ABI-01/spike/`，命令/指标在 `binary-evidence/`。
 - 实际证据：`clang --target=x86_64-pc-windows-msvc` 交叉编译 ABI 探针（exit 0）；`llvm-objdump` 反汇编证明 RCX/RDX/R8/R9、32 字节 shadow、第 5/6 参数 `[rsp+0x28/0x30]`、调用点 `rsp%16==0`、`GS:0x58` TLS 路径；`llvm-readobj --unwind` 证明非叶函数 `.pdata/.xdata`；`ssh win` 只读 `dumpbin` 确认 `DefWindowProcW` forwarder。
 - 关键结论：GuestState 需 GPR/RIP/RFLAGS/FS_BASE/GS_BASE/XMM0–15/MXCSR/x87/TEB/LastError/线程栈；TEB/PEB 必须版本化，不能把完整偏移当稳定 ABI（`GS:0x58/0x60` 实测，`GS:0x68` 未实测）；`SendMessage` 同线程直接重入、跨线程阻塞并泵消息，`native` 不能异步化；Guest SEH/C++ EH 不能穿过 Host 帧；PE 需处理 forwarder/API set/delay import/TLS/`.pdata`/load config/资源；x86 TSO 与 ARM64 弱序未验证，P1 必须先声明策略。
 - 候选依赖许可：LLVM Apache-2.0 WITH LLVM-exception；Capstone BSD-3-Clause；Remill Apache-2.0（未构建）；QEMU GPLv2；FEX/Box64 MIT；Wine LGPL-2.1+；Unicorn GPLv2（仅 P0）。未集成、未做法律结论。

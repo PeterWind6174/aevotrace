@@ -42,7 +42,7 @@
 
 ## 完成报告（2026-11-05，静态调查）
 
-- 提交或 diff：无产品源码变更；报告 `.local/results/P0-SCOPE-01/app-candidates.md`，证据在 `evidence/`，fixture 在 `fixtures/`。
+- 提交或 diff：无产品源码变更；报告 `.local/results/P0-SCOPE-01/app-candidates.md`，PE/API 报告 `.local/results/P0-SCOPE-01/binary-report.md`（SHA-256 `633c4f35...2155`），证据在 `evidence/`、`binary-evidence/`、`fixtures/`。
 - 实际下载/哈希（包 SHA-256 均与官方发布值匹配）：
   - 7-Zip 26.05 x64 `7z2605-x64.exe`：`fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0`；`7zFM.exe` `e036ab157806354f877bc33f45c1e11ff8bf4d0116d17301034d250e16c1eaee`；`7z.dll` `78bf6b668d75801e3aa180b4ccb16e6d8395fba80dec8a065055bb6f8dfabb82`。
   - WinMerge 2.16.60 `winmerge-2.16.60-x64-exe.zip`：`be3f850ed2e450c474928ccb67d2998e812da90dea1240a46352714553342522`。
