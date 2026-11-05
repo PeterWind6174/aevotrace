@@ -21,10 +21,11 @@
 | --- | --- | --- | --- |
 | P0-ENV-01 | 完成 | Windows x64 编译/运行/回传，76/76 哈希一致，15 项 Mac 校验 PASS | GUI/AOT/JIT 不在范围 |
 | P0-SCOPE-01 | 静态调查完成（待复核） | 4 个候选官方哈希匹配；7-Zip 26.05 推荐、WinMerge 2.16.60 备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
-| P0-ABI-01 | 进行中 | | |
+| P0-ABI-01 | 调查完成 | x64 调用约定/影子空间/栈对齐实测；TEB 版本化、TLS 计数、PE/异常/内存序清单；许可表 | 运行时 ABI/内存序/异常未实测 |
 | P0-TRACE-01 | 调查完成，未验证 | 三层分工、记录字段草案、准备/验证集隔离方案；CLI 退出 0 | 无实际 Trace/样例/记录实现；D6 未决 |
-| P0-ENGINE-01 | 进行中 | worktree 已有 COFF 输入、translator/runner、隐藏/未对齐/跨页用例 | 待 AOT/JIT 运行证据 |
-| P0-UI-01 | 进行中 | worktree 已有 Guest DLL/driver、compat/native harness、Windows 参考 auto.log | 待 Mac 双后端运行/截图 |
+| P0-ENGINE-01 | 待审查（QA 进行中） | commit `a4ef11c`；AOT dylib/ASLR/JIT ORC/负例证据；5 用例匹配 Windows 参考 | 无 PE/重定位/异常/线程/TSO/失效；独立 QA 未完成 |
+| P0-UI-01 | 待审查（QA 进行中） | commit `60ba7a6`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例 | Unicorn 临时桥接；与 ENGINE 未集成；人工可见窗口待验 |
+| P0-QA-01 | 进行中 | CLI worker 独立复跑 | 待报告 |
 | P0-ADR-01 | 进行中 | ADR 草案与 proposed 决策 | 待 QA/REVIEW |
 | P0-REVIEW-01 | 未开始 | 预审已完成任务分解审查 | 未审最终证据 |
 
@@ -60,9 +61,27 @@
 | R08 compat/native 双输出 | UI | 待双后端 spike | 待证据 |
 | R09 排除驱动/内核 | 范围 | 未做系统级测试 | 范围外 |
 
-## 5. 执行核心与 AOT/JIT（待 P0-ENGINE-01）
+## 5. 执行核心与 AOT/JIT（P0-ENGINE-01）
 
-## 6. 双 GUI 后端（待 P0-UI-01）
+- 分支/提交：`p0/engine-spike`，提交 `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`（`spikes/p0-engine/`，28 文件）。
+- 输入：MSVC x64 COFF `testdata/guest_x64.obj`，SHA-256 `a12fa7fff6087e2e0ae95a09e395cd41874f5871674a4feda0cbff8ca9da7b1e`；`.text` 函数 `guest_kernel` 128 B / `guest_op` 9 B；含循环、分支、数组读写、间接调用、`imul`。
+- AOT：Capstone 解码 → 自建 GuestState/helper ABI → LLVM IR → ARM64 Mach-O object → `libguest_aot.dylib`（ARM64，linker ad-hoc 签名）→ 独立 `aev-runner` 进程 `dlopen`/`dlsym`；`otool -tv` 显示真实 ARM64 块代码；`nm` 显示 `aev_blk_*` 符号。
+- JIT：`imul` 块故意不在 AOT 表；LLVM ORC LLJIT 运行时编译 `aev_jit_140001042`，`--dump-jit` 反汇编出 `mul w20,w8,w9` 等 ARM64 指令，执行后设置 RIP=0x140001047 返回 AOT。
+- 结果：5 个用例（prep_a/prep_b/hidden/unaligned/crosspage）与 Windows 参考 stdout 逐字节一致（`reference.diff` 为空）；统计 `aot_blocks=18–38`、`jit_compiles=1`、`jit_execs=2–4`、`error=0`。
+- 独立进程/ASLR：两次 runner 加载 dylib 的基址 `0x104c50000` / `0x102e48000`（不同），`aev_aot_run` host 地址不同。
+- 负例：`--bad-op` 未知间接目标显式失败（rc=3，`JIT ERROR: unresolved guest indirect target ...`）；`lock xadd`/`cdq` 翻译显式失败（rc=1，带地址/助记符/字节），无假返回值。
+- 未测/限制：无 PE 装载/重定位/TLS/异常/线程/自修改/失效；无 Guest 页表/权限/跨页 fault；无 TSO/原子（原子直接拒绝）；无 MAP_JIT/Hardened Runtime/分发签名路径；AOT artifact 为 spike 格式，未冻结；`imul` 是故意 AOT 边界，不是能力上限。报告：`.worktrees/p0-engine/spikes/p0-engine/REPORT.md`。
+
+## 6. 双 GUI 后端（P0-UI-01）
+
+- 分支/提交：`p0/ui-spike`，提交 `60ba7a61acbb332a2840f46e7def744c7f71cdf2`（`spikes/p0-ui/`，42 文件；未提交 `.venv`/大 artifacts）。
+- Guest 输入：Windows MSVC x64 `p0_gui_test.dll`，SHA-256 `a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602`；Windows 与 macOS 使用同一二进制哈希；导出 `P0WndProc`/`P0GetState`/`P0Reset`/`P0CreateMainWindow`/`P0RunGui`/`P0ProbeUnsupported`/`P0VersionW`。Guest 实际执行 main 15,933 条、worker 15 条 x64 指令；`SetWindowTextW` 14 次、`SendMessageW` 2 次、`MessageBoxW` 1 次、`CreateThread/PostMessageW/ExitThread` 各 1 次。
+- `native`：真实 AppKit `NSWindow`/`NSTextField`/`NSButton`/`NSMenu`/`NSAlert`；`main_thread=True`、`creation_thread=MainThread`；截图 `01-initial-native.png`、`02-after-actions-native.png`、`03-modal-native.png`、`04-final-native.png`。25 项检查 PASS，含 clicks/edit/modal/worker/sync echo/`modal_screenshot_saved`/negative unsupported API/`native_no_compat_events`。
+- `compat`：独立自绘 Windows 风格窗口/菜单/控件（`CompatWindow/CompatStatic/CompatEdit/CompatButton`），截图 `01-initial-compat.png` 等；同样 25 项检查 PASS，含 `compat_no_native_events`；未静默回退 native。
+- 业务状态由 Guest 导出函数读取；编辑/按钮/菜单/模态/工作线程均驱动 Guest WndProc；输入文本/按钮序列变异改变 Guest 计算的长度与 FNV 哈希；`negative_unsupported_api` 证明未支持 `MessageBeep` 明确失败，未进入 compat。
+- 关键限制：Guest 执行使用 Unicorn 2.1.4 临时桥接（GPLv2，仅 P0，不是产品核心）；message dispatcher 由 Host 拥有，`GetMessage/DispatchMessage` 仅 Windows 参考运行覆盖；Guest 对自身窗口的同步 `SendMessage` 在嵌套 Unicorn 中会崩溃，P0 明确拒绝，产品需要独立消息泵契约；无 TLS/SEH/heap/真实 PE loader；`compat` 是 P0 语义 harness，不是最终兼容运行库，D3 未决；未与 ENGINE AOT/JIT 核心集成。
+- 结论：双后端 GUI 语义/回调路线有真实运行证据；不能据此宣称产品 `compat`/`native` 完成，也不能把临时桥接当执行核心。
+- 报告：`.worktrees/p0-ui/spikes/p0-ui/REPORT.md`；Windows 参考状态 `evidence/state_utf8.txt`（可见窗口仍待人工验证）。
 
 ## 7. ABI、依赖与许可（P0-ABI-01）
 

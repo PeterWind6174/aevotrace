@@ -9,9 +9,9 @@
 | P0-SCOPE-01 | Win32 GUI 测试族、真实应用候选、API/依赖/许可矩阵 | binary（lead）+ platform | 否 | 完成（静态调查；未运行应用） |
 | P0-ABI-01 | x64 Windows ABI、TLS、异常、回调、内存模型与依赖许可调查 | binary（lead）+ platform | 否 | 完成（调查；运行时未验证） |
 | P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary（lead）+ compiler | 否 | 待审查（仅方案，未实现/未运行） |
-| P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 进行中 |
-| P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 进行中 |
-| P0-QA-01 | 对 ENV/ENGINE/UI 指定提交和产物做独立复跑与反伪证检查 | qa | 否 | 未开始（待 spike 完成） |
+| P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 待审查（提交 `a4ef11c`；QA 进行中） |
+| P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 待审查（提交 `60ba7a6`；QA 进行中；人工待验） |
+| P0-QA-01 | 对 ENV/ENGINE/UI 指定提交和产物做独立复跑与反伪证检查 | qa | 否 | 进行中（CLI worker） |
 | P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 未开始（依赖 TRACE/QA/REVIEW 输入） |
 | P0-REVIEW-01 | 对 ADR、spike 代码与 QA 证据做独立只读审查 | reviewer | 否 | 未开始 |
 
