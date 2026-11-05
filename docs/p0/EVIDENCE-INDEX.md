@@ -46,6 +46,7 @@
 - 报告/证据：`spikes/p0-ui/REPORT.md`、`README.md`、`evidence/`；QA 证据 `.worktrees/p0-qa-ui2/spikes/p0-ui/qa-evidence2/`
 - 固定 DLL `c5b89e83...`（`/Brepro`）；driver `ad6007d0...`；compat/native 各 25 checks；Windows `/check`/`/auto` 15/15。
 - W-1/W-2 已关闭；旧/新 DLL 整体差 1165 字节（`.text` 相同）；Unicorn 仅 P0，D3 未决。
+- Provenance：UI 提交内 `evidence/*/summary.json.git_head` 仍为基线 `60ba7a6`；聚焦 QA `qa-evidence2` 绑定修复提交 `847dad7`，最终以 QA recheck 为准。
 
 ## P0-ADR-01 / P0-QA-01 / P0-REVIEW-01
 

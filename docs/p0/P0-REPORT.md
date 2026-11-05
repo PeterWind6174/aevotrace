@@ -93,6 +93,7 @@
 - V-1：加载时无输入/代码版本校验与失效；翻转 COFF 时间戳后仍 rc=0。P1 待办。
 - P-1：`aev-runner` 依赖 Homebrew LLVM/Capstone dylib，无 `.app`/随包依赖/签名/公证；R05 未满足。
 - 未测：同核心 JIT-only/持久化缓存 JIT/AOT Hybrid 三类性能对照；Windows/macOS 可见 GUI、物理输入/输入法/焦点/外观；无开发工具环境运行。
+- 注意（provenance）：UI 提交内 `evidence/*/summary.json` 的 `repo.git_head` 仍是基线 `60ba7a6`（Mac 运行发生在修复提交前），而修复提交为 `847dad7`；聚焦 QA 的 `qa-evidence2/*/summary.json` 绑定 `847dad7`，最终 UI 证据以 QA recheck 为准。后续生成证据应记录实际 HEAD。
 - 报告：`.local/results/P0-QA-01/REPORT.md`（38,777 B）与 `RECHECK.md`（27,078 B）。结论：**不建议宣布 P0 整体通过**；功能路径 + W-1/W-2 可复跑，但 V-1/P-1 + 人工/性能未测。
 
 ## 7. ABI、依赖与许可（P0-ABI-01）
