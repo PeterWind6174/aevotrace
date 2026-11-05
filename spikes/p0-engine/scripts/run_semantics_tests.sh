@@ -23,6 +23,8 @@ AOT="$BUILD_DIR/semantics/aot"
 TRANSLATE="$BUILD_DIR/aev-translate"
 JIT_PROBE="$BUILD_DIR/aev-jit-probe"
 AOT_PROBE="$BUILD_DIR/aev-aot-probe"
+AOT_JIT_PROBE="$BUILD_DIR/aev-aot-jit-probe"
+EMITTER_PROBE="$BUILD_DIR/aev-emitter-probe"
 FLAGS_TEST="$BUILD_DIR/aev-flags-test"
 AOT_DYLIB=${AEV_AOT_DYLIB:-"$BUILD_DIR/generated/libguest_aot.dylib"}
 
@@ -41,6 +43,8 @@ need_tool() {
 need_tool "$TRANSLATE"
 need_tool "$JIT_PROBE"
 need_tool "$AOT_PROBE"
+need_tool "$AOT_JIT_PROBE"
+need_tool "$EMITTER_PROBE"
 need_tool "$FLAGS_TEST"
 if [ ! -f "$AOT_DYLIB" ]; then
     echo "FAIL: AOT dylib not found: $AOT_DYLIB" | tee -a "$RESULTS/summary.txt"
@@ -60,7 +64,8 @@ echo "== environment ==" | tee "$RESULTS/environment.txt"
     echo "BUILD_DIR=$BUILD_DIR"
     echo "SEM_SRC=$SEM_SRC"
     echo "AOT_DYLIB=$AOT_DYLIB"
-    shasum -a 256 "$AOT_DYLIB" "$JIT_PROBE" "$AOT_PROBE" "$FLAGS_TEST" "$TRANSLATE"
+    shasum -a 256 "$AOT_DYLIB" "$JIT_PROBE" "$AOT_PROBE" "$AOT_JIT_PROBE" \
+        "$EMITTER_PROBE" "$FLAGS_TEST" "$TRANSLATE"
 } >>"$RESULTS/environment.txt" 2>&1
 
 # ---------------------------------------------------------------------------
@@ -109,8 +114,17 @@ translate_fail() { # name needle...
     local name=$1
     shift
     local out="$LOGS/$name.translate.log"
+    # Each rejection gets a fresh output directory under the current run's
+    # results, so an old artifact from an earlier run can never satisfy the
+    # absence checks below.  Old evidence directories are kept.
+    local outdir
+    outdir=$(mktemp -d "$RESULTS/translate-fail-$name.XXXXXX") || {
+        fail "translate $name: cannot create output directory"
+        return
+    }
     "$TRANSLATE" --input "$OBJ/$name.obj" --function probe --entry probe \
-        --out-ll "$RESULTS/$name.ll" --out-header "$RESULTS/$name.h" \
+        --out-ll "$outdir/$name.ll" --out-header "$outdir/$name.h" \
+        --out-manifest "$outdir/$name.json" \
         >"$out" 2>&1
     local rc=$?
     local ok=1
@@ -119,11 +133,17 @@ translate_fail() { # name needle...
     for needle in "$@"; do
         grep -q "$needle" "$out" || ok=0
     done
+    local artifact
+    for artifact in "$outdir/$name.ll" "$outdir/$name.h" "$outdir/$name.json"; do
+        [ ! -e "$artifact" ] || ok=0
+    done
     if [ "$ok" -eq 1 ]; then
-        pass "translate $name rejected with $(echo "$*" | tr ' ' ',') (rc=$rc)"
+        pass "translate $name rejected with $(echo "$*" | tr ' ' ',') (rc=$rc); no .ll/.h/manifest"
     else
-        fail "translate $name not rejected with expected message (rc=$rc)"
+        fail "translate $name not rejected with expected message or left artifacts (rc=$rc)"
         sed -n '1,5p' "$out" | sed 's/^/  /' | tee -a "$RESULTS/summary.txt"
+        find "$outdir" -maxdepth 1 -type f -print | sed 's/^/  artifact: /' |
+            tee -a "$RESULTS/summary.txt"
     fi
 }
 
@@ -218,6 +238,23 @@ aot_run() { # label name args...
     AOT_OUT="$LOGS/$label.aot.out"
 }
 
+aot_jit_run() { # label name args...
+    local label=$1 name=$2
+    shift 2
+    if [ ! -f "$AOT/$name.dylib" ]; then
+        AOT_JIT_RC=2
+        AOT_JIT_OUT="$LOGS/$label.aotjit.out"
+        : >"$AOT_JIT_OUT"
+        fail "$label: missing $AOT/$name.dylib"
+        return
+    fi
+    "$AOT_JIT_PROBE" "$AOT/$name.dylib" "$OBJ/$name.obj" probe 0x140001000 "$@" \
+        >"$LOGS/$label.aotjit.out" 2>"$LOGS/$label.aotjit.err"
+    AOT_JIT_RC=$?
+    AOT_JIT_OUT="$LOGS/$label.aotjit.out"
+    AOT_JIT_ERR="$LOGS/$label.aotjit.err"
+}
+
 fault_common() { # label file pc
     local label=$1 file=$2 pc=$3
     expect_dec "$label" "$file" error 1
@@ -231,6 +268,13 @@ fault_common() { # label file pc
     else
         fail "$label: RSP changed (rsp_in=${rin:-?} rsp=${rout:-?})"
     fi
+}
+
+mem_end_minus() { # file bytes-back -> hex address
+    local base size
+    base=$(hexfield mem_base "$1")
+    size=$(hexfield mem_size "$1")
+    printf '0x%x' $((base + size - $2))
 }
 
 flags_of() { # file -> "cf/of"
@@ -289,6 +333,17 @@ for entry in \
     translate_fail "$name" "unsupported instruction" "LOCK" "lock $mnemonic" "0x140001000"
     jit_reject "F1_$name" "$name" "LOCK"
 done
+# Defense-in-depth: a caller-constructed Program with a LOCK-prefixed
+# terminator (RET/JMP) must be rejected by the emitter's terminator entry,
+# not only by build_program.  Real x86-64 decoding cannot produce these bytes.
+"$EMITTER_PROBE" >"$LOGS/emitter-lock.out" 2>&1
+rc=$?
+if [ "$rc" -eq 0 ] && ! grep -q '^FAIL' "$LOGS/emitter-lock.out"; then
+    pass "emitter rejects manually constructed LOCK RET/JMP terminators"
+else
+    fail "emitter terminator LOCK guard failed (rc=$rc)"
+    sed -n '1,10p' "$LOGS/emitter-lock.out" | sed 's/^/  /' | tee -a "$RESULTS/summary.txt"
+fi
 
 # ---------------------------------------------------------------------------
 # F2: two/three-operand IMUL; the JIT must execute the ARM64 code
@@ -312,9 +367,14 @@ jit_run F2_imul2_16 imul2_16 rax=10 rcx=3
 if jit_ok F2_imul2_16; then expect_hex F2_imul2_16 "$JIT_OUT" rax 0x1e; fi
 jit_run F2_imul3_16_neg imul3_16_neg rax=10 rcx=3
 if jit_ok F2_imul3_16_neg; then expect_hex F2_imul3_16_neg "$JIT_OUT" rax 0xfff7; fi
-# The only 8-bit IMUL form is one-operand; it must be reported, not mis-lowered.
-translate_fail imul1_8 "one-operand imul" "0x140001000"
+# One-operand IMUL is rejected at every width, and the diagnostic must carry
+# the actual width rather than always saying 8-bit.
+translate_fail imul1_8 "one-operand imul" "8-bit IMUL form" "0x140001000"
+translate_fail imul1_16 "one-operand imul" "16-bit IMUL form" "0x140001000"
+translate_fail imul1_32 "one-operand imul" "32-bit IMUL form" "0x140001000"
+translate_fail imul1_64 "one-operand imul" "64-bit IMUL form" "0x140001000"
 jit_reject F2_imul1_8 imul1_8 "one-operand imul"
+jit_reject F2_imul1_32 imul1_32 "32-bit IMUL form"
 
 # ---------------------------------------------------------------------------
 # F3: memory faults stop the block; no later or faulting side effects commit
@@ -581,6 +641,78 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# F3b: faulting add/inc/neg/logic with a memory destination
+# ---------------------------------------------------------------------------
+# These blocks have no imul, so they are AOT-covered; each runs through the ORC
+# JIT path with the faulting instruction as the second instruction.  RFLAGS is
+# preset to 0x8d5 (CF|PF|AF|ZF|SF|OF).  If the flags helper ran despite the
+# fault, the value would change (add/inc/logic -> 0x4; neg of zero -> 0x44).
+echo "== F3 faulting arithmetic flags ==" | tee -a "$RESULTS/summary.txt"
+for op in add inc neg and or xor; do
+    obj="fault_${op}_flags"
+    label="F3_jit_$obj"
+    jit_run "$label" "$obj" \
+        rax=0xaaaaaaaaaaaaaaaa rbx=0xbbbbbbbbbbbbbbbb rdx=mem_end-2 \
+        rflags=0x8d5 mem=mem_end-2:2:0 dump=mem_end-2:2
+    if jit_ok "$label"; then
+        fault_common "$label" "$JIT_OUT" 0x140001005
+        expect_hex "$label" "$JIT_OUT" rflags 0x8d5
+        expect_hex "$label" "$JIT_OUT" rax 0x11
+        expect_hex "$label" "$JIT_OUT" rbx 0xbbbbbbbbbbbbbbbb
+        expect_hex "$label" "$JIT_OUT" rdx "$(mem_end_minus "$JIT_OUT" 2)"
+        expect_contains "$label" "$JIT_OUT" "bytes=00:00"
+    fi
+done
+
+build_aot fault_add_flags
+aot_run F3_aot_fault_add_flags fault_add_flags \
+    rax=0xaaaaaaaaaaaaaaaa rbx=0xbbbbbbbbbbbbbbbb rdx=mem_end-2 \
+    rflags=0x8d5 mem=mem_end-2:2:0 dump=mem_end-2:2
+if [ "$AOT_RC" -eq 0 ]; then
+    expect_dec F3_aot_fault_add_flags "$AOT_OUT" rc 1
+    fault_common F3_aot_fault_add_flags "$AOT_OUT" 0x140001005
+    expect_hex F3_aot_fault_add_flags "$AOT_OUT" rflags 0x8d5
+    expect_hex F3_aot_fault_add_flags "$AOT_OUT" rax 0x11
+    expect_hex F3_aot_fault_add_flags "$AOT_OUT" rbx 0xbbbbbbbbbbbbbbbb
+    expect_hex F3_aot_fault_add_flags "$AOT_OUT" rdx "$(mem_end_minus "$AOT_OUT" 2)"
+    expect_contains F3_aot_fault_add_flags "$AOT_OUT" "bytes=00:00"
+else
+    fail "F3_aot_fault_add_flags: probe failed rc=$AOT_RC"
+fi
+
+# Complete AOT -> JIT path.  The only block contains imul, so the AOT table is
+# empty; the JIT block commits IMUL (RAX=21, CF/OF cleared, AF left from the
+# preset) and then faults on `addl $1,(%rdx)`.  The fault must stop the block
+# with a non-zero dispatcher result; the post-fault `mov ebx,456` must not run.
+build_aot fault_imul_add
+aot_jit_run F3_aotjit_fault_imul_add fault_imul_add \
+    rax=10 rcx=3 rbx=0xbbbbbbbbbbbbbbbb rdx=mem_end-2 rflags=0x8d5 \
+    mem=mem_end-2:2:0 dump=mem_end-2:2
+if [ "$AOT_JIT_RC" -eq 0 ]; then
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rc 1
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" error 1
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" error_pc 0x140001003
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rip_out 0x140001003
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rax 0x15
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rflags 0x10
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rbx 0xbbbbbbbbbbbbbbbb
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rdx \
+        "$(mem_end_minus "$AOT_JIT_OUT" 2)"
+    expect_hex F3_aotjit_fault_imul_add "$AOT_JIT_OUT" rsp \
+        "$(hexfield rsp_in "$AOT_JIT_OUT")"
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" aot_table_count 0
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" aot_blocks 0
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" jit_compiles 1
+    expect_dec F3_aotjit_fault_imul_add "$AOT_JIT_OUT" jit_execs 1
+    expect_contains F3_aotjit_fault_imul_add "$AOT_JIT_OUT" "bytes=00:00"
+    expect_contains F3_aotjit_fault_imul_add "$AOT_JIT_ERR" "JIT compile"
+    expect_contains F3_aotjit_fault_imul_add "$AOT_JIT_ERR" "triple=arm64"
+else
+    fail "F3_aotjit_fault_imul_add: probe failed rc=$AOT_JIT_RC"
+    sed -n '1,8p' "$AOT_JIT_ERR" | sed 's/^/  /' | tee -a "$RESULTS/summary.txt"
+fi
+
+# ---------------------------------------------------------------------------
 # F4: POP RSP and 16-bit push/pop
 # ---------------------------------------------------------------------------
 echo "== F4 POP RSP / 16-bit stack ==" | tee -a "$RESULTS/summary.txt"
@@ -615,6 +747,48 @@ jit_reject F4_push16 push16 "16-bit"
 translate_fail pop16 "unsupported 16-bit push/pop" "pop ax"
 jit_reject F4_pop16 pop16 "16-bit"
 
+# push imm8/imm32 are sign-extended to 64 bits.  Each block pops the value,
+# copies RSP to RBX to prove the pop restored the stack pointer, then returns.
+for entry in "push_imm8:0xffffffffffffffff" "push_imm32:0xffffffff80000000"; do
+    name=${entry%%:*}
+    expected=${entry##*:}
+    label="F4_jit_$name"
+    jit_run "$label" "$name"
+    if jit_ok "$label"; then
+        expect_dec "$label" "$JIT_OUT" error 0
+        expect_hex "$label" "$JIT_OUT" rax "$expected"
+        rin=$(hexfield rsp_in "$JIT_OUT")
+        if [ -n "$rin" ]; then
+            expect_hex "$label" "$JIT_OUT" rbx "$rin"
+            expect_hex "$label" "$JIT_OUT" rsp "$(printf '0x%x' $((rin + 8)))"
+        else
+            fail "$label: rsp_in missing from JIT output"
+        fi
+    fi
+done
+for entry in "push_imm8:0xffffffffffffffff" "push_imm32:0xffffffff80000000"; do
+    name=${entry%%:*}
+    expected=${entry##*:}
+    build_aot "$name"
+    aot_run "F4_aot_$name" "$name"
+    if [ "$AOT_RC" -eq 0 ]; then
+        expect_dec "F4_aot_$name" "$AOT_OUT" rc 0
+        expect_dec "F4_aot_$name" "$AOT_OUT" error 0
+        expect_hex "F4_aot_$name" "$AOT_OUT" rax "$expected"
+        rin=$(hexfield rsp_in "$AOT_OUT")
+        if [ -n "$rin" ]; then
+            expect_hex "F4_aot_$name" "$AOT_OUT" rbx "$rin"
+            expect_hex "F4_aot_$name" "$AOT_OUT" rsp "$(printf '0x%x' $((rin + 8)))"
+        else
+            fail "F4_aot_$name: rsp_in missing from AOT output"
+        fi
+    else
+        fail "F4_aot_$name: probe failed rc=$AOT_RC"
+    fi
+done
+translate_fail pushw_imm "unsupported 16-bit push/pop" "push 1"
+jit_reject F4_pushw_imm pushw_imm "16-bit"
+
 # ---------------------------------------------------------------------------
 # F5: 64-bit IMUL CF/OF (and 32/16/8-bit regressions)
 # ---------------------------------------------------------------------------
@@ -638,7 +812,9 @@ fi
 
 jit_flags() { # label object a b cf of
     local label=$1 obj=$2 a=$3 b=$4 cf=$5 of=$6
-    jit_run "$label" "$obj" rax="$a" rbx="$b"
+    # Preset CF and OF so a no-overflow case proves the helper clears both;
+    # an overflow case proves it leaves/sets them to 1.  Only CF/OF are judged.
+    jit_run "$label" "$obj" rax="$a" rbx="$b" rflags=0x801
     if jit_ok "$label"; then
         expect_dec "$label" "$JIT_OUT" error 0
         expect_flags "$label" "$JIT_OUT" "$cf" "$of"

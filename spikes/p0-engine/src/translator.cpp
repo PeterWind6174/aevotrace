@@ -222,13 +222,16 @@ bool build_program(CoffObject &&object,
                 if (error) *error = "unsupported instruction " + format_insn(insn);
                 return false;
             }
-            /* One-operand IMUL (the only 8-bit IMUL form) is outside this
-             * spike's subset.  Report it at translation setup instead of
-             * letting the JIT discover it later. */
+            /* One-operand IMUL is outside this spike's subset at every width.
+             * The explicit width in the diagnostic makes the unsupported form
+             * unambiguous instead of calling every width an 8-bit form. */
             if (insn.id == X86_INS_IMUL && insn.operands.size() == 1) {
-                if (error)
-                    *error = "unsupported one-operand imul (8-bit IMUL form) " +
+                if (error) {
+                    unsigned bits = insn.operands[0].size * 8;
+                    *error = "unsupported one-operand imul (" +
+                             std::to_string(bits) + "-bit IMUL form) " +
                              format_insn(insn);
+                }
                 return false;
             }
             uint64_t next = insn.address + insn.size;

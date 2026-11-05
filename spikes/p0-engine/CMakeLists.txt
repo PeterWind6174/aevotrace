@@ -85,6 +85,9 @@ target_link_directories(aev-aot-jit-probe PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(aev-aot-jit-probe PRIVATE
   aev_translator ${LLVM_SHARED_LIBRARY} aev_capstone ${CMAKE_DL_LIBS})
 
+add_executable(aev-emitter-probe src/emitter_lock_probe.cpp)
+target_link_libraries(aev-emitter-probe PRIVATE aev_translator)
+
 add_executable(aev-flags-test src/flags_test.c src/aev_mem.c)
 target_include_directories(aev-flags-test PRIVATE ${AEV_INCLUDE_DIR})
 target_link_libraries(aev-flags-test PRIVATE ${CMAKE_DL_LIBS})

@@ -552,6 +552,13 @@ class Emitter {
     }
 
     void emit_terminator(const X64Insn &insn) {
+        /* Terminators are dispatched before emit_instruction(), so the LOCK
+         * guard there would not see a caller-constructed LOCK RET/JMP block.
+         * Check at this entry point as well: normal translation rejects LOCK
+         * in build_program, but the emitter must not silently lower it either. */
+        if (insn.lock_prefix)
+            throw Unsupported("unsupported instruction (LOCK prefix; atomic semantics are not implemented) " +
+                              format_insn(insn));
         if (insn.id == X86_INS_JMP) {
             std::string target;
             if (!insn.operands.empty() && insn.operands[0].kind == OperandKind::Immediate)

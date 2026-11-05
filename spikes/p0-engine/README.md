@@ -22,14 +22,18 @@ src/aev_mem.c                  memory bounds checks, flags helpers, AOT trace
 src/runner.cpp                 dlopen AOT dylib, ORC JIT, test driver, ASLR/logs
 src/jit_probe.cpp              test-only: one block through the real ORC path
 src/aot_probe.c                test-only: load an AOT dylib and run the dispatcher
+src/aot_jit_probe.cpp          test-only: AOT dispatcher with a real ORC JIT callback
+src/emitter_lock_probe.cpp     test-only: caller-built LOCK RET/JMP terminator guard
 src/flags_test.c               test-only: direct IMUL flag matrix (host or AOT dylib)
 testdata/                      MSVC input fixture, source, disassembly, reference
 testdata/semantics/            committed x86-64 LOCK/IMUL/fault/stack counterexamples
 scripts/run_tests.sh           closed-loop and negative-control checks
 scripts/run_semantics_tests.sh F1-F5 instruction-semantics regressions
+scripts/run_empty_aot_test.sh  zero-AOT-block translate/compile/load/JIT hand-off
 ROUTE_B.md                     QEMU/FEX/Box64 comparison and licenses
 REPORT.md                      P0-ENGINE-01 commands, hashes, evidence, gaps
 REPORT-CORE-FIX-01.md          P0-CORE-FIX-01 reproduction/fix evidence
+REPORT-FINISH-01.md            P0-FINISH-01 empty-AOT and F1-F5 follow-up evidence
 ```
 
 ## Input fixture
@@ -69,9 +73,10 @@ cmake --build .local/build-core-fix
 ctest --test-dir .local/build-core-fix --output-on-failure
 ```
 
-`ctest` runs both the original closed-loop test and the P0-CORE-FIX-01
-instruction-semantics test.  The latter can be run directly (it assembles the
-committed `.s` counterexamples with the same clang used by the build):
+`ctest` runs the original closed-loop test, the P0-CORE-FIX-01
+instruction-semantics test, and the zero-AOT-block test.  The semantics test
+can be run directly (it assembles the committed `.s` counterexamples with the
+same clang used by the build):
 
 ```sh
 AEV_RESULTS_DIR="$PWD/.local/results/semantics" \
@@ -81,7 +86,16 @@ AEV_RESULTS_DIR="$PWD/.local/results/semantics" \
 
 The semantics script exercises the ORC JIT path (`aev-jit-probe`), a separately
 loaded ARM64 AOT dylib (`aev-aot-probe`), and the IMUL helper in both the host
-binary and the AOT dylib (`aev-flags-test`).
+binary and the AOT dylib (`aev-flags-test`).  It also runs the complete
+`aev_aot_run` → `jit_dispatch` path through `aev-aot-jit-probe`.  The
+zero-AOT-block test translates a function containing only `imul`, compiles and
+links its dylib, loads it, and drives the empty table into the JIT callback.
+
+```sh
+AEV_RESULTS_DIR="$PWD/.local/results/empty-aot" \
+  spikes/p0-engine/scripts/run_empty_aot_test.sh \
+  .local/build-core-fix-02 spikes/p0-engine
+```
 
 Manual run:
 
@@ -110,6 +124,9 @@ reference diff under `$BUILD_DIR/results` (override with `AEV_RESULTS_DIR`).
 - The translator discovers basic blocks from direct branch targets and
   fallthroughs.  Each AOT block becomes an exported ARM64 function
   `aev_blk_<guest-rip>`; the table is `aev_blocks`/`aev_block_count`.
+  A function whose blocks are all JIT-only gets an empty AOT table
+  (`@aev_blocks = constant [0 x %BlockEntry] zeroinitializer`); the module is
+  still valid and compilable.
 - The AOT dispatcher in `aot_runtime.c` finds the block for `GuestState.rip`,
   calls it, and repeats.  `call` pushes the guest return address and sets RIP;
   `ret` pops it.  Guest-to-guest calls therefore use the guest stack exactly as
@@ -132,11 +149,14 @@ reference diff under `$BUILD_DIR/results` (override with `AEV_RESULTS_DIR`).
 (direct/indirect), `ret`, `cmovcc`, `nop`, `endbr64`.
 
 `imul` covers the two- and three-operand forms at 16/32/64-bit; the
-three-operand form uses the source operand, not the old destination.  The
-one-operand 8-bit form is outside this subset and is rejected explicitly.
+three-operand form uses the source operand, not the old destination.
+One-operand `imul` is outside this subset at every width (8/16/32/64-bit) and
+is rejected with the actual width in the diagnostic (for example
+`unsupported one-operand imul (32-bit IMUL form) ...`).
 
-`push`/`pop` are 64-bit only.  16-bit `pushw`/`popw` are rejected instead of
-being executed with an eight-byte stack update.
+`push`/`pop` are 64-bit only.  `push imm8`/`push imm32` are accepted and
+sign-extended to 64 bits; 16-bit `pushw`/`popw`, including `pushw $imm`, are
+rejected instead of being executed with an eight-byte stack update.
 
 Not implemented and rejected with an address + mnemonic: every LOCK-prefixed
 form (including `lock add/inc/and/or/xor/sub/dec` and `lock xadd`), `cdq`/`idiv`,
@@ -173,8 +193,8 @@ the AOT dispatcher (or JIT dispatcher) returns the error.
   engine cannot implement `imul`.  Consequently F5's AOT check calls the
   `aev_flags_imul` helper exported by the AOT dylib directly; there is no
   generated AOT `imul` block to execute.
-- One-operand 8-bit `imul` and 16-bit `pushw`/`popw` are rejected.  They are not
-  executed.
+- One-operand `imul` at 8/16/32/64-bit and 16-bit `pushw`/`popw` are rejected.
+  They are not executed.
 - Memory faults stop the block and set `error_code`/`error_pc`; there is no
   guest exception delivery, signal, unwind, or recovery path.
 - The AOT artifact format is spike-local (`guest_aot.ll`, `guest_aot.o`,
