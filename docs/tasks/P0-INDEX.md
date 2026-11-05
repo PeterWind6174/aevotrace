@@ -8,6 +8,7 @@
 | P0-ENV-01 | 双机工具链编译/运行/回传 smoke（Windows → Mac） | qa | 否 | 进行中 |
 | P0-SCOPE-01 | Win32 GUI 测试族、真实应用候选、API/依赖/许可矩阵 | binary + platform | 否 | 进行中 |
 | P0-ABI-01 | x64 Windows ABI、TLS、异常、回调与依赖许可调查 | platform + binary | 否 | 进行中 |
+| P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary + compiler | 否 | 未开始 |
 | P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 进行中 |
 | P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 进行中 |
 | P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 未开始 |
