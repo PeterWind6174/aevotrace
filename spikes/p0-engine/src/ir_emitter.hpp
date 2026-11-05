@@ -7,7 +7,8 @@
 
 namespace aev {
 
-bool emit_aot_module(const Program &program, std::string *out, std::string *error);
+bool emit_aot_module(const Program &program, uint64_t input_hash,
+                     std::string *out, std::string *error);
 bool emit_jit_block(const Program &program,
                     const GuestFunction &fn,
                     const Block &block,

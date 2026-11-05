@@ -802,11 +802,13 @@ std::string module_prefix() {
 
 }  // namespace
 
-bool emit_aot_module(const Program &program, std::string *out, std::string *error) {
+bool emit_aot_module(const Program &program, uint64_t input_hash,
+                     std::string *out, std::string *error) {
     try {
         std::ostringstream os;
         os << module_prefix();
         os << "%BlockEntry = type { i64, ptr }\n\n";
+        os << "@aev_input_hash = constant i64 " << input_hash << "\n";
 
         struct Entry {
             uint64_t rip;

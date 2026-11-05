@@ -48,15 +48,33 @@ target_link_libraries(aev_translator PUBLIC aev_capstone)
 add_executable(aev-translate src/translate_main.cpp)
 target_link_libraries(aev-translate PRIVATE aev_translator)
 
+# Shared ORC/JIT core used by both the legacy runner and the callback bridge.
+add_library(aev_jit_runtime STATIC src/jit_runtime.cpp)
+target_include_directories(aev_jit_runtime PUBLIC
+  ${AEV_INCLUDE_DIR}
+  ${LLVM_INCLUDE_DIRS}
+)
+target_link_directories(aev_jit_runtime PUBLIC ${LLVM_LIBRARY_DIRS})
+target_link_libraries(aev_jit_runtime PUBLIC
+  aev_translator ${LLVM_SHARED_LIBRARY} aev_capstone)
+
 add_executable(aev-runner src/runner.cpp src/aev_mem.c)
 target_include_directories(aev-runner PRIVATE
   ${AEV_INCLUDE_DIR}
-  ${LLVM_INCLUDE_DIRS}
   ${AEV_GEN_DIR}
 )
-target_link_directories(aev-runner PRIVATE ${LLVM_LIBRARY_DIRS})
-target_link_libraries(aev-runner PRIVATE aev_translator ${LLVM_SHARED_LIBRARY})
-target_link_libraries(aev-runner PRIVATE aev_capstone)
+target_link_libraries(aev-runner PRIVATE aev_jit_runtime)
+
+# Reusable C ABI for the GUI path.  The shared library exports only the
+# aev_bridge_* API; all Guest execution still goes through the same AOT/JIT
+# core and aev_mem helpers.
+add_library(aev_bridge SHARED src/aev_bridge.cpp src/aev_mem.c)
+target_include_directories(aev_bridge PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev_bridge PRIVATE
+  aev_jit_runtime ${CMAKE_DL_LIBS})
+set_target_properties(aev_bridge PROPERTIES
+  BUILD_RPATH "${CMAKE_BINARY_DIR}"
+  INSTALL_RPATH "@loader_path")
 
 # Test-only harnesses for the instruction-semantics regressions.  The JIT probe
 # uses the same emitter and LLVM ORC path as the runner; the AOT probe loads a
@@ -147,6 +165,93 @@ add_custom_command(
 
 add_custom_target(aev_aot ALL DEPENDS ${AEV_AOT_DYLIB})
 
+# Callback fixture: same translator/AOT runtime, fixed synthetic entry
+# 0x140001000.  The dylib exports the normal AOT table plus the ABI/input
+# identity symbols checked by aev_bridge_create.
+set(AEV_CALLBACK_INPUT_OBJ ${CMAKE_CURRENT_SOURCE_DIR}/testdata/callback/aev_callback_fixture.obj)
+set(AEV_CALLBACK_LL ${AEV_GEN_DIR}/callback_aot.ll)
+set(AEV_CALLBACK_HEADER ${AEV_GEN_DIR}/callback_layout.h)
+set(AEV_CALLBACK_MANIFEST ${AEV_GEN_DIR}/callback_manifest.json)
+set(AEV_CALLBACK_AOT_OBJ ${AEV_GEN_DIR}/callback_aot.o)
+set(AEV_CALLBACK_DYLIB ${AEV_GEN_DIR}/libcallback_aot.dylib)
+
+add_custom_command(
+  OUTPUT ${AEV_CALLBACK_LL} ${AEV_CALLBACK_HEADER} ${AEV_CALLBACK_MANIFEST}
+  COMMAND aev-translate
+          --input ${AEV_CALLBACK_INPUT_OBJ}
+          --function aev_guest_callback
+          --entry aev_guest_callback
+          --out-ll ${AEV_CALLBACK_LL}
+          --out-header ${AEV_CALLBACK_HEADER}
+          --out-manifest ${AEV_CALLBACK_MANIFEST}
+  DEPENDS aev-translate ${AEV_CALLBACK_INPUT_OBJ}
+  COMMENT "Translating callback fixture to LLVM IR and ARM64 layout header"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_CALLBACK_AOT_OBJ}
+  COMMAND clang --target=arm64-apple-macos14.0 -O2 -c ${AEV_CALLBACK_LL} -o ${AEV_CALLBACK_AOT_OBJ}
+  DEPENDS ${AEV_CALLBACK_LL}
+  COMMENT "Compiling callback AOT LLVM IR to ARM64 Mach-O object"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_CALLBACK_DYLIB}
+  COMMAND clang -arch arm64 -dynamiclib -o ${AEV_CALLBACK_DYLIB}
+          ${AEV_CALLBACK_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  DEPENDS ${AEV_CALLBACK_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  COMMENT "Linking the callback ARM64 AOT dylib"
+  VERBATIM
+)
+add_custom_target(aev_callback_aot ALL DEPENDS ${AEV_CALLBACK_DYLIB})
+
+# Mutated input identity negative test: same entry/block addresses, one
+# immediate byte changed.  Its AOT dylib must be rejected by input hash.
+set(AEV_MUTATED_INPUT_OBJ ${AEV_GEN_DIR}/aev_callback_fixture.mutated.obj)
+set(AEV_MUTATED_LL ${AEV_GEN_DIR}/callback_aot_mutated.ll)
+set(AEV_MUTATED_HEADER ${AEV_GEN_DIR}/callback_layout_mutated.h)
+set(AEV_MUTATED_MANIFEST ${AEV_GEN_DIR}/callback_manifest_mutated.json)
+set(AEV_MUTATED_AOT_OBJ ${AEV_GEN_DIR}/callback_aot_mutated.o)
+set(AEV_MUTATED_DYLIB ${AEV_GEN_DIR}/libcallback_aot_mutated.dylib)
+add_custom_command(
+  OUTPUT ${AEV_MUTATED_INPUT_OBJ}
+  COMMAND ${CMAKE_COMMAND} -E env python3
+          ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate_callback_fixture.py
+          ${AEV_CALLBACK_INPUT_OBJ} ${AEV_MUTATED_INPUT_OBJ}
+  DEPENDS ${AEV_CALLBACK_INPUT_OBJ} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate_callback_fixture.py
+  COMMENT "Creating mutated callback object for AOT identity negative test"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_MUTATED_LL} ${AEV_MUTATED_HEADER} ${AEV_MUTATED_MANIFEST}
+  COMMAND aev-translate
+          --input ${AEV_MUTATED_INPUT_OBJ}
+          --function aev_guest_callback
+          --entry aev_guest_callback
+          --out-ll ${AEV_MUTATED_LL}
+          --out-header ${AEV_MUTATED_HEADER}
+          --out-manifest ${AEV_MUTATED_MANIFEST}
+  DEPENDS aev-translate ${AEV_MUTATED_INPUT_OBJ}
+  COMMENT "Translating mutated callback fixture"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_MUTATED_AOT_OBJ}
+  COMMAND clang --target=arm64-apple-macos14.0 -O2 -c ${AEV_MUTATED_LL} -o ${AEV_MUTATED_AOT_OBJ}
+  DEPENDS ${AEV_MUTATED_LL}
+  COMMENT "Compiling mutated callback AOT object"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_MUTATED_DYLIB}
+  COMMAND clang -arch arm64 -dynamiclib -o ${AEV_MUTATED_DYLIB}
+          ${AEV_MUTATED_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  DEPENDS ${AEV_MUTATED_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  COMMENT "Linking the mutated callback AOT dylib"
+  VERBATIM
+)
+add_custom_target(aev_callback_mutated ALL DEPENDS ${AEV_MUTATED_DYLIB})
+
 enable_testing()
 add_test(NAME p0_engine_closed_loop
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.sh
@@ -171,3 +276,18 @@ add_test(NAME p0_engine_empty_aot
           ${CMAKE_CURRENT_BINARY_DIR}
           ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable(aev_bridge_test src/aev_bridge_test.cpp)
+target_include_directories(aev_bridge_test PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev_bridge_test PRIVATE aev_bridge)
+set_target_properties(aev_bridge_test PROPERTIES
+  BUILD_RPATH "${CMAKE_BINARY_DIR}")
+add_dependencies(aev_bridge_test aev_callback_aot aev_callback_mutated)
+
+add_test(NAME p0_callback_bridge
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_callback_bridge_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(p0_callback_bridge PROPERTIES
+  ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}")

@@ -112,6 +112,7 @@ typedef struct AevBridgeConfig {
     uint64_t guest_stack_size;
     uint32_t trace;
     uint32_t dump_jit;
+    uint32_t trace_aot;
     uint32_t require_main_thread;
     uint32_t reserved0;
 } AevBridgeConfig;
@@ -141,6 +142,8 @@ typedef struct AevCallResult {
     uint64_t total_jit_execs;
 } AevCallResult;
 ```
+
+当前 v1：`sizeof(GuestState)=256`、`sizeof(AevCallResult)=160`、`sizeof(AevBridgeConfig)` 由 `aev_bridge_abi_info`/头文件实际值决定。调用方必须用 `aev_bridge_abi_info` 返回的 ABI/尺寸初始化 `AevBridgeConfig.struct_size/abi_version` 和 `AevCallResult.struct_size/abi_version`；不匹配即 `INVALID_ARGUMENT`/`ABI_MISMATCH`。`trace_aot` 只控制 AOT 块日志，`trace` 控制 JIT IR，`dump_jit` 控制 JIT ARM64 dump；三者都只用于诊断。
 
 入口/生命周期：
 

@@ -42,6 +42,13 @@ bool CoffObject::load(const std::string &path, std::string *error) {
         return false;
     }
 
+    uint64_t hash = 1469598103934665603ULL;
+    for (uint8_t byte : file_) {
+        hash ^= byte;
+        hash *= 1099511628211ULL;
+    }
+    content_hash = hash;
+
     const uint8_t *base = file_.data();
     machine = rd16(base + 0);
     uint16_t nsections = rd16(base + 2);

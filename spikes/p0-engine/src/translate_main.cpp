@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
     const uint64_t image_base = 0x140000000ULL;
     const uint64_t first_function = image_base + 0x1000ULL;
     const uint64_t stride = 0x1000ULL;
+    const uint64_t input_hash = object.content_hash;
     std::vector<uint64_t> addresses;
     for (size_t i = 0; i < opt.functions.size(); ++i)
         addresses.push_back(first_function + i * stride);
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
     }
 
     std::string ll;
-    if (!aev::emit_aot_module(program, &ll, &error)) {
+    if (!aev::emit_aot_module(program, input_hash, &ll, &error)) {
         std::fprintf(stderr, "AOT IR emission failed: %s\n", error.c_str());
         return 1;
     }
@@ -207,10 +208,10 @@ int main(int argc, char **argv) {
     }
 
     std::printf("translated input=%s entry=%s entry_addr=0x%llx functions=%zu "
-                "aot_blocks=%zu jit_blocks=%zu\n",
+                "aot_blocks=%zu jit_blocks=%zu input_hash=0x%llx\n",
                 opt.input.c_str(), opt.entry.c_str(),
                 (unsigned long long)entry_address, program.functions.size(),
-                aot_blocks, jit_blocks);
+                aot_blocks, jit_blocks, (unsigned long long)input_hash);
     for (const auto &fn : program.functions) {
         std::printf("function %s addr=0x%llx bytes=%zu insns=%zu blocks=%zu\n",
                     fn.name.c_str(), (unsigned long long)fn.address,

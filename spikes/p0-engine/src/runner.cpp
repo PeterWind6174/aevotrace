@@ -1,17 +1,9 @@
 #include "aev_guest.h"
 #include "ir_emitter.hpp"
+#include "jit_runtime.hpp"
 #include "translator.hpp"
 
-#include <capstone/capstone.h>
-#include <capstone/arm64.h>
 #include <dlfcn.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/Error.h>
-#include <llvm-c/IRReader.h>
-#include <llvm-c/LLJIT.h>
-#include <llvm-c/Orc.h>
-#include <llvm-c/Support.h>
-#include <llvm-c/Target.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -62,183 +54,7 @@ std::string symbol_for_block(uint64_t rip) {
     return buf;
 }
 
-void print_llvm_error(const char *what, LLVMErrorRef err) {
-    char *msg = LLVMGetErrorMessage(err);
-    std::fprintf(stderr, "%s: %s\n", what, msg ? msg : "(unknown LLVM error)");
-    if (msg)
-        LLVMDisposeErrorMessage(msg);
-}
-
-struct JitCtx {
-    LLVMOrcLLJITRef jit = nullptr;
-    LLVMOrcJITDylibRef jd = nullptr;
-    const aev::Program *program = nullptr;
-    std::unordered_map<uint64_t, void *> cache;
-    bool trace = false;
-    bool dump_jit = false;
-    bool require_jit = true;
-    uint64_t compile_count = 0;
-    uint64_t exec_count = 0;
-    std::string data_layout;
-    std::string triple;
-};
-
-void dump_arm64(const void *addr, size_t max_bytes) {
-    csh handle;
-    if (cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle) != CS_ERR_OK)
-        return;
-    cs_insn *insn = nullptr;
-    size_t count = cs_disasm(handle, (const uint8_t *)addr, max_bytes, (uint64_t)(uintptr_t)addr, 0, &insn);
-    for (size_t i = 0; i < count; ++i) {
-        std::fprintf(stderr, "  JITCODE 0x%llx: %-10s %s\n",
-                     (unsigned long long)insn[i].address, insn[i].mnemonic,
-                     insn[i].op_str);
-    }
-    if (insn)
-        cs_free(insn, count);
-    cs_close(&handle);
-}
-
-bool register_absolute_symbols(JitCtx *ctx) {
-    struct Sym {
-        const char *name;
-        void *addr;
-    };
-    const Sym syms[] = {
-        {"aev_load", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_load))},
-        {"aev_store", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_store))},
-        {"aev_flags_add", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_add))},
-        {"aev_flags_sub", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_sub))},
-        {"aev_flags_logic", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_logic))},
-        {"aev_flags_inc", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_inc))},
-        {"aev_flags_dec", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_dec))},
-        {"aev_flags_neg", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_neg))},
-        {"aev_flags_imul", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_imul))},
-    };
-    const size_t n = sizeof(syms) / sizeof(syms[0]);
-    std::vector<LLVMOrcCSymbolMapPair> pairs(n);
-    for (size_t i = 0; i < n; ++i) {
-        pairs[i].Name = LLVMOrcLLJITMangleAndIntern(ctx->jit, syms[i].name);
-        pairs[i].Sym.Address = (LLVMOrcExecutorAddress)(uintptr_t)syms[i].addr;
-        pairs[i].Sym.Flags.GenericFlags = 0x30; /* Exported | Callable */
-        pairs[i].Sym.Flags.TargetFlags = 0;
-    }
-    LLVMOrcMaterializationUnitRef mu = LLVMOrcAbsoluteSymbols(pairs.data(), n);
-    LLVMErrorRef err = LLVMOrcJITDylibDefine(ctx->jd, mu);
-    if (err) {
-        print_llvm_error("LLVMOrcJITDylibDefine(absolute symbols)", err);
-        return false;
-    }
-    return true;
-}
-
-bool jit_init(JitCtx *ctx) {
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    LLVMInitializeNativeAsmParser();
-    LLVMErrorRef err = LLVMOrcCreateLLJIT(&ctx->jit, nullptr);
-    if (err) {
-        print_llvm_error("LLVMOrcCreateLLJIT", err);
-        return false;
-    }
-    ctx->jd = LLVMOrcLLJITGetMainJITDylib(ctx->jit);
-    ctx->data_layout = LLVMOrcLLJITGetDataLayoutStr(ctx->jit);
-    ctx->triple = LLVMOrcLLJITGetTripleString(ctx->jit);
-    std::fprintf(stderr, "JIT initialized triple=%s\n", ctx->triple.c_str());
-    return register_absolute_symbols(ctx);
-}
-
-bool jit_compile_block(JitCtx *ctx, uint64_t rip, void **out_fn) {
-    const aev::GuestFunction *fn = ctx->program->find_function_at(rip);
-    if (!fn) {
-        std::fprintf(stderr, "JIT ERROR: no guest function contains rip=0x%llx\n",
-                     (unsigned long long)rip);
-        return false;
-    }
-    const aev::Block *block = ctx->program->find_block(rip);
-    if (!block) {
-        std::fprintf(stderr,
-                     "JIT ERROR: rip=0x%llx is inside %s but is not a basic-block boundary\n",
-                     (unsigned long long)rip, fn->name.c_str());
-        return false;
-    }
-    if (!block->jit_only) {
-        std::fprintf(stderr,
-                     "JIT ERROR: block 0x%llx is AOT-covered but missing from the AOT table\n",
-                     (unsigned long long)rip);
-        return false;
-    }
-
-    std::string ir, error;
-    if (!aev::emit_jit_block(*ctx->program, *fn, *block, &ir, &error)) {
-        std::fprintf(stderr, "JIT IR emission failed for 0x%llx: %s\n",
-                     (unsigned long long)rip, error.c_str());
-        return false;
-    }
-    auto replace_line = [&](const std::string &key, const std::string &replacement) {
-        size_t pos = ir.find(key);
-        if (pos == std::string::npos)
-            return;
-        size_t end = ir.find('\n', pos);
-        if (end == std::string::npos)
-            end = ir.size();
-        ir.replace(pos, end - pos, replacement);
-    };
-    replace_line("target datalayout =", "target datalayout = \"" + ctx->data_layout + "\"");
-    replace_line("target triple =", "target triple = \"" + ctx->triple + "\"");
-
-    if (ctx->trace) {
-        std::fprintf(stderr, "JIT IR-begin rip=0x%llx\n%sJIT IR-end rip=0x%llx\n",
-                     (unsigned long long)rip, ir.c_str(), (unsigned long long)rip);
-    }
-
-    LLVMContextRef llvm_ctx = LLVMContextCreate();
-    LLVMMemoryBufferRef buf = LLVMCreateMemoryBufferWithMemoryRangeCopy(
-        ir.data(), ir.size(), "aev-jit-block");
-    LLVMModuleRef mod = nullptr;
-    char *parse_msg = nullptr;
-    if (LLVMParseIRInContext(llvm_ctx, buf, &mod, &parse_msg)) {
-        std::fprintf(stderr, "JIT IR parse failed for 0x%llx: %s\n",
-                     (unsigned long long)rip, parse_msg ? parse_msg : "(no message)");
-        if (parse_msg) LLVMDisposeMessage(parse_msg);
-        LLVMContextDispose(llvm_ctx);
-        return false;
-    }
-    if (parse_msg) LLVMDisposeMessage(parse_msg);
-
-    LLVMOrcThreadSafeContextRef tsc =
-        LLVMOrcCreateNewThreadSafeContextFromLLVMContext(llvm_ctx);
-    LLVMOrcThreadSafeModuleRef tsm = LLVMOrcCreateNewThreadSafeModule(mod, tsc);
-    LLVMErrorRef err = LLVMOrcLLJITAddLLVMIRModule(ctx->jit, ctx->jd, tsm);
-    if (err) {
-        print_llvm_error("LLVMOrcLLJITAddLLVMIRModule", err);
-        return false;
-    }
-
-    char func_name[64];
-    snprintf(func_name, sizeof(func_name), "aev_jit_%llx", (unsigned long long)rip);
-    LLVMOrcExecutorAddress addr = 0;
-    err = LLVMOrcLLJITLookup(ctx->jit, &addr, func_name);
-    if (err) {
-        print_llvm_error("LLVMOrcLLJITLookup", err);
-        return false;
-    }
-
-    ctx->compile_count++;
-    std::fprintf(stderr,
-                 "JIT compile rip=0x%llx symbol=%s host_addr=0x%llx source=ORC(LLJIT) "
-                 "block_jit_only=%d\n",
-                 (unsigned long long)rip, func_name, (unsigned long long)addr,
-                 block->jit_only ? 1 : 0);
-    if (ctx->dump_jit)
-        dump_arm64((const void *)(uintptr_t)addr, 64);
-
-    *out_fn = (void *)(uintptr_t)addr;
-    return true;
-}
-
-int64_t jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
-    JitCtx *ctx = static_cast<JitCtx *>(opaque);
+int64_t runner_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
     if (rip == 0xDEAD0000ULL || rip == 0) {
         std::fprintf(stderr,
                      "JIT ERROR: unresolved guest indirect target rip=0x%llx; "
@@ -248,42 +64,7 @@ int64_t jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         s->error_pc = rip;
         return -1;
     }
-
-    auto it = ctx->cache.find(rip);
-    void *fn = nullptr;
-    if (it == ctx->cache.end()) {
-        if (!jit_compile_block(ctx, rip, &fn))
-            return -1;
-        ctx->cache.emplace(rip, fn);
-        s->jit_compiles++;
-    } else {
-        fn = it->second;
-    }
-
-    s->jit_execs++;
-    ctx->exec_count++;
-    if (ctx->trace || ctx->dump_jit) {
-        std::fprintf(stderr,
-                     "JIT exec rip=0x%llx host_addr=0x%llx rax_before=0x%llx "
-                     "rsp_before=0x%llx\n",
-                     (unsigned long long)rip, (unsigned long long)(uintptr_t)fn,
-                     (unsigned long long)s->rax, (unsigned long long)s->rsp);
-    }
-
-    using JitFn = void (*)(GuestState *);
-    JitFn jf = reinterpret_cast<JitFn>(fn);
-    jf(s);
-    s->jit_blocks++;
-
-    if (ctx->trace || ctx->dump_jit) {
-        std::fprintf(stderr,
-                     "JIT return rip=0x%llx next_rip=0x%llx rax_after=0x%llx "
-                     "error=%llu\n",
-                     (unsigned long long)rip, (unsigned long long)s->rip,
-                     (unsigned long long)s->rax,
-                     (unsigned long long)s->error_code);
-    }
-    return s->error_code ? -1 : 0;
+    return static_cast<aev::JitRuntime *>(opaque)->dispatch(s, rip);
 }
 
 void usage(const char *argv0) {
@@ -441,17 +222,18 @@ int main(int argc, char **argv) {
     s.r9 = bad_op ? 0xDEAD0000ULL : (uint64_t)AEV_OP_ADDR;
     s.trace_enabled = trace ? 1 : 0;
 
-    JitCtx jit;
-    jit.program = &program;
-    jit.trace = trace;
-    jit.dump_jit = dump_jit;
-    if (!jit_init(&jit)) {
+    aev::JitRuntime jit(&program);
+    jit.set_trace(trace);
+    jit.set_dump_jit(dump_jit);
+    std::string jit_error;
+    if (!jit.init(&jit_error)) {
+        std::fprintf(stderr, "JIT init failed: %s\n", jit_error.c_str());
         dlclose(handle);
         return 1;
     }
 
     AevRuntime rt;
-    rt.jit_dispatch = jit_dispatch;
+    rt.jit_dispatch = runner_jit_dispatch;
     rt.ctx = &jit;
 
     std::fprintf(stderr,
@@ -470,8 +252,8 @@ int main(int argc, char **argv) {
                  (unsigned long long)s.jit_blocks,
                  (unsigned long long)s.jit_compiles,
                  (unsigned long long)s.jit_execs,
-                 (unsigned long long)jit.compile_count,
-                 (unsigned long long)jit.exec_count,
+                 (unsigned long long)jit.compile_count(),
+                 (unsigned long long)jit.exec_count(),
                  (unsigned long long)s.steps,
                  (unsigned long long)s.error_code,
                  (unsigned long long)s.error_pc);
@@ -492,10 +274,6 @@ int main(int argc, char **argv) {
                     (unsigned long long)s.error_pc);
     }
 
-    LLVMErrorRef dispose_err = LLVMOrcDisposeLLJIT(jit.jit);
-    if (dispose_err) {
-        print_llvm_error("LLVMOrcDisposeLLJIT", dispose_err);
-    }
     dlclose(handle);
     return rc == 0 ? 0 : 3;
 }

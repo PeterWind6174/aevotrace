@@ -20,6 +20,8 @@ typedef struct GuestState {
 #undef AEV_FIELD
 
 #define AEV_RETURN_SENTINEL 0xFFFFFFFFFFFFFF00ULL
+#define AEV_GUEST_ABI_VERSION 1ULL
+#define AEV_GUEST_STATE_SIZE (32ULL * 8ULL)
 
 /* x86-64 RFLAGS bits used by the spike. */
 #define AEV_CF (1ULL << 0)

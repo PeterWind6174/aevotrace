@@ -5,6 +5,11 @@
 extern const AevBlock aev_blocks[];
 extern const uint64_t aev_block_count;
 
+/* ABI/identity symbols checked by the callback bridge before it executes a
+ * loaded dylib.  These are intentionally plain exported data symbols. */
+const uint64_t aev_aot_abi_version = AEV_GUEST_ABI_VERSION;
+const uint64_t aev_guest_state_size = sizeof(GuestState);
+
 static const AevBlock *find_block(uint64_t rip) {
     for (uint64_t i = 0; i < aev_block_count; ++i) {
         if (aev_blocks[i].rip == rip)

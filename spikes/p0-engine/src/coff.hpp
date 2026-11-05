@@ -36,6 +36,10 @@ class CoffObject {
     std::vector<CoffSymbol> symbols;
     uint16_t machine = 0;
     uint32_t timestamp = 0;
+    /* 64-bit FNV-1a over the complete input file.  Used only as a
+     * non-cryptographic identity check so a stale AOT artifact with the
+     * same version cannot be silently paired with a different object. */
+    uint64_t content_hash = 0;
 
   private:
     std::vector<uint8_t> file_;
