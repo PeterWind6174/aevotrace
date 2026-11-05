@@ -1,8 +1,15 @@
 # ADR-0001：P0 执行引擎、平台路线与双 GUI 后端选型（草案）
 
-状态：草案，等待 P0 实验证据；不得据此宣称已实现。
+状态：待 reviewer 终审；不是“P0 整体通过”。
 日期：2026-11-05。
 决策者：coordinator；审查：reviewer；证据责任人：compiler / platform / binary / qa。
+
+## P0 结果摘要
+
+- 已成立（独立 QA 复跑）：ENGINE `a4ef11c` 的 AOT 独立进程加载、ORC JIT 真实编译并返回 AOT、ASLR、5 用例与 Windows 参考一致、未知目标/未支持指令显式失败；UI `847dad7` 的 compat/native 各 25 checks、真实 AppKit 控件/主线程、自绘 compat、无跨后端回退、截图、Windows 参考 15/15。
+- 已关闭：UI W-1（构建脚本 `cmd.exe /c` 下 `Get-FileHash` 失败）与 W-2（DLL 固定哈希不可复现）；`/Brepro` 后新固定 DLL `c5b89e83...`，连续构建一致。
+- 未通过/未完成：P0-UI 仍是 Unicorn 临时桥接 + 自建语义 compat，未与 ENGINE 核心集成；D3 最终 compat 运行库未选定；P0-TRACE 只有方案，无实际记录，D6 未决；V-1 代码版本/失效未实现；P-1/R05 `.app`/随包依赖/签名/无开发工具运行未满足；真实 7-Zip 未在 Windows 运行；同核心 JIT-only/持久化缓存 JIT/AOT Hybrid 性能未测；GUI 可见窗口/物理输入/输入法/焦点/外观待人工。
+- 因此本 ADR 只能作为 **P1 规划输入**，不能宣布 P0 阶段完成或首版能力。
 
 ## 背景
 
@@ -82,15 +89,15 @@
 - PE 装载需覆盖 forwarder/API set/delay import/TLS 回调/`.pdata`/load config/CFG/资源；`RELOCS_STRIPPED` + 基址冲突必须诊断。
 - x86-64 TSO 与 ARM64 弱序差异、`LOCK`/原子/未对齐/跨页/权限失败/映射代次全部未实测；P1 必须先声明保证级别，不能默认“同地址映射等价”。
 
-## 决策（proposed，待 P0-QA-01/P0-REVIEW-01 证据确认）
+## 决策（proposed，待 reviewer 终审）
 
-- D1 执行核心：优先自建 x64 前端 + LLVM AArch64 后端；P0-ENGINE-01 先证明最小 AOT/JIT 闭环。Remill（Apache-2.0）作为 P1 指令语义覆盖候选，需先做固定版本构建/许可/集成验证；QEMU/FEX/Box64/Rosetta 不作为首版直接执行核心。
-- D2 AOT/JIT 交接与 artifact：AOT 模块优先独立签名 dylib + 模块描述符/调度表；JIT 回退用 LLVM ORC 或等价真实编译；保留静态链接作为 spike 降级，但必须标注重定位/动态加载未验证。
-- D3 `compat` 平台路线：自建 Win32 兼容层为候选；Wine x86-64 + Rosetta 违反无 Rosetta 要求；Wine ARM64 复用需先证明 PE/ABI/许可可行，P0 不选定。
-- D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0-UI-01 只证明最小回调/控件路线，不等于产品完成。
-- D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定。
-- D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 已完成调查/方案（报告 SHA-256 `7f840a...b484e`），但未实现、未运行 Trace，**D6 标未决**，P0-05 不能据此关闭。
-- D7 首版真实应用与支持矩阵：主选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）。备选不按 WinMerge 排序：PE/API 证据显示 WinMerge 2.16.60 的 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调与可选 WebView2 组件明显更难；PuTTY 0.85（MIT，但网络/加密/终端自绘）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 不宣称已运行。
+- D1 执行核心：优先自建 x64 前端 + LLVM AArch64 后端；ENGINE spike 已验证最小 AOT/JIT 闭环。Remill（Apache-2.0）作为 P1 指令语义覆盖候选，需先做固定版本构建/许可/集成验证；QEMU/FEX/Box64/Rosetta 不作为首版直接执行核心。
+- D2 AOT/JIT 交接与 artifact：AOT 模块优先独立签名 dylib + 模块描述符/调度表；JIT 回退用 LLVM ORC 或等价真实编译；spike 已证明 dlopen/ASLR/JIT return；PE 重定位/TLS/代码失效仍待 P1。
+- D3 `compat` 平台路线：**未决**。自建 Win32 兼容层是候选；Wine x86-64 + Rosetta 违反无 Rosetta 要求；Wine ARM64 复用需先证明 PE/ABI/许可可行；P0 UI 的 compat 只是语义 harness，不是最终运行库。
+- D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0 UI 已验证 NSWindow/NSTextField/NSButton/NSMenu/NSAlert、主线程和回调；产品化仍缺 Guest 消息泵/引擎集成。
+- D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定；UI `/Brepro` 与构建脚本已修复。
+- D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 只有调查/方案，**D6 未决**，P0-05 不能关闭。
+- D7 首版真实应用与支持矩阵：主选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）。备选不按 WinMerge 排序：PE/API 证据显示 WinMerge 2.16.60 的 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调与可选 WebView2 组件明显更难；PuTTY 0.85（MIT，但网络/加密/终端自绘）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 未运行该应用。
 
 ## P1 契约候选（待证据确认，不冻结）
 
@@ -111,6 +118,17 @@
 - manifest 记录输入/模块哈希、代码版本、转换器/运行时/helper/后端 ABI、目标特性、模式、构建 ID、重定位假设。
 - 所有可执行依赖检查 `lipo -archs`/`file`，主执行链不得要求 Rosetta。
 - 本地开发签名可 ad-hoc；分发签名/公证/JIT entitlement 作为独立交付检查，不在 P0 宣称完成。
+
+## P1 第一批建议（不自动等于已派发）
+
+1. **P1-CONTRACT-01**（coordinator 主导，binary/compiler/platform 会签，reviewer 审）：冻结 GuestState/内存/线程/退出、AOT/JIT helper、模块身份/失效、artifact manifest、平台后端能力表、测试结果格式 v0。
+2. **P0 收尾任务**（可与 P1 契约并行但必须先于 GUI 产品化）：
+   - `P0-UI-INT-01`：用 ENGINE AOT/JIT 核心替换 UI 的 Unicorn 桥，至少跑通一条 Host→Guest→Host + compat/native 路径；否则 P0-03 仍不完整。
+   - `P0-TRACE-SPIKE-01`：在 ENGINE runner 上实现 Guest PC/基本块/间接目标记录，独立输入重组验证；关闭 D6/P0-05。
+   - `P0-APP-RUN-01`：在 Windows 参考机运行 7-Zip 26.05 固定工作流，记录窗口/进程树/输出哈希；不要求已转换。
+   - `P0-PKG-01`：最小 ARM64 `.app`/随包 dylib/`@rpath`/本地签名/JIT entitlement 探针；关闭 R05 的 P0 部分。
+3. **P1 实施**：P1-PE-01（binary）、P1-CORE-01（compiler，含 V-1 版本/失效）、P1-PLATFORM-01（platform）、P1-TEST-01（qa）、P1-ABI-01/P1-MEM-01（binary+compiler+qa）、P1-TRACE-01（binary+compiler）。
+4. **P1 GUI**：P1-GUI-COMPAT-01/P1-GUI-NATIVE-01 仅在 CONTRACT + CORE + PLATFORM 稳定后并行，仍限两个写代码任务。
 
 ## 后果
 

@@ -10,6 +10,16 @@
 - TRACE 方案有可执行记录格式或明确标为 P1 待验证，不得把调查当成已验证。
 - 没有未解决的许可阻断（尤其 GPL/QEMU/Wine/Unicorn 组合）。
 
+## P0 收尾任务（P1 前/并行，尚未派发）
+
+| 任务 | owner | 依赖 | 交付 |
+| --- | --- | --- | --- |
+| P0-UI-INT-01 | platform + compiler | ENGINE `a4ef11c`、UI `847dad7`、P1-CONTRACT 草案 | 用 ENGINE 核心替换 Unicorn 桥，跑通一条 Host→Guest→Host + compat/native |
+| P0-TRACE-SPIKE-01 | compiler + binary | ENGINE runner、TRACE 方案 | 实际 Guest PC/基本块/间接目标记录 + 独立输入重组；关闭 D6/P0-05 |
+| P0-APP-RUN-01 | qa | SCOPE 7-Zip 候选、Windows 交互桌面 | Windows 参考 7-Zip 固定工作流/截图/进程树/输出哈希；不要求已转换 |
+| P0-PKG-01 | platform + qa | ENGINE/UI spike | 最小 ARM64 `.app`/随包 dylib/`@rpath`/本地签名/JIT entitlement 探针；关闭 R05 的 P0 部分 |
+| P0-BUILD-REPRO-01 | compiler + qa | ENGINE/UI 构建 | 统一可复现构建口径（`.text` + 完整二进制 `/Brepro`/install name） |
+
 ## 候选任务
 
 | 任务 | owner | 依赖 | 交付 | 备注 |
