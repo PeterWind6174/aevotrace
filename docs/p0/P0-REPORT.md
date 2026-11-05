@@ -119,13 +119,22 @@
 - Rosetta：Apple 官方支持页说明 macOS 27 及更早可用，macOS 28 起仅特定旧游戏保留有限功能；产品 Host 路径不得依赖 Rosetta。
 - 截图/辅助功能：当前进程 `screencapture` 与 System Events 窗口读取已可用；自动化截图仍需按最终用户权限复核。
 
-## 10. P0 结论（待填）
+## 10. P0 结论（待 reviewer 终审）
 
-- 已成立：
-- 未成立/需返工：
-- 不得宣称：
-- 选型建议：
-- P1 下一批任务：
+- **已成立（独立 QA 复跑）**：
+  - Windows x64 编译/运行/回传、哈希与退出码机制（P0-ENV-01）。
+  - 真实应用候选固定版本/官方哈希/PE/API/许可矩阵；7-Zip 26.05 主选（P0-SCOPE-01）。
+  - x64 ABI/PE/TLS/异常/回调/内存模型的交叉编译与静态证据（P0-ABI-01）。
+  - ENGINE AOT 独立进程加载 + ORC JIT 真实编译/返回 AOT + ASLR + 5 用例匹配 Windows 参考 + 显式负例（P0-ENGINE-01，QA 三方一致）。
+  - UI compat/native 各 25 checks、真实 AppKit 控件/主线程、自绘 compat、无跨后端回退、8 张截图、Windows 15/15（P0-UI-01；W-1/W-2 已关闭）。
+- **未成立/未完成**：
+  - P0-UI 仍是 Unicorn 临时桥接 + 自建语义 compat，未与 ENGINE 核心集成；D3 最终 compat 运行库未选定；P0-03 只能算“GUI 语义/回调路线验证”，不是“选定核心+兼容实现集成”。
+  - P0-TRACE 只有调查/方案，无实际 Guest PC/基本块/间接目标记录；D6/P0-05 未决。
+  - V-1 加载时输入/代码版本校验与失效未实现；P-1/R05 `.app`/随包依赖/签名/无开发工具运行未满足；真实 7-Zip 未运行；同核心三类性能对照未测；GUI 可见窗口/物理输入/输入法/焦点/外观待人工。
+- **不得宣称**：首版完成、7-Zip 已支持、compat/native 产品模式已实现、AOT 已带来加速、无 Rosetta 的独立 `.app` 已交付。
+- **选型建议**：D1 自建 x64 前端+LLVM（D1 有 P0 证据）；D2 AOT 签名 dylib+ORC JIT（有 spike 证据，PE/重定位/失效待 P1）；D3 未决；D4 AppKit native（有证据，产品化待引擎/消息泵集成）；D5 C++/ObjC++/Python/CMake/Ninja（最低 macOS 待定）；D6 未决；D7 7-Zip 26.05 主选、WinMerge 不作首版备选、PuTTY/Notepad++ 条件式。
+- **下一批**：P0 收尾（UI 核心集成、TRACE 实际记录、7-Zip Windows 参考、最小 `.app`/R05、构建复现口径）+ P1-CONTRACT-01 + P1-PE/CORE/PLATFORM/TEST/ABI/MEM/TRACE；详见 `docs/tasks/P1-INDEX.md` 与 ADR。
+- **P0 整体状态**：**未通过**（有条件的功能验证完成；P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）。
 
 ## 11. 命令与证据索引
 
