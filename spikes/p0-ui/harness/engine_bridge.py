@@ -387,6 +387,7 @@ class EngineBridge:
         if not self._handle:
             return
         rc = self.lib.aev_bridge_destroy(self._handle)
-        self._handle = ctypes.c_void_p()
-        if rc != AEV_BRIDGE_OK:
+        if rc == AEV_BRIDGE_OK:
+            self._handle = ctypes.c_void_p()
+        else:
             raise BridgeError(rc, "bridge destroy failed")
