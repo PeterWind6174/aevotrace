@@ -15,6 +15,14 @@
 *.profraw
 *.profdata
 
+# Python virtualenvs and caches (P0 spike tooling)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
 # Local credentials and machine configuration
 .env
 .env.*
