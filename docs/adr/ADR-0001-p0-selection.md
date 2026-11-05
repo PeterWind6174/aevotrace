@@ -8,6 +8,13 @@
 
 首版要求 Windows x86-64 用户态 EXE/DLL/资源 → macOS ARM64 独立 GUI 应用；AOT 优先、允许 JIT 回退；同时提供 `compat` 与 `native` 两种输出。AOT 产物必须实际执行转换后的 Guest 机器代码，不能用 Host 重写程序或包装现有运行器冒充。`native` 必须真实使用 macOS 原生 GUI/系统接口，不能静默回退 `compat`。
 
+## 平台约束（本机已实测/官方资料）
+
+- macOS 27.0.1、arm64、Xcode 27.1、Apple clang 21、CMake 4.4.4、Ninja 1.13.2。
+- `mmap(PROT_READ|PROT_WRITE|PROT_EXEC, MAP_JIT)` + `pthread_jit_write_protect_np` 在 linker-signed/ad-hoc 可执行文件上可写入并调用 ARM64 `ret`；Hardened Runtime 需要 `com.apple.security.cs.allow-jit`，无 entitlement 时 `mmap MAP_JIT` 返回 errno 22。
+- arm64 Mach-O dylib 移除签名后 `dlopen` 失败；链接器 ad-hoc 签名或 `codesign --sign -` 后可加载。AOT artifact 必须包含签名步骤。
+- Apple 官方支持页：Rosetta 在 macOS 27 及更早可用，从 macOS 28 起仅对特定旧游戏保留有限功能。产品 Host 组件不能依赖 Rosetta。
+
 ## 决策驱动
 
 1. 正确性：x64 语义、内存序、异常、回调、DLL/PE 装载和失效。
@@ -25,10 +32,13 @@
 | 候选 | 已知事实 | 待验证 | 初步风险 |
 | --- | --- | --- | --- |
 | 自建 x64 frontend + LLVM AArch64 | LLVM 23.1.4 可用，Apache-2.0 with LLVM exceptions；P0-ENGINE-01 正在验证 | x64 语义覆盖、AOT 重定位、ORC JIT 交接 | 自建 lifter 工作量大；异常/自修改代码后置 |
+| Remill（指令语义库）+ 自建发现/运行时 + LLVM | Apache-2.0；README 声明支持 x86-64/AVX/AVX512 语义、macOS、LLVM 15+；未在本项目构建 | 固定版本构建、Windows PE 集成、生成的 IR 与 AOT/JIT 交接、体积/性能 | 依赖重、LLVM 版本耦合；不能直接提供 PE 装载/运行时 |
 | QEMU TCG | JIT；GPLv2；未见 AOT 导出接口 | 是否能导出可重定位代码、嵌入成本 | 许可与 AOT 目标不符 |
 | FEX-Emu | MIT；面向 ARM64 Linux；需 x86-64 RootFS；code cache 是运行期缓存 | macOS 可用性、AOT 导出 | 非 macOS、非 PE |
 | Box64 | MIT；Linux userspace；DynaCache 运行期缓存 | AOT 导出、macOS | 非 macOS、非 PE |
 | Rosetta 2 | macOS 27 及更早可用；macOS 28 起仅特定旧游戏 | 是否可作为开发期参考 | 产品路径不能依赖；不可嵌入 |
+
+已排除/不作为首版直接依赖的线索：BinRec（README 面向 Ubuntu/Debian + S2E + LLVM 14，非 macOS/PE 直接可用）；McSema（AGPL-3.0、已归档、控制流恢复依赖 IDA Pro）。它们只保留方法参考，不能直接复制代码或当作已选依赖。
 
 ### 平台兼容 / GUI
 
