@@ -1,6 +1,6 @@
 # P0-ENGINE-01：x64→ARM64 AOT/JIT 最小闭环与执行引擎选型
 
-状态：待审查（spike 已提交，独立 QA 进行中）。
+状态：完成（spike 功能路径经独立 QA PASS；V-1 代码失效、P-1 `.app` 转 P1/P6）。
 
 ## 输入与责任
 
@@ -54,3 +54,4 @@
 - 未测：PE 装载/重定位/导入/TLS/异常/unwind/线程/自修改失效；Guest 页表/权限/跨页 fault；TSO/原子（原子拒绝）；MAP_JIT/Hardened Runtime/分发签名；AOT 运行时版本校验；真实应用；性能。`crosspage` 仅单线性区域 host page 跨界。
 - 报告：`spikes/p0-engine/REPORT.md`；证据：`.worktrees/p0-engine/.local/results/P0-ENGINE-01/final/`。
 - 待独立 QA 复核；通过后再决定是否合并 spike 代码。
+- QA 结果（P0-QA-01）：功能复跑 PASS；QA 重新构建 Windows 参考 exe 哈希 `9159c74f...` 与实现者一致，三方输出逐字相等；AOT/JIT/ASLR/负例均独立确认。V-1（加载时输入/代码版本校验与失效）未实现，按 P1 处理；AOT dylib/runner 的哈希因构建目录 install name 不同而变化，IR/object 可复现。

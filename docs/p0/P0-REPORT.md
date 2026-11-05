@@ -23,9 +23,9 @@
 | P0-SCOPE-01 | 静态调查完成（待复核） | 4 个候选官方哈希匹配；7-Zip 26.05 推荐、WinMerge 2.16.60 备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
 | P0-ABI-01 | 调查完成 | x64 调用约定/影子空间/栈对齐实测；TEB 版本化、TLS 计数、PE/异常/内存序清单；许可表 | 运行时 ABI/内存序/异常未实测 |
 | P0-TRACE-01 | 调查完成，未验证 | 三层分工、记录字段草案、准备/验证集隔离方案；CLI 退出 0 | 无实际 Trace/样例/记录实现；D6 未决 |
-| P0-ENGINE-01 | 待审查（QA 进行中） | commit `a4ef11c`；AOT dylib/ASLR/JIT ORC/负例证据；5 用例匹配 Windows 参考 | 无 PE/重定位/异常/线程/TSO/失效；独立 QA 未完成 |
-| P0-UI-01 | 待审查（QA 进行中） | commit `60ba7a6`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例 | Unicorn 临时桥接；与 ENGINE 未集成；人工可见窗口待验 |
-| P0-QA-01 | 进行中 | CLI worker 独立复跑 | 待报告 |
+| P0-ENGINE-01 | 完成（QA 功能 PASS） | commit `a4ef11c`；AOT dylib/ASLR/JIT ORC/负例证据；5 用例匹配 Windows 参考；QA 三方输出一致 | V-1 代码失效未实现；P-1 `.app` 未满足 |
+| P0-UI-01 | 待返工（功能 PASS） | commit `60ba7a6`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例；QA 重编译 DLL 行为一致 | W-1 构建脚本、W-2 哈希可复现性；Unicorn 临时桥接；与 ENGINE 未集成 |
+| P0-QA-01 | 完成（功能 PASS；P0 不通过） | 独立复跑 ENGINE/UI/Windows；三方输出一致；2 FAIL + V-1/P-1 | W-1/W-2 修复后聚焦复核 |
 | P0-ADR-01 | 进行中 | ADR 草案与 proposed 决策 | 待 QA/REVIEW |
 | P0-REVIEW-01 | 未开始 | 预审已完成任务分解审查 | 未审最终证据 |
 
@@ -82,6 +82,18 @@
 - 关键限制：Guest 执行使用 Unicorn 2.1.4 临时桥接（GPLv2，仅 P0，不是产品核心）；message dispatcher 由 Host 拥有，`GetMessage/DispatchMessage` 仅 Windows 参考运行覆盖；Guest 对自身窗口的同步 `SendMessage` 在嵌套 Unicorn 中会崩溃，P0 明确拒绝，产品需要独立消息泵契约；无 TLS/SEH/heap/真实 PE loader；`compat` 是 P0 语义 harness，不是最终兼容运行库，D3 未决；未与 ENGINE AOT/JIT 核心集成。
 - 结论：双后端 GUI 语义/回调路线有真实运行证据；不能据此宣称产品 `compat`/`native` 完成，也不能把临时桥接当执行核心。
 - 报告：`.worktrees/p0-ui/spikes/p0-ui/REPORT.md`；Windows 参考状态 `evidence/state_utf8.txt`（可见窗口仍待人工验证）。
+
+## 6.1 独立 QA（P0-QA-01）
+
+- 独立 QA CLI worker 在 detached worktree 重新构建/运行 ENGINE `a4ef11c` 与 UI `60ba7a6`，不采信实现者报告。
+- ENGINE：CMake/Ninja/ctest 0；5 用例与 Windows 参考一致；AOT dylib arm64、独立 runner dlopen、ORC JIT 真实编译并返回 AOT；ASLR 两次基址不同；未知目标/`cdq`/`lock xadd` 显式非零失败。QA 重编译 Windows 参考 exe 哈希 `9159c74f...` 与实现者一致，三方输出逐字相等。
+- UI：固定 DLL `a7934ace...`；compat/native 各 25/25 checks、状态/消息序列/Guest 指令计数一致；native 真实 AppKit 控件/主线程、compat 自绘、无跨后端事件、`MessageBeep` 负例、8 张截图；Windows `/check` 0、`/auto` 0，`state_utf8.txt` 15/15 字段一致。
+- FAIL W-1：`build_msvc.ps1` 在 `cmd.exe /c ...; exit $LASTEXITCODE` 下 rc=1（`Get-FileHash` 受 `PSModulePath` 影响不可识别）；编译产物已生成，直接 PowerShell rc=0。已交回 UI 修复。
+- FAIL W-2：固定 DLL 哈希不能从源码复现（未 `/Brepro`）；QA 重编译 `b441b55f...`，仅 4 字节时间戳/校验差异，`.text` 一致。已交回 UI 修复。
+- V-1：加载时无输入/代码版本校验与失效；翻转 COFF 时间戳后仍 rc=0。P1 待办。
+- P-1：`aev-runner` 依赖 Homebrew LLVM/Capstone dylib，无 `.app`/随包依赖/签名/公证；R05 未满足。
+- 未测：同核心 JIT-only/持久化缓存 JIT/AOT Hybrid 三类性能对照；Windows/macOS 可见 GUI、物理输入/输入法/焦点/外观；无开发工具环境运行。
+- 报告：`.local/results/P0-QA-01/REPORT.md`（38,777 B）。结论：**不建议宣布 P0 整体通过**；功能路径可复跑，但 2 FAIL + V-1/P-1 + 人工/性能未测。
 
 ## 7. ABI、依赖与许可（P0-ABI-01）
 
