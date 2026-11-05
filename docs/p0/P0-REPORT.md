@@ -74,8 +74,8 @@
 
 ## 6. 双 GUI 后端（P0-UI-01）
 
-- 分支/提交：`p0/ui-spike`，提交 `60ba7a61acbb332a2840f46e7def744c7f71cdf2`（`spikes/p0-ui/`，42 文件；未提交 `.venv`/大 artifacts）。
-- Guest 输入：Windows MSVC x64 `p0_gui_test.dll`，SHA-256 `a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602`；Windows 与 macOS 使用同一二进制哈希；导出 `P0WndProc`/`P0GetState`/`P0Reset`/`P0CreateMainWindow`/`P0RunGui`/`P0ProbeUnsupported`/`P0VersionW`。Guest 实际执行 main 15,933 条、worker 15 条 x64 指令；`SetWindowTextW` 14 次、`SendMessageW` 2 次、`MessageBoxW` 1 次、`CreateThread/PostMessageW/ExitThread` 各 1 次。
+- 分支/提交：`p0/ui-spike`；spike `60ba7a6`，W-1/W-2 修复 `847dad7`（`spikes/p0-ui/`；未提交 `.venv`/大 artifacts）。
+- Guest 输入：Windows MSVC x64 `p0_gui_test.dll`，SHA-256 `c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14`（`/Brepro` 后固定哈希；Windows 与 macOS 同一 pinned 二进制）；导出 `P0WndProc`/`P0GetState`/`P0Reset`/`P0CreateMainWindow`/`P0RunGui`/`P0ProbeUnsupported`/`P0VersionW`。Guest 实际执行 main 15,933 条、worker 15 条 x64 指令；`SetWindowTextW` 14 次、`SendMessageW` 2 次、`MessageBoxW` 1 次、`CreateThread/PostMessageW/ExitThread` 各 1 次。
 - `native`：真实 AppKit `NSWindow`/`NSTextField`/`NSButton`/`NSMenu`/`NSAlert`；`main_thread=True`、`creation_thread=MainThread`；截图 `01-initial-native.png`、`02-after-actions-native.png`、`03-modal-native.png`、`04-final-native.png`。25 项检查 PASS，含 clicks/edit/modal/worker/sync echo/`modal_screenshot_saved`/negative unsupported API/`native_no_compat_events`。
 - `compat`：独立自绘 Windows 风格窗口/菜单/控件（`CompatWindow/CompatStatic/CompatEdit/CompatButton`），截图 `01-initial-compat.png` 等；同样 25 项检查 PASS，含 `compat_no_native_events`；未静默回退 native。
 - 业务状态由 Guest 导出函数读取；编辑/按钮/菜单/模态/工作线程均驱动 Guest WndProc；输入文本/按钮序列变异改变 Guest 计算的长度与 FNV 哈希；`negative_unsupported_api` 证明未支持 `MessageBeep` 明确失败，未进入 compat。
@@ -88,8 +88,8 @@
 - 独立 QA CLI worker 在 detached worktree 重新构建/运行 ENGINE `a4ef11c` 与 UI `60ba7a6`，不采信实现者报告。
 - ENGINE：CMake/Ninja/ctest 0；5 用例与 Windows 参考一致；AOT dylib arm64、独立 runner dlopen、ORC JIT 真实编译并返回 AOT；ASLR 两次基址不同；未知目标/`cdq`/`lock xadd` 显式非零失败。QA 重编译 Windows 参考 exe 哈希 `9159c74f...` 与实现者一致，三方输出逐字相等。
 - UI：固定 DLL `a7934ace...`；compat/native 各 25/25 checks、状态/消息序列/Guest 指令计数一致；native 真实 AppKit 控件/主线程、compat 自绘、无跨后端事件、`MessageBeep` 负例、8 张截图；Windows `/check` 0、`/auto` 0，`state_utf8.txt` 15/15 字段一致。
-- FAIL W-1：`build_msvc.ps1` 在 `cmd.exe /c ...; exit $LASTEXITCODE` 下 rc=1（`Get-FileHash` 受 `PSModulePath` 影响不可识别）；编译产物已生成，直接 PowerShell rc=0。已交回 UI 修复。
-- FAIL W-2：固定 DLL 哈希不能从源码复现（未 `/Brepro`）；QA 重编译 `b441b55f...`，仅 4 字节时间戳/校验差异，`.text` 一致。已交回 UI 修复。
+- FAIL W-1：`build_msvc.ps1` 在 `cmd.exe /c ...; exit $LASTEXITCODE` 下 rc=1（`Get-FileHash` 受 `PSModulePath` 影响不可识别）；编译产物已生成，直接 PowerShell rc=0。UI 修复 `847dad7` 改用 .NET SHA256；`cmd.exe /c` 下 rc=0。
+- FAIL W-2：固定 DLL 哈希不能从源码复现（未 `/Brepro`）；QA 重编译 `b441b55f...`，仅 4 字节时间戳/校验差异，`.text` 一致。UI 修复 `847dad7` 加 `/Brepro`；连续构建哈希稳定 `c5b89e83...`，双后端 25/25。聚焦 QA 复核待完成。
 - V-1：加载时无输入/代码版本校验与失效；翻转 COFF 时间戳后仍 rc=0。P1 待办。
 - P-1：`aev-runner` 依赖 Homebrew LLVM/Capstone dylib，无 `.app`/随包依赖/签名/公证；R05 未满足。
 - 未测：同核心 JIT-only/持久化缓存 JIT/AOT Hybrid 三类性能对照；Windows/macOS 可见 GUI、物理输入/输入法/焦点/外观；无开发工具环境运行。
