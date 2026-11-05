@@ -21,10 +21,16 @@ WINDOWS_REFERENCE = {
 
 def guest_fnv1a32(text: str) -> int:
     h = 2166136261
-    for ch in text:
-        h ^= ord(ch) & 0xFFFF
+    data = text.encode("utf-16-le")
+    for i in range(0, len(data), 2):
+        unit = data[i] | (data[i + 1] << 8)
+        h ^= unit
         h = (h * 16777619) & 0xFFFFFFFF
     return h
+
+
+def utf16_units(text: str) -> int:
+    return len(text.encode("utf-16-le")) // 2
 
 
 def parse_label(text: str) -> tuple[int, int, int] | None:
@@ -67,7 +73,7 @@ class EngineScenario:
         # The HostImport receives the Guest-computed FNV hash; it must not
         # compute the Guest's final XOR result.  The final guest_rax is checked
         # separately from the bridge result.
-        return f"guest hash=0x{guest_fnv1a32(text):08X} len={len(text)} op={op}"
+        return f"guest hash=0x{guest_fnv1a32(text):08X} len={utf16_units(text)} op={op}"
 
     def _expected_guest_rax(self, text: str, op: int) -> int:
         return (guest_fnv1a32(text) ^ op) & 0xFFFFFFFF
