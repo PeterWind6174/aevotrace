@@ -1,0 +1,36 @@
+# Local research inputs, discussion history and setup receipts
+/.local/
+/.worktrees/
+
+# Build products and profiling data
+/build/
+/out/
+/output/
+/artifacts/
+/cache/
+/traces/
+/benchmarks/results/
+/compile_commands.json
+*.dSYM/
+*.profraw
+*.profdata
+
+# Local credentials and machine configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Platform/editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Third-party program material must not be committed by default
+*.nsp
+*.xci
+*.nca
+*.rom
+prod.keys
+title.keys
