@@ -79,8 +79,8 @@
 - D3 `compat` 平台路线：自建 Win32 兼容层为候选；Wine x86-64 + Rosetta 违反无 Rosetta 要求；Wine ARM64 复用需先证明 PE/ABI/许可可行，P0 不选定。
 - D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0-UI-01 只证明最小回调/控件路线，不等于产品完成。
 - D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定。
-- D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 只有调查/方案时必须标未决。
-- D7 首版真实应用与支持矩阵：候选 7-Zip 26.05（LGPL + unRAR 限制）优先，Notepad++ 8.9.8.1（GPL-2.0）备选；最终由用户确认，P0 不宣称已运行。
+- D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 已完成调查/方案（报告 SHA-256 `7f840a...b484e`），但未实现、未运行 Trace，**D6 标未决**，P0-05 不能据此关闭。
+- D7 首版真实应用与支持矩阵：候选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）优先，WinMerge 2.16.60（GPL-2.0）备选；Notepad++ 8.9.8.1（GPL-3.0）和 PuTTY 0.85（MIT）作为后续候选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 不宣称已运行。
 
 ## P1 契约候选（待证据确认，不冻结）
 

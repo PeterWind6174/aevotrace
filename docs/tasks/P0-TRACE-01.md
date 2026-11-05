@@ -1,6 +1,6 @@
 # P0-TRACE-01：准备执行、动态发现与记录可移植性
 
-状态：未开始（依赖 P0-ENGINE-01 的最小执行桥接；本轮先记录方案与待验证项）。
+状态：待审查（仅完成调查/方案；未实现、未运行 Trace，验收未通过）。
 
 ## 输入与责任
 
@@ -35,3 +35,12 @@
 - 审查问题及修复：
 - 未测项、已知限制、需要用户操作的具体步骤：
 - 后续任务与接口变更：建议的记录格式、失效规则和 P1 任务。
+
+## 完成报告（2026-11-05，调查阶段）
+
+- 提交或 diff：无产品源码变更；worktree `p0/trace-investigation` HEAD `808216c`，`git status` 为空。
+- 报告：`.local/results/P0-TRACE-01/REPORT.md`，SHA-256 `7f840aab400e8f14878dffe8eae978bb13a6bc21eae13aab011ff1967a1b484e`；CLI 日志 `cli.log`，CLI 退出 0。
+- 实际执行：`ssh win` 只读环境检查（Windows 11 10.0.26340 x64、Intel i7-9700F、WPR 10.0.26100、ETW 工具存在，DynamoRIO/Frida/Pin/QEMU 未安装）；未启动 Trace、未安装工具、未修改 Windows。
+- 结论：Windows 原生执行只能作行为 oracle；SSH 不是 Trace 通道；ETW/PT/DynamoRIO/Frida/Pin/QEMU 均不能直接产出 Aevotrace Guest 级记录；权威采集应由自建执行核心日志完成。报告给出记录字段草案（输入/模块哈希、Guest PC/基本块/间接目标/代码版本、映射代次、字节依赖、不持久化 Host 裸指针）和准备集/独立验证集五维隔离方案。
+- 未完成/未验证：无实际 Trace、无间接目标样例运行、无记录格式实现；Frida/Intel Pin/QEMU 插件许可文本未逐字复核；Windows Intel PT 采集接口未验证；开销数据为文献量级，非本项目实测。**因此不满足 P0-05 的“实际记录验证”部分，P0-ADR 的 D6 必须标未决。**
+- 后续：P1-TRACE-01 需在自建核心上实现记录并用独立验证集复核；在此之前不得宣称具备指令 Trace 或 AOT 种子采集能力。
