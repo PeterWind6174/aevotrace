@@ -1,6 +1,6 @@
 # P0-CORE-FIX-01：执行核心 F1–F5 正确性修复与回归
 
-状态：进行中。
+状态：完成（修复已顺序集成到 `p0/engine-spike`；独立 QA/reviewer PASS；非阻断测试补强与零 AOT block 缺陷另列）。
 
 ## 输入与责任
 
@@ -40,3 +40,16 @@
 ## 完成报告
 
 - 提交/diff、命令/退出码、哈希、日志、F1–F5 逐项结果、未测项、是否集成。
+
+## 实施报告（2026-11-05）
+
+- 分支 `p0/core-fix-01`；基线 `a4ef11c`；代码提交 `9f21649b2a0470d2d6dc4bea576785af22ac6e8c`；报告提交/分支头 `8c0fc15087221e408e84f4b7adf50fc67f2a9abf`。未 push、未合并 main；主工作树/旧审查材料未改。
+- 先独立复现 F1–F5，确认审查结论；复现证据 `.local/results/P0-CORE-FIX-01/repro-compiler/`。
+- 修复：LOCK 前缀在 translator/emitter 显式拒绝；三操作数 IMUL 用 operand[1]×operand[2]；所有 load/store/栈/terminator 经 fault guard，故障立即返回并保留精确 `error_pc`，写内存成功后才提交 flags/RSP/RIP；`pop rsp` 正确写 RSP，16 位 push/pop 拒绝；64 位 IMUL CF/OF 符号扩展修正。
+- 测试：`ctest` 2/2 通过；原 5 case 22 PASS/0 FAIL，`reference.diff` 空；新 `p0_core_fix_semantics` 364 PASS/0 FAIL（F1 10 形式、F2 ORC JIT、F3 JIT+AOT、F4、F5）。
+- 报告：`.worktrees/p0-core-fix/spikes/p0-engine/REPORT-CORE-FIX-01.md`；原始命令/哈希/日志 `.local/results/P0-CORE-FIX-01/fix/`。
+- 限制：8 位 one-operand IMUL 仍显式拒绝；原子/TSO 未实现；`imul` 仍 AOT 排除；未涉及 PE/异常/线程/失效/GUI/真实应用/性能。
+- QA：P0-CORE-FIX-QA-01 独立复跑 PASS（见 `.local/results/P0-CORE-FIX-QA-01/REPORT.md`）；发现一个基线同样存在的零 AOT block 非法 IR 范围外缺陷，另立任务。
+- 集成：`p0/engine-spike` 已 fast-forward 到 `8c0fc15`（原 `a4ef11c`），修复分支 `p0/core-fix-01` 保留；未 push、未合并 main。
+- 终审：reviewer 未发现 F1–F5 代码级阻断，建议合并；F5 的“AOT 生成 IMUL block”按 spike 的 JIT-only 设计接受为限制（AOT dylib 导出的 helper 已测，AOT 不生成 IMUL block）。
+- 非阻断补强（下一轮/另立任务）：F3 faulting arithmetic/flags 与 JIT dispatcher 返回回归、F1 失败时不写 `.ll/.h` 断言、F4 push imm 回归、F5 JIT 预置 CF/OF、one-operand IMUL 诊断文案、零 AOT block 非法 IR。
