@@ -9,7 +9,7 @@
 | P0-SCOPE-01 | Win32 GUI 测试族、真实应用候选、API/依赖/许可矩阵 | binary（lead）+ platform | 否 | 完成（静态调查；未运行应用） |
 | P0-ABI-01 | x64 Windows ABI、TLS、异常、回调、内存模型与依赖许可调查 | binary（lead）+ platform | 否 | 完成（调查；运行时未验证） |
 | P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary（lead）+ compiler | 否 | 待审查（仅方案，未实现/未运行） |
-| P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 完成（QA 功能 PASS；F1–F5 修复已集成 `8c0fc15`） |
+| P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 完成（QA 功能 PASS；F1–F5 + 零 AOT 修复集成 `b4052dd`） |
 | P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 待人工验证（自动部分完成；W-1/W-2 PASS） |
 | P0-QA-01 | 对 ENV/ENGINE/UI 指定提交和产物做独立复跑与反伪证检查 | qa | 否 | 完成（功能 + W-1/W-2 PASS；整体 P0 不通过） |
 | P0-UI-INT-01 | ENGINE 核心替换 Unicorn，跑通双后端回调 | platform + compiler | 是（隔离 worktree） | 未开始 |
@@ -20,10 +20,10 @@
 | P0-CORE-FIX-01 | 执行核心 F1–F5 正确性修复与回归 | compiler | 是（隔离 worktree） | 完成（已集成 `p0/engine-spike`） |
 | P0-CORE-FIX-QA-01 | F1–F5 修复的独立复跑 | qa | 否 | 完成（PASS；1 N/A） |
 | P0-CORE-FIX-REVIEW-01 | F1–F5 修复的独立只读审查 | reviewer | 否 | 完成（无代码阻断；建议集成） |
-| P0-CORE-FIX-02 | F1–F5 回归补强与最终 HEAD 绑定 | compiler | 是（隔离 worktree） | 进行中（`p0/core-fix-02`） |
-| P0-ENGINE-AOT-EMPTY-01 | 零 AOT block 函数的 artifact 诊断 | compiler | 是（隔离 worktree） | 进行中（同分支顺序实施） |
-| P0-FINISH-QA-01 | 零 AOT block 与回归补强的独立复跑 | qa | 否 | 未开始（待最终提交） |
-| P0-FINISH-REVIEW-01 | 零 AOT block 与回归补强的独立只读审查 | reviewer | 否 | 未开始（待最终提交） |
+| P0-CORE-FIX-02 | F1–F5 回归补强与最终 HEAD 绑定 | compiler | 是（隔离 worktree） | 完成（已集成 `b4052dd`） |
+| P0-ENGINE-AOT-EMPTY-01 | 零 AOT block 函数的 artifact 诊断 | compiler | 是（隔离 worktree） | 完成（已集成 `b4052dd`） |
+| P0-FINISH-QA-01 | 零 AOT block 与回归补强的独立复跑 | qa | 否 | 完成（PASS；0 产品 FAIL） |
+| P0-FINISH-REVIEW-01 | 零 AOT block 与回归补强的独立只读审查 | reviewer | 否 | 完成（无代码阻断；建议集成） |
 | P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 完成（ADR；P0 不通过；P1 输入） |
 | P0-REVIEW-01 | 对 ADR、spike 代码与 QA 证据做独立只读审查 | reviewer | 否 | 完成（P0 不通过维持；意见已合并） |
 
@@ -32,9 +32,9 @@
 ## 工作区
 
 - `main` 工作目录：`/Users/peterwind/Script/Systems/Aevotrace`。coordinator 独占文档与集成。
-- `P0-ENGINE-01`：分支 `p0/engine-spike`，worktree `.worktrees/p0-engine`；已集成 F1–F5 修复，HEAD `8c0fc15`。
+- `P0-ENGINE-01`：分支 `p0/engine-spike`，worktree `.worktrees/p0-engine`；已集成 F1–F5 与零 AOT 表修复，HEAD `b4052dd`。
 - `P0-CORE-FIX-01`：分支 `p0/core-fix-01`，worktree `.worktrees/p0-core-fix`；已 fast-forward 集成到 `p0/engine-spike`。
-- `P0-CORE-FIX-02` + `P0-ENGINE-AOT-EMPTY-01`：同一分支 `p0/core-fix-02`，worktree `.worktrees/p0-core-fix-02`（基线 `8c0fc15`）；两个任务由同一实施会话顺序完成。QA worktree 计划 `.worktrees/p0-core-fix-02-qa`（detached）。
+- `P0-CORE-FIX-02` + `P0-ENGINE-AOT-EMPTY-01`：分支 `p0/core-fix-02`，worktree `.worktrees/p0-core-fix-02`（基线 `8c0fc15`，HEAD `b4052dd`）；已 fast-forward 集成到 `p0/engine-spike`。QA worktree `.worktrees/p0-core-fix-02-qa`（detached `b4052dd`）。
 - `P0-UI-01`：分支 `p0/ui-spike`，worktree `.worktrees/p0-ui`。
 - `P0-TRACE-01`：分支 `p0/trace-investigation`，worktree `.worktrees/p0-trace`（CLI worker，cwd 为该 worktree）。
 - 调查/QA 任务不修改产品源码；报告写入 `.local/results/<TASK-ID>/`（被 `.gitignore` 排除），由 coordinator 汇总。原始日志可留 `.local`，但完成报告必须给出可定位路径、哈希和复跑命令。

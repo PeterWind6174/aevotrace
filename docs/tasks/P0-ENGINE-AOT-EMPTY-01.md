@@ -1,6 +1,6 @@
 # P0-ENGINE-AOT-EMPTY-01：零 AOT block 函数的 artifact 诊断
 
-状态：进行中（2026-11-05，与 P0-CORE-FIX-02 同一隔离分支顺序实施）。
+状态：完成（已集成 `p0/engine-spike` `b4052dd`；独立 QA PASS；reviewer 无代码阻断）。
 
 ## 输入与责任
 
@@ -35,3 +35,12 @@
 - 不增加 IMUL 的 AOT 支持，不改动非空 AOT 表、AOT/JIT 交接或原 closed-loop 行为。
 - 将零 AOT block 场景纳入 `ctest`，明确测试合法产物或显式拒绝之一。
 - 新增测试必须实际编译/加载/执行，不接受只检查 IR 文本。
+
+## 完成报告（2026-11-05）
+
+- 分支 `p0/core-fix-02`，worktree `.worktrees/p0-core-fix-02`；基线 `8c0fc15`；阶段 A 提交 `9ad0632`；最终代码 HEAD `7487e04`；报告/分支头 `b4052dd`。已 fast-forward 集成到 `p0/engine-spike`；未 push、未合并 main。
+- 基线独立复现：`imul eax,ecx,7; ret` → `aev-translate` rc=0、`@aev_blocks = constant [0 x %BlockEntry] [zeroinitializer]`、clang rc=1 `expected type`。
+- 最终方案：合法空表 `@aev_blocks = constant [0 x %BlockEntry] zeroinitializer`；实际编译/链接 ARM64 dylib、加载、`aev_aot_run` → `jit_dispatch` → ORC 执行；`RAX=0x15`、`aot_table_count=0`、`aot_blocks=0`、`jit_compiles=1`、`jit_execs=1`、`error=0`。
+- ctest：新增 `p0_engine_empty_aot`，1 个端到端场景/22 条断言 PASS；非空 AOT `.ll/.o` 哈希保持 `df9aa1d6...`/`5b158e59...`。
+- 证据：`.local/results/P0-FINISH-01/repro-empty-aot/`、`final/empty-aot/`；QA `.local/results/P0-FINISH-QA-01/REPORT.md`；reviewer `.local/results/P0-FINISH-REVIEW-01/REPORT.md`。
+- 未测/限制：未增加 AOT IMUL；空表回归只覆盖纯 IMUL 输入；PE/GUI/真实应用/性能等不在范围。

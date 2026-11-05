@@ -1,6 +1,6 @@
 # P0-FINISH-REVIEW-01：零 AOT block 与回归补强的独立只读审查
 
-状态：未开始（等待最终提交与 QA 报告）。
+状态：完成（无代码级阻断；建议 fast-forward 到 `p0/engine-spike`；非阻断项保留）。
 
 ## 输入与责任
 
@@ -24,3 +24,11 @@
 ## 完成报告
 
 - 结论、逐项判断、阻断/非阻断问题、建议验证、未审查范围、是否建议集成到 `p0/engine-spike`。
+
+## 完成报告（2026-11-05）
+
+- 审查对象 `b4052dd`（代码 `7487e04`）相对基线 `8c0fc15`；未发现代码级阻断；建议 fast-forward 到 `p0/engine-spike`，不直接合并 main。
+- 零 AOT 表、F1 terminator 防御、F2 诊断、F4 push immediate、F5 预置 CF/OF 均判 PASS；原测试未见削弱，计数口径基本一致。
+- 非阻断：F3 完整故障路径使用 test-only `jit_dispatch` 而非产品 `runner.cpp`；`rflags=0x10` 依赖 IMUL 未定义位；probe 进程退出码固定 0；`emit_aot_module` 对 `jit_only` block 先跳过；空表脚本未直接断言 `@aev_block_count`；二进制哈希为 build-local；reviewer 未独立核对模型/档位。
+- 完整意见：`.local/results/P0-FINISH-REVIEW-01/REPORT.md`。
+- 未审查范围：PE/DLL/重定位/TLS/异常/回调/版本失效/GUI/真实应用/Trace/性能/打包/原子/TSO/AOT IMUL 等。

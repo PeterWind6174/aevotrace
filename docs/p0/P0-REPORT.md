@@ -23,7 +23,7 @@
 | P0-SCOPE-01 | 完成（静态调查） | 4 个候选官方哈希匹配；7-Zip 26.05 主选；WinMerge 不作首版备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
 | P0-ABI-01 | 调查完成 | x64 调用约定/影子空间/栈对齐实测；TEB 版本化、TLS 计数、PE/异常/内存序清单；许可表 | 运行时 ABI/内存序/异常未实测 |
 | P0-TRACE-01 | 调查完成，未验证 | 三层分工、记录字段草案、准备/验证集隔离方案；CLI 退出 0 | 无实际 Trace/样例/记录实现；D6 未决 |
-| P0-ENGINE-01 | 完成（QA 功能 PASS；F1–F5 修复集成） | `a4ef11c` 原始 spike；F1–F5 修复 `8c0fc15`；AOT dylib/ASLR/JIT ORC/负例；5 用例匹配 Windows 参考 | V-1 代码失效未实现；P-1 `.app` 未满足；非阻断测试补强待下一批 |
+| P0-ENGINE-01 | 完成（QA 功能 PASS；F1–F5 + 零 AOT 修复集成） | `a4ef11c` 原始 spike；F1–F5 `8c0fc15`；零 AOT/F1–F5 补强 `b4052dd`；AOT dylib/ASLR/JIT ORC/负例；ctest 3/3、489 semantics、5 用例匹配 Windows 参考 | V-1 代码失效未实现；P-1 `.app` 未满足；F5 AOT IMUL 仍 JIT-only；reviewer 非阻断项保留 |
 | P0-UI-01 | 待人工验证（自动部分完成） | commit `847dad7`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例；新固定 DLL `c5b89e83...` 可复现；QA 复核通过 | Unicorn 临时桥接；与 ENGINE 未集成；人工 GUI 待验 |
 | P0-QA-01 | 完成（功能 + W-1/W-2 PASS；P0 不通过） | 独立复跑 ENGINE/UI/Windows；三方输出一致；W-1/W-2 关闭；V-1/P-1 记录 | 性能/人工/`.app` 未测 |
 | P0-ADR-01 | 完成（ADR；P0 不通过） | `docs/adr/ADR-0001-p0-selection.md` D1–D7 + `docs/p0/SUPPORT-MATRIX.md` | 需用户确认 D3/D5/D6/D7 等 |
@@ -65,7 +65,7 @@
 
 ## 5. 执行核心与 AOT/JIT（P0-ENGINE-01）
 
-- 分支/提交：`p0/engine-spike`，原始 spike `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`；F1–F5 正确性修复 `9f21649`（报告 `8c0fc15`）已 fast-forward 集成到该分支（`spikes/p0-engine/`）。
+- 分支/提交：`p0/engine-spike`，原始 spike `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`；F1–F5 正确性修复 `9f21649`（报告 `8c0fc15`）与 P0-FINISH-01 零 AOT/回归补强 `7487e04`（报告 `b4052dd`）已 fast-forward 集成到该分支（`spikes/p0-engine/`）。
 - 输入：MSVC x64 COFF `testdata/guest_x64.obj`，SHA-256 `a12fa7fff6087e2e0ae95a09e395cd41874f5871674a4feda0cbff8ca9da7b1e`；`.text` 函数 `guest_kernel` 128 B / `guest_op` 9 B；含循环、分支、数组读写、间接调用、`imul`。
 - AOT：Capstone 解码 → 自建 GuestState/helper ABI → LLVM IR → ARM64 Mach-O object → `libguest_aot.dylib`（ARM64，linker ad-hoc 签名；引擎报告写“unsigned”指无开发者签名/entitlement，`codesign` 实测为 adhoc/linker-signed）→ 独立 `aev-runner` 进程 `dlopen`/`dlsym`；`otool -tv` 显示真实 ARM64 块代码；`nm` 显示 `aev_blk_*` 符号。
 - JIT：`imul` 块故意不在 AOT 表；LLVM ORC LLJIT 运行时编译 `aev_jit_140001042`，`--dump-jit` 反汇编出 `mul w20,w8,w9` 等 ARM64 指令，执行后设置 RIP=0x140001047 返回 AOT。
@@ -80,6 +80,17 @@
 - 修复：LOCK 全形式在 translator/emitter 显式拒绝；IMUL 2/3 操作数源选择修正；所有 load/store/栈/terminator 经 fault guard，精确 `error_pc`，故障不提交寄存器/内存/flags/RSP/RIP；`pop rsp` 正确，16 位 push/pop 拒绝；64 位 IMUL 符号扩展修正。
 - 验证：独立 QA PASS；`ctest` 2/2；原 5 case 22 PASS、`reference.diff` 空；新 semantics 364 PASS、0 FAIL；QA 独立驱动 123 PASS + 1 N/A（IMUL AOT by design）；`ssh win` 参考重跑一致。
 - 终审：reviewer 未发现 F1–F5 代码级阻断，建议合并；已集成到 `p0/engine-spike`。非阻断补强（F3 faulting arithmetic/flags 回归、F1 无 `.ll` 断言、F4 push imm、F5 JIT 预置 CF/OF、one-operand 诊断、零 AOT block 非法 IR）列入下一批。
+
+### 5.2 零 AOT block 与回归补强（P0-FINISH-01）
+
+- 零 AOT 表：基线 `8c0fc15` 对纯 IMUL 函数 `aev-translate` rc=0 却生成 `[0 x %BlockEntry] [zeroinitializer]`，clang rc=1；修复为合法 `@aev_blocks = constant [0 x %BlockEntry] zeroinitializer`。实际编译/链接/加载 ARM64 dylib，经 `aev_aot_run` → `jit_dispatch` → ORC 执行，`RAX=0x15`、`aot_table_count=0`、`aot_blocks=0`、`jit_compiles=1`、`jit_execs=1`、`error=0`。
+- F1：失败翻译使用独立目录，17 个拒绝场景无 `.ll/.h/.json`；terminator LOCK 防御通过；正常入口仍提前拒绝。
+- F2：one-operand IMUL 诊断按 8/16/32/64 位报告，修正此前全部写成 8-bit 的缺陷。
+- F3：新增 faulting add/inc/neg/and/or/xor flags 回归与完整 `aev_aot_run` → `jit_dispatch` 故障返回；精确 `error_pc`，故障指令及后续无不应有副作用。
+- F4：`push imm8/imm32` 符号扩展与 RSP 恢复通过；`pushw $imm` 翻译/JIT 拒绝。
+- F5：JIT 预置 CF/OF 后，无溢出清零、溢出保持；host/AOT helper 各 27 例通过；只以 CF/OF 判错。
+- 验证：`ctest` 3/3；原 5 case 22 PASS、`reference.diff` 0 字节；semantics 489 PASS/0 FAIL（基线 364 + 新增 125）；新增 19 场景/125 断言；Windows MSVC 参考独立复跑一致。独立 QA 15 PASS/0 FAIL；reviewer 无代码级阻断，建议集成。
+- 非阻断遗留：F3 完整故障路径使用 test-only dispatcher、`rflags=0x10` 依赖 IMUL 未定义位、probe 进程退出码固定 0、`emit_aot_module` 对 `jit_only` block 先跳过、空表脚本缺 `@aev_block_count` 文本断言、二进制哈希为 build-local。F5 AOT 生成 IMUL 仍按 spike JIT-only 设计接受为限制。
 
 ## 6. 双 GUI 后端（P0-UI-01）
 
@@ -138,13 +149,13 @@
   - ENGINE AOT 独立进程加载 + ORC JIT 真实编译/返回 AOT + ASLR + 5 用例匹配 Windows 参考 + 显式负例（P0-ENGINE-01，QA 三方一致）。
   - UI compat/native 各 25 checks、真实 AppKit 控件/主线程、自绘 compat、无跨后端回退、8 张截图、Windows 15/15（P0-UI-01；W-1/W-2 已关闭）。
 - **未成立/未完成**：
-  - F1–F5 已修复并集成，但非阻断测试补强（F3 faulting arithmetic/flags、F1 无 `.ll` 断言、F4 push imm、F5 JIT 预置 CF/OF、零 AOT block 非法 IR）仍待下一批；F5 AOT 生成 IMUL 按 spike JIT-only 设计接受为限制。
+  - F1–F5 与零 AOT 表缺陷已修复并集成 `b4052dd`；原非阻断补强已关闭。仍有 reviewer 非阻断项（F3 完整故障路径使用 test-only dispatcher、`rflags=0x10` 依赖未定义位、probe 退出码、`emit_aot_module` 对 `jit_only` block 跳过、空表脚本缺 `@aev_block_count` 文本断言、二进制哈希 build-local）；F5 AOT 生成 IMUL 按 spike JIT-only 设计接受为限制。
   - P0-UI 仍是 Unicorn 临时桥接 + 自建语义 compat，未与 ENGINE 核心集成；D3 最终 compat 运行库未选定；P0-03 只能算“GUI 语义/回调路线验证”，不是“选定核心+兼容实现集成”。
   - P0-TRACE 只有调查/方案，无实际 Guest PC/基本块/间接目标记录；D6/P0-05 未决。
   - V-1 加载时输入/代码版本校验与失效未实现；P-1/R05 `.app`/随包依赖/签名/无开发工具运行未满足；真实 7-Zip 未运行；同核心三类性能对照未测；GUI 可见窗口/物理输入/输入法/焦点/外观待人工。
 - **不得宣称**：首版完成、7-Zip 已支持、compat/native 产品模式已实现、AOT 已带来加速、无 Rosetta 的独立 `.app` 已交付。
 - **选型建议**：D1 自建 x64 前端+LLVM（D1 有 P0 证据）；D2 AOT 签名 dylib+ORC JIT（有 spike 证据，PE/重定位/失效待 P1）；D3 未决；D4 AppKit native（有证据，产品化待引擎/消息泵集成）；D5 C++/ObjC++/Python/CMake/Ninja（最低 macOS 待定）；D6 未决；D7 7-Zip 26.05 主选、WinMerge 不作首版备选、PuTTY/Notepad++ 条件式。
-- **下一批**：P0 收尾（UI 核心集成、TRACE 实际记录、7-Zip Windows 参考、最小 `.app`/R05、构建复现口径）+ P1-CONTRACT-01 + P1-PE/CORE/PLATFORM/TEST/ABI/MEM/TRACE；详见 `docs/tasks/P1-INDEX.md` 与 ADR。
+- **下一批最小任务建议**：共同回调 ABI、ENGINE 与双 GUI 最小集成、Trace 实际记录、版本失效；PE/真实应用/性能/打包仍待后续。本轮未启动这些实现，P0 整体仍未通过。
 - **P0 整体状态**：**未通过**（有条件的功能验证完成；P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）。reviewer 终审维持该结论，并指出支持矩阵/状态口径/文档一致性需收口；本报告已更新。
 
 ## 11. 命令与证据索引

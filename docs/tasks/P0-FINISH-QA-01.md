@@ -1,6 +1,6 @@
 # P0-FINISH-QA-01：零 AOT block 与回归补强的独立复跑
 
-状态：未开始（等待 `p0/core-fix-02` 最终提交）。
+状态：完成（PASS，0 个产品 FAIL；两处 QA harness 调用笔误已记录，不影响产品结论）。
 
 ## 输入与责任
 
@@ -33,3 +33,13 @@
 ## 完成报告
 
 - 被验 commit、命令/退出码、哈希、逐项结果、场景/断言计数、未测项、结论。
+
+## 完成报告（2026-11-05）
+
+- 被验 HEAD `b4052dd`（代码 HEAD `7487e04`，两者只差报告文件）；基线 `8c0fc15`；QA worktree `.worktrees/p0-core-fix-02-qa`；构建 `.local/qa-build-core-fix-02`。
+- `ctest` 3/3 PASS；原 closed-loop 5 case 22 PASS、`reference.diff` 0 字节；最终 semantics 489 PASS/0 FAIL；empty AOT 22 PASS/0 FAIL；基线 semantics 364 PASS（对照）。
+- 零 AOT：基线独立复现 rc=0 但非法 IR/clang 失败；最终合法空表实际编译/链接/加载，经 `aev_aot_run` → `jit_dispatch` → ORC 执行，`RAX=0x15`、`aot_table_count=0`、`aot_blocks=0`、`jit_compiles=1`、`jit_execs=1`。
+- F1：17 个拒绝目录无 `.ll/.h/.json`；terminator LOCK 防御通过。F3：8 个新场景（含完整 AOT→JIT 故障返回）；F4：6 个 push immediate 场景；F5：19 个 JIT + 54 个 helper 检查；均 PASS。
+- 测试削弱审计：未发现删除/放宽/屏蔽；原 364 条语义断言保留，新增 125 条/19 场景；N/A 未计入 PASS。Windows MSVC 参考独立编译/运行，输出与提交参考一致。
+- QA harness 笔误：空 AOT 输入文件名、AOT→JIT 进程退出码判据；已在 `QA-HARNESS-NOTES.md` 记录并更正，不构成产品失败。
+- 结论：范围内 15 PASS / 0 FAIL；N/A 包括 AOT IMUL、原子/TSO、PE/GUI/真实应用/Trace/版本失效/性能/打包等。报告 `.local/results/P0-FINISH-QA-01/REPORT.md`。

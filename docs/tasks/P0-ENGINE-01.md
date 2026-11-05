@@ -1,6 +1,6 @@
 # P0-ENGINE-01：x64→ARM64 AOT/JIT 最小闭环与执行引擎选型
 
-状态：完成（spike 功能路径经独立 QA PASS；F1–F5 正确性修复已集成 `8c0fc15`；V-1 代码失效、P-1 `.app` 转 P1/P6）。
+状态：完成（spike 功能路径经独立 QA PASS；F1–F5 正确性修复与零 AOT 表收尾已集成 `b4052dd`；V-1 代码失效、P-1 `.app` 转 P1/P6）。
 
 ## 输入与责任
 
@@ -56,3 +56,4 @@
 - 待独立 QA 复核；通过后再决定是否合并 spike 代码。
 - QA 结果（P0-QA-01）：功能复跑 PASS；QA 重新构建 Windows 参考 exe 哈希 `9159c74f...` 与实现者一致，三方输出逐字相等；AOT/JIT/ASLR/负例均独立确认。V-1（加载时输入/代码版本校验与失效）未实现，按 P1 处理；AOT dylib/runner 的哈希因构建目录 install name 不同而变化，IR/object 可复现。
 - 后续正确性修复：P0-CORE-FIX-01 修复 F1–F5（LOCK/IMUL/F3/POP RSP/IMUL flags），独立 QA PASS；`p0/engine-spike` 已 fast-forward 到 `8c0fc15`。
+- P0-FINISH-01 收尾：零 AOT 表改为合法空表并实际验证 JIT 回退；F1/F3/F4/F5 回归补强与 one-operand IMUL 诊断修正；代码 `7487e04`、报告 `b4052dd`；独立 QA ctest 3/3、semantics 489 PASS/0 FAIL；已集成到 `p0/engine-spike` `b4052dd`。
