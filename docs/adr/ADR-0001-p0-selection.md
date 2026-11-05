@@ -69,6 +69,16 @@
 - D6 采集与准备执行：
 - D7 首版真实应用与支持矩阵：
 
+## P1 契约候选（待证据确认，不冻结）
+
+- Guest 状态：GPR（含 RSP/RBP/RIP）、RFLAGS、MXCSR、x87 控制/状态、所需 XMM/YMM、TEB/PEB、LastError、线程 ID、栈边界、退出原因。
+- 内存：Guest 地址空间、权限、映射代次、Host 映射生命周期、跨页/原子访问失败分类。
+- 模块身份：输入内容哈希、PE 时间戳/大小、节/导入/导出/重定位/TLS/资源摘要、Guest 地址与字节依赖。
+- AOT/JIT：块边界、helper ABI、Host↔Guest 调用/回调、JIT 回退原因、代码版本、失效事件、未支持指令诊断。
+- Artifact manifest：格式版本、输入/模块身份、转换器/运行时/后端/helper ABI 版本、目标特性、重定位假设、配置、构建 ID。
+- 平台后端：`compat`/`native` 能力表、API 支持状态、未支持时的错误、禁止静默回退。
+- 测试结果：场景 ID、输入哈希、环境、命令、退出码、stdout/stderr/文件副作用、事件序列、AOT/JIT 统计、后端 ID。
+
 ## 后果
 
 - 正面：

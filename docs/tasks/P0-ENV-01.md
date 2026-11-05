@@ -1,6 +1,6 @@
 # P0-ENV-01：双机工具链与结果回传 smoke
 
-状态：进行中。
+状态：完成（coordinator 复核；仅限本任务范围）。
 
 ## 输入与责任
 
@@ -35,3 +35,14 @@
 - 审查问题及修复：
 - 未测项、已知限制、需要用户操作的具体步骤：
 - 后续任务与接口变更：
+
+## 完成报告（2026-11-05）
+
+- 提交或 diff：无产品源码变更；报告与原始日志在 `.local/results/P0-ENV-01/`（被忽略）。
+- 环境：Windows 主机 `WindPC`，Windows 11 10.0.26340 x64；VS Community 2026 18.11.12328.437；MSVC 14.51.36231；`cl` 19.51.36260 x64；Windows SDK 10.0.26100.0；VS 内置 CMake 4.3.1-msvc1、Ninja 1.13.2。Mac：macOS 27.0.1 arm64、OpenSSH 10.3p1、Python 3.15.0。
+- 命令与退出码：`scp` 传输 0；`vcvars64.bat` 0；`cl /nologo /O2 /W4 /EHsc p0_smoke.c` 0；正常运行 0；重复运行 0；错误参数 2；`fc /b` 0。Windows 脚本内每步退出码保存在 `windows/logs/*.exit.txt`。
+- 二进制/输入哈希：源码 `3abea8fafbb337a43c1c5d17b9fba0a02382d715b7d5b87728d88963b49b89ff`；exe `9e8243a778ddbe7ff799c8281174ce50a3a3e4bb2074b41b8ea3dfd3d8ff1a87`；输出 `bddfb510963ba7da4ba1d9798ffe2c5d7b66280938af9a3ef583fc22b80be9db`。
+- 独立复核：Mac `shasum -a 256 -c MANIFEST.sha256` 76/76 OK；`verify_mac.py` 15 项 PASS；`file` 确认 PE32+ x86-64，PE 头 `machine=0x8664`、`optionalMagic=0x20b`；`cmp` 两次输出一致。
+- 重要限制：默认 SSH shell 为 PowerShell 7.6.9，未包装时 `exit 5/7` 会被塌缩为本地 1；必须使用 `ssh win 'cmd.exe /c <script>; exit $LASTEXITCODE'` 或读取脚本写出的退出码文件。本地 `perl alarm` 可在约 5 秒终止超时命令（退出 142），SSH 本身无单命令超时参数。
+- 未测：GUI、Wine/兼容层、AOT/JIT、DLL/回调、`compat`/`native`、签名/公证、包内动态依赖、性能；未运行 macOS 目标（该 exe 仅为 Windows 参考二进制）。
+- 后续：P0 其他任务继续；Windows 自动化统一使用显式退出码包装。
