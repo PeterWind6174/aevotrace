@@ -201,8 +201,34 @@ bool build_program(CoffObject &&object,
 
         for (size_t i = 0; i < fn.insns.size(); ++i) {
             const X64Insn &insn = fn.insns[i];
+            /* LOCK is decoded but atomics are not implemented.  Reject every
+             * LOCK-prefixed form before IR emission so a LOCK ADD/INC/AND/...
+             * can never be silently lowered as a plain load/store. */
+            if (insn.lock_prefix) {
+                if (error)
+                    *error = "unsupported instruction (LOCK prefix; atomic semantics are not implemented) " +
+                             format_insn(insn);
+                return false;
+            }
+            /* The spike's push/pop implementation is 64-bit only.  Reject a
+             * 16-bit form explicitly instead of accepting it and moving RSP by
+             * eight bytes. */
+            if ((insn.id == X86_INS_PUSH || insn.id == X86_INS_POP) &&
+                !insn.operands.empty() && insn.operands[0].size == 2) {
+                if (error) *error = "unsupported 16-bit push/pop " + format_insn(insn);
+                return false;
+            }
             if (!supported_insn(insn.id)) {
                 if (error) *error = "unsupported instruction " + format_insn(insn);
+                return false;
+            }
+            /* One-operand IMUL (the only 8-bit IMUL form) is outside this
+             * spike's subset.  Report it at translation setup instead of
+             * letting the JIT discover it later. */
+            if (insn.id == X86_INS_IMUL && insn.operands.size() == 1) {
+                if (error)
+                    *error = "unsupported one-operand imul (8-bit IMUL form) " +
+                             format_insn(insn);
                 return false;
             }
             uint64_t next = insn.address + insn.size;

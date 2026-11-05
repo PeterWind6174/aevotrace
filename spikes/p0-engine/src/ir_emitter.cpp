@@ -137,6 +137,8 @@ class Emitter {
         body_.str("");
         body_.clear();
         tmp_ = 0;
+        check_id_ = 0;
+        fault_used_ = false;
         current_fn_ = &fn;
         current_block_ = &block;
 
@@ -159,6 +161,10 @@ class Emitter {
             store_field(GF_rip, u64(next));
         }
         emit("ret void");
+        if (fault_used_) {
+            body_ << "fault:\n";
+            body_ << "  ret void\n";
+        }
 
         std::string out = "define void @" + name + "(ptr %s) {\n";
         out += "entry:\n";
@@ -174,6 +180,8 @@ class Emitter {
     const Block *current_block_ = nullptr;
     std::ostringstream body_;
     int tmp_ = 0;
+    int check_id_ = 0;
+    bool fault_used_ = false;
 
     static bool is_jcc_insn(uint16_t id) {
         switch (id) {
@@ -209,6 +217,43 @@ class Emitter {
     }
 
     void emit(const std::string &line) { body_ << "  " << line << "\n"; }
+
+    void emit_label(const std::string &name) { body_ << name << ":\n"; }
+
+    /* Every memory helper call is followed by a check of GuestState.error_code.
+     * On failure control branches to a single per-block `fault` label that
+     * returns immediately, so no register or memory side effect of the
+     * faulting instruction (or of later instructions in the block) commits.
+     * The guest RIP is set to the current instruction address before each
+     * helper call, so aev_mem.c records an exact error_pc. */
+    void emit_fault_check() {
+        std::string err = fresh("err");
+        emit(err + " = load i64, ptr " + gep(GF_error_code) + ", align 8");
+        std::string bad = fresh("bad");
+        emit(bad + " = icmp ne i64 " + err + ", 0");
+        std::string cont = "cont" + std::to_string(check_id_++);
+        emit("br i1 " + bad + ", label %fault, label %" + cont);
+        emit_label(cont);
+        fault_used_ = true;
+    }
+
+    std::string load_mem(const X64Insn &insn, const std::string &addr, int width,
+                         bool sign) {
+        store_field(GF_rip, u64(insn.address));
+        std::string v = fresh("ld");
+        emit(v + " = call i64 @aev_load(ptr %s, i64 " + addr + ", i32 " +
+             std::to_string(width) + ", i32 " + (sign ? "1" : "0") + ")");
+        emit_fault_check();
+        return v;
+    }
+
+    void store_mem(const X64Insn &insn, const std::string &addr,
+                   const std::string &value, int width) {
+        store_field(GF_rip, u64(insn.address));
+        emit("call void @aev_store(ptr %s, i64 " + addr + ", i64 " + value +
+             ", i32 " + std::to_string(width) + ")");
+        emit_fault_check();
+    }
 
     std::string gep(int field) {
         std::string v = fresh("g");
@@ -346,10 +391,7 @@ class Emitter {
             }
             case OperandKind::Memory: {
                 std::string addr = mem_address(insn, op);
-                std::string v = fresh("ld");
-                emit(v + " = call i64 @aev_load(ptr %s, i64 " + addr + ", i32 " +
-                     std::to_string(width) + ", i32 " + (sign ? "1" : "0") + ")");
-                return v;
+                return load_mem(insn, addr, width, sign);
             }
         }
         throw Unsupported("internal: bad operand kind");
@@ -363,8 +405,7 @@ class Emitter {
                 return;
             case OperandKind::Memory: {
                 std::string addr = mem_address(insn, op);
-                emit("call void @aev_store(ptr %s, i64 " + addr + ", i64 " + value +
-                     ", i32 " + std::to_string(width) + ")");
+                store_mem(insn, addr, value, width);
                 return;
             }
             case OperandKind::Immediate:
@@ -423,23 +464,35 @@ class Emitter {
         throw Unsupported("internal: bad condition code");
     }
 
-    void emit_push(const std::string &value) {
+    void emit_push(const X64Insn &insn, const std::string &value) {
+        if (insn.id == X86_INS_PUSH &&
+            (insn.operands.empty() || insn.operands[0].size == 2))
+            throw Unsupported("unsupported 16-bit push " + format_insn(insn));
         std::string rsp = load_field(GF_rsp);
         std::string nrsp = fresh("rsp");
         emit(nrsp + " = sub i64 " + rsp + ", 8");
-        emit("call void @aev_store(ptr %s, i64 " + nrsp + ", i64 " + value +
-             ", i32 8)");
+        store_mem(insn, nrsp, value, 8);
         store_field(GF_rsp, nrsp);
     }
 
-    void emit_pop(int reg) {
+    void emit_pop(const X64Insn &insn, int reg) {
+        if (insn.operands.empty() || insn.operands[0].size == 2)
+            throw Unsupported("unsupported 16-bit pop " + format_insn(insn));
+        int field = 0, natural = 0;
+        std::string err;
+        if (!map_reg(reg, &field, &natural, &err))
+            throw Unsupported(err);
+        const int width = insn.operands[0].size;
         std::string rsp = load_field(GF_rsp);
-        std::string v = fresh("pop");
-        emit(v + " = call i64 @aev_load(ptr %s, i64 " + rsp + ", i32 8, i32 0)");
-        write_reg(reg, 8, v);
-        std::string nrsp = fresh("rsp");
-        emit(nrsp + " = add i64 " + rsp + ", 8");
-        store_field(GF_rsp, nrsp);
+        std::string v = load_mem(insn, rsp, 8, false);
+        write_reg(reg, width, v);
+        /* POP RSP: the popped value is the new stack pointer.  The ordinary
+         * RSP+8 update would overwrite it, so skip that update for RSP. */
+        if (field != GF_rsp) {
+            std::string nrsp = fresh("rsp");
+            emit(nrsp + " = add i64 " + rsp + ", 8");
+            store_field(GF_rsp, nrsp);
+        }
     }
 
     void emit_flags_call(const char *name, int width, const std::string &a,
@@ -463,8 +516,11 @@ class Emitter {
         std::string raw = fresh("r");
         emit(raw + " = " + op + " i64 " + a + ", " + b);
         std::string r = and_mask(raw, width);
-        emit_flags_call(flagfn, width, a, b, r);
+        /* For a memory destination the store can fault.  Write first and let
+         * the checked store branch to the block's fault exit; only then commit
+         * flags, so a faulting write leaves RFLAGS untouched. */
         write_operand(insn, dst, width, r);
+        emit_flags_call(flagfn, width, a, b, r);
     }
 
     void emit_logic(const X64Insn &insn, const X64Operand &dst,
@@ -475,9 +531,9 @@ class Emitter {
         std::string raw = fresh("r");
         emit(raw + " = " + op + " i64 " + a + ", " + b);
         std::string r = and_mask(raw, width);
+        write_operand(insn, dst, width, r);
         emit("call void @aev_flags_logic(ptr %s, i32 " + std::to_string(width) +
              ", i64 " + r + ")");
-        write_operand(insn, dst, width, r);
     }
 
     void emit_test_cmp(const X64Insn &insn, const X64Operand &aop,
@@ -515,15 +571,13 @@ class Emitter {
                 target = read_operand(insn, insn.operands[0], 8);
             else
                 throw Unsupported("call without operand in " + format_insn(insn));
-            emit_push(u64(insn.address + insn.size));
+            emit_push(insn, u64(insn.address + insn.size));
             store_field(GF_rip, target);
             return;
         }
         if (insn.id == X86_INS_RET) {
             std::string rsp = load_field(GF_rsp);
-            std::string target = fresh("ret");
-            emit(target + " = call i64 @aev_load(ptr %s, i64 " + rsp +
-                 ", i32 8, i32 0)");
+            std::string target = load_mem(insn, rsp, 8, false);
             store_field(GF_rip, target);
             std::string nrsp = fresh("rsp");
             emit(nrsp + " = add i64 " + rsp + ", 8");
@@ -554,6 +608,9 @@ class Emitter {
     }
 
     void emit_instruction(const X64Insn &insn) {
+        if (insn.lock_prefix)
+            throw Unsupported("unsupported instruction (LOCK prefix; atomic semantics are not implemented) " +
+                              format_insn(insn));
         switch (insn.id) {
             case X86_INS_NOP:
             case X86_INS_ENDBR64:
@@ -583,14 +640,14 @@ class Emitter {
                 if (insn.operands.size() != 1)
                     throw Unsupported("push operand count in " + format_insn(insn));
                 std::string v = read_operand(insn, insn.operands[0], 8, true);
-                emit_push(v);
+                emit_push(insn, v);
                 return;
             }
             case X86_INS_POP: {
                 if (insn.operands.size() != 1 ||
                     insn.operands[0].kind != OperandKind::Register)
                     throw Unsupported("pop form in " + format_insn(insn));
-                emit_pop(insn.operands[0].reg);
+                emit_pop(insn, insn.operands[0].reg);
                 return;
             }
             case X86_INS_ADD:
@@ -627,9 +684,9 @@ class Emitter {
                 emit(raw + " = " + (insn.id == X86_INS_INC ? "add" : "sub") +
                      " i64 " + a + ", 1");
                 std::string r = and_mask(raw, width);
+                write_operand(insn, dst, width, r);
                 emit_flags_1(insn.id == X86_INS_INC ? "aev_flags_inc" : "aev_flags_dec",
                              width, a, r);
-                write_operand(insn, dst, width, r);
                 return;
             }
             case X86_INS_NEG: {
@@ -641,8 +698,8 @@ class Emitter {
                 std::string raw = fresh("r");
                 emit(raw + " = sub i64 0, " + a);
                 std::string r = and_mask(raw, width);
-                emit_flags_1("aev_flags_neg", width, a, r);
                 write_operand(insn, dst, width, r);
+                emit_flags_1("aev_flags_neg", width, a, r);
                 return;
             }
             case X86_INS_IMUL: {
@@ -651,20 +708,24 @@ class Emitter {
                                       format_insn(insn));
                 if (insn.operands.size() < 2 ||
                     insn.operands[0].kind != OperandKind::Register)
-                    throw Unsupported("imul form in " + format_insn(insn));
+                    throw Unsupported("unsupported imul form (one-operand IMUL is not implemented) " +
+                                      format_insn(insn));
                 const X64Operand &dst = insn.operands[0];
                 int width = dst.size;
-                std::string a = read_operand(insn, dst, width);
-                std::string b;
-                if (insn.operands.size() >= 3)
-                    b = read_operand(insn, insn.operands[2], width);
-                else
-                    b = read_operand(insn, insn.operands[1], width);
+                const bool three_operand = insn.operands.size() >= 3;
+                /* Two-operand: dst = dst * src.
+                 * Three-operand: dst = src * imm; operand[0] is only the
+                 * destination and must not be read as the multiplicand. */
+                std::string a = read_operand(insn, three_operand ? insn.operands[1] : dst,
+                                             width);
+                std::string b = read_operand(insn, three_operand ? insn.operands[2]
+                                                                 : insn.operands[1],
+                                             width);
                 std::string raw = fresh("r");
                 emit(raw + " = mul i64 " + a + ", " + b);
                 std::string r = and_mask(raw, width);
-                emit_flags_call("aev_flags_imul", width, a, b, r);
                 write_operand(insn, dst, width, r);
+                emit_flags_call("aev_flags_imul", width, a, b, r);
                 return;
             }
             case X86_INS_MOVZX:

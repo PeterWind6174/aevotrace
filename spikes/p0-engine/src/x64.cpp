@@ -46,6 +46,10 @@ DecodeResult decode_x64(const std::vector<uint8_t> &bytes, uint64_t base_address
 
         const cs_x86 &x86 = insn->detail->x86;
         out.eflags = x86.eflags;
+        /* Capstone puts LOCK/REP/REPNE in prefix[0].  Keep the LOCK bit so the
+         * translator can reject atomics explicitly instead of lowering them as
+         * ordinary loads/stores. */
+        out.lock_prefix = (x86.prefix[0] == X86_PREFIX_LOCK);
         for (uint8_t i = 0; i < x86.op_count; ++i) {
             const cs_x86_op &op = x86.operands[i];
             X64Operand o;

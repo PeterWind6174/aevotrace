@@ -27,6 +27,7 @@ struct X64Insn {
     uint32_t size = 0;
     uint16_t id = 0;      /* x86_insn */
     uint16_t eflags = 0;
+    bool lock_prefix = false; /* X86_PREFIX_LOCK in cs_x86.prefix[0] */
     std::string mnemonic;
     std::string op_str;
     std::vector<uint8_t> bytes;

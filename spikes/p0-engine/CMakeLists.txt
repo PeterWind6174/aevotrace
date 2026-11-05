@@ -58,6 +58,26 @@ target_link_directories(aev-runner PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(aev-runner PRIVATE aev_translator ${LLVM_SHARED_LIBRARY})
 target_link_libraries(aev-runner PRIVATE aev_capstone)
 
+# Test-only harnesses for the instruction-semantics regressions.  The JIT probe
+# uses the same emitter and LLVM ORC path as the runner; the AOT probe loads a
+# translated dylib; the flags test can target the host or the AOT dylib helper.
+add_executable(aev-jit-probe src/jit_probe.cpp src/aev_mem.c)
+target_include_directories(aev-jit-probe PRIVATE
+  ${AEV_INCLUDE_DIR}
+  ${LLVM_INCLUDE_DIRS}
+)
+target_link_directories(aev-jit-probe PRIVATE ${LLVM_LIBRARY_DIRS})
+target_link_libraries(aev-jit-probe PRIVATE
+  aev_translator ${LLVM_SHARED_LIBRARY} aev_capstone)
+
+add_executable(aev-aot-probe src/aot_probe.c)
+target_include_directories(aev-aot-probe PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev-aot-probe PRIVATE ${CMAKE_DL_LIBS})
+
+add_executable(aev-flags-test src/flags_test.c src/aev_mem.c)
+target_include_directories(aev-flags-test PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev-flags-test PRIVATE ${CMAKE_DL_LIBS})
+
 set(AEV_INPUT_OBJ ${CMAKE_CURRENT_SOURCE_DIR}/testdata/guest_x64.obj)
 set(AEV_LL ${AEV_GEN_DIR}/guest_aot.ll)
 set(AEV_HEADER ${AEV_GEN_DIR}/guest_layout.h)
@@ -120,5 +140,14 @@ add_test(NAME p0_engine_closed_loop
           ${CMAKE_CURRENT_SOURCE_DIR}
 )
 set_tests_properties(p0_engine_closed_loop PROPERTIES
+  ENVIRONMENT "AEV_AOT_DYLIB=${AEV_AOT_DYLIB};AEV_INPUT_OBJ=${AEV_INPUT_OBJ}"
+)
+
+add_test(NAME p0_core_fix_semantics
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_semantics_tests.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(p0_core_fix_semantics PROPERTIES
   ENVIRONMENT "AEV_AOT_DYLIB=${AEV_AOT_DYLIB};AEV_INPUT_OBJ=${AEV_INPUT_OBJ}"
 )

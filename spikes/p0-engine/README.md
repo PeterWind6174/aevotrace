@@ -20,10 +20,16 @@ src/translate_main.cpp         CLI: COFF -> guest_aot.ll + layout header + manif
 src/aot_runtime.c              AOT dispatcher, block table lookup, JIT hand-off
 src/aev_mem.c                  memory bounds checks, flags helpers, AOT trace
 src/runner.cpp                 dlopen AOT dylib, ORC JIT, test driver, ASLR/logs
+src/jit_probe.cpp              test-only: one block through the real ORC path
+src/aot_probe.c                test-only: load an AOT dylib and run the dispatcher
+src/flags_test.c               test-only: direct IMUL flag matrix (host or AOT dylib)
 testdata/                      MSVC input fixture, source, disassembly, reference
+testdata/semantics/            committed x86-64 LOCK/IMUL/fault/stack counterexamples
 scripts/run_tests.sh           closed-loop and negative-control checks
+scripts/run_semantics_tests.sh F1-F5 instruction-semantics regressions
 ROUTE_B.md                     QEMU/FEX/Box64 comparison and licenses
-REPORT.md                      actual commands, hashes, evidence, gaps
+REPORT.md                      P0-ENGINE-01 commands, hashes, evidence, gaps
+REPORT-CORE-FIX-01.md          P0-CORE-FIX-01 reproduction/fix evidence
 ```
 
 ## Input fixture
@@ -58,10 +64,24 @@ Prerequisites on macOS arm64:
 
 ```sh
 # from the worktree root
-cmake -S spikes/p0-engine -B .local/build-p0-engine -G Ninja
-cmake --build .local/build-p0-engine
-ctest --test-dir .local/build-p0-engine --output-on-failure
+cmake -S spikes/p0-engine -B .local/build-core-fix -G Ninja
+cmake --build .local/build-core-fix
+ctest --test-dir .local/build-core-fix --output-on-failure
 ```
+
+`ctest` runs both the original closed-loop test and the P0-CORE-FIX-01
+instruction-semantics test.  The latter can be run directly (it assembles the
+committed `.s` counterexamples with the same clang used by the build):
+
+```sh
+AEV_RESULTS_DIR="$PWD/.local/results/semantics" \
+  spikes/p0-engine/scripts/run_semantics_tests.sh \
+  .local/build-core-fix spikes/p0-engine
+```
+
+The semantics script exercises the ORC JIT path (`aev-jit-probe`), a separately
+loaded ARM64 AOT dylib (`aev-aot-probe`), and the IMUL helper in both the host
+binary and the AOT dylib (`aev-flags-test`).
 
 Manual run:
 
@@ -111,9 +131,17 @@ reference diff under `$BUILD_DIR/results` (override with `AEV_RESULTS_DIR`).
 `movsxd`, `jmp` (direct/indirect), `jcc` (all common conditions), `call`
 (direct/indirect), `ret`, `cmovcc`, `nop`, `endbr64`.
 
-Not implemented and rejected with an address + mnemonic + bytes: `cdq`/`idiv`,
-`lock`/`xadd` and other atomics, SSE/AVX, x87, string ops, `syscall`, etc.
-There is no silent fallback.
+`imul` covers the two- and three-operand forms at 16/32/64-bit; the
+three-operand form uses the source operand, not the old destination.  The
+one-operand 8-bit form is outside this subset and is rejected explicitly.
+
+`push`/`pop` are 64-bit only.  16-bit `pushw`/`popw` are rejected instead of
+being executed with an eight-byte stack update.
+
+Not implemented and rejected with an address + mnemonic: every LOCK-prefixed
+form (including `lock add/inc/and/or/xor/sub/dec` and `lock xadd`), `cdq`/`idiv`,
+one-operand `imul`, 16-bit stack forms, SSE/AVX, x87, string ops, `syscall`,
+etc.  There is no silent fallback.
 
 ### Memory model in this spike
 
@@ -123,6 +151,14 @@ tested.  There is **no** guest virtual-address translation, page permission,
 dirty/accessed bit, atomicity, or memory-order (TSO) model.  Atomic instructions
 are rejected.  The `crosspage` test crosses a host page inside the single
 region; it does not test guest page faults.
+
+Each generated memory helper call is followed by a check of
+`GuestState.error_code`.  On failure the block branches to a fault exit and
+returns immediately.  `GuestState.rip` is set to the faulting instruction
+address before every helper call, so `error_pc` is exact even when the faulting
+instruction is not the first in its block.  Register, RFLAGS, memory and stack
+updates from the faulting instruction and later instructions are not committed;
+the AOT dispatcher (or JIT dispatcher) returns the error.
 
 ## Deliberate limitations / not frozen
 
@@ -134,7 +170,13 @@ region; it does not test guest page faults.
   persistent JIT cache and no claim that a JIT cache equals an AOT artifact.
 - `imul` is intentionally excluded from AOT to force the hand-off; the JIT
   implements it.  This is a coverage-boundary test, not a statement that the
-  engine cannot implement `imul`.
+  engine cannot implement `imul`.  Consequently F5's AOT check calls the
+  `aev_flags_imul` helper exported by the AOT dylib directly; there is no
+  generated AOT `imul` block to execute.
+- One-operand 8-bit `imul` and 16-bit `pushw`/`popw` are rejected.  They are not
+  executed.
+- Memory faults stop the block and set `error_code`/`error_pc`; there is no
+  guest exception delivery, signal, unwind, or recovery path.
 - The AOT artifact format is spike-local (`guest_aot.ll`, `guest_aot.o`,
   `libguest_aot.dylib`, `guest_manifest.json`, `guest_layout.h`).  It is not a
   v0 frozen contract.

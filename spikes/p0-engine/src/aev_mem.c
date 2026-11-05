@@ -146,12 +146,15 @@ void aev_flags_imul(GuestState *s, uint32_t width, uint64_t a, uint64_t b, uint6
     __int128 sa = (__int128)(int64_t)(a << (64 - bits)) >> (64 - bits);
     __int128 sb = (__int128)(int64_t)(b << (64 - bits)) >> (64 - bits);
     __int128 full = sa * sb;
-    __int128 low = (__int128)(r & mask);
     __int128 ext;
     if (bits < 64) {
+        __int128 low = (__int128)(r & mask);
         ext = (__int128)(int64_t)((uint64_t)low << (64 - bits)) >> (64 - bits);
     } else {
-        ext = low;
+        /* r is the truncated 64-bit product.  It must be sign-extended to
+         * __int128 before comparing with the full signed product; zero
+         * extension makes -1 * 1 look like an overflow. */
+        ext = (__int128)(int64_t)r;
     }
     set_flag(s, AEV_CF, full != ext);
     set_flag(s, AEV_OF, full != ext);
