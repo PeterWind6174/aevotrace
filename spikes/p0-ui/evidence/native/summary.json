@@ -1,0 +1,408 @@
+{
+  "success": true,
+  "checks": {
+    "initial_reset": true,
+    "initial_clicks": true,
+    "edit_a_guest_saw_text": true,
+    "edit_a_hash": true,
+    "edit_a_len": true,
+    "click_1_count": true,
+    "click_1_label_updated_by_guest": true,
+    "click_2_count": true,
+    "text_b_guest_saw": true,
+    "text_b_hash": true,
+    "sync_echo_return": true,
+    "sync_echo_state": true,
+    "modal_count": true,
+    "modal_result": true,
+    "worker_created": true,
+    "worker_posts": true,
+    "worker_exits": true,
+    "modal_screenshot_saved": true,
+    "final_clicks": true,
+    "final_edit_changes": true,
+    "final_text": true,
+    "final_wndproc": true,
+    "window_closed": true,
+    "negative_unsupported_api": true,
+    "native_no_compat_events": true
+  },
+  "notes": [],
+  "states": {
+    "initial": {
+      "clicks": 0,
+      "edit_changes": 0,
+      "text_len": 4,
+      "text_hash": 12624396950412896480,
+      "modal_count": 0,
+      "modal_result": 0,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 0,
+      "wndproc_calls": 1,
+      "last_command": 0,
+      "last_message": 1,
+      "resets": 1,
+      "last_text": "初始文本",
+      "status_text": "点击=0  文本长度=4  模态=0  线程发/收/退=0/0/0"
+    },
+    "after_edit_a": {
+      "clicks": 0,
+      "edit_changes": 1,
+      "text_len": 20,
+      "text_hash": 12646387704327668483,
+      "modal_count": 0,
+      "modal_result": 0,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 0,
+      "wndproc_calls": 2,
+      "last_command": 1002,
+      "last_message": 273,
+      "resets": 1,
+      "last_text": "macOS 验收输入-β-2026-11",
+      "status_text": "点击=0  文本长度=20  模态=0  线程发/收/退=0/0/0"
+    },
+    "after_click_1": {
+      "clicks": 1,
+      "edit_changes": 1,
+      "text_len": 20,
+      "text_hash": 12646387704327668483,
+      "modal_count": 0,
+      "modal_result": 0,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 0,
+      "wndproc_calls": 3,
+      "last_command": 1001,
+      "last_message": 273,
+      "resets": 1,
+      "last_text": "macOS 验收输入-β-2026-11",
+      "status_text": "点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0"
+    },
+    "after_click_2": {
+      "clicks": 2,
+      "edit_changes": 2,
+      "text_len": 10,
+      "text_hash": 13377052239980446376,
+      "modal_count": 0,
+      "modal_result": 0,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 0,
+      "wndproc_calls": 5,
+      "last_command": 1001,
+      "last_message": 273,
+      "resets": 1,
+      "last_text": "第二次输入-λ-47",
+      "status_text": "点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0"
+    },
+    "after_echo": {
+      "clicks": 2,
+      "edit_changes": 2,
+      "text_len": 10,
+      "text_hash": 13377052239980446376,
+      "modal_count": 0,
+      "modal_result": 0,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 23130,
+      "wndproc_calls": 6,
+      "last_command": 1001,
+      "last_message": 32770,
+      "resets": 1,
+      "last_text": "第二次输入-λ-47",
+      "status_text": "点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0"
+    },
+    "after_modal": {
+      "clicks": 2,
+      "edit_changes": 2,
+      "text_len": 10,
+      "text_hash": 13377052239980446376,
+      "modal_count": 1,
+      "modal_result": 1,
+      "worker_created": 0,
+      "worker_posts_sent": 0,
+      "worker_posts_received": 0,
+      "worker_exits": 0,
+      "sync_echo": 23130,
+      "wndproc_calls": 7,
+      "last_command": 2001,
+      "last_message": 273,
+      "resets": 1,
+      "last_text": "第二次输入-λ-47",
+      "status_text": "点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0"
+    },
+    "final_before_close": {
+      "clicks": 2,
+      "edit_changes": 2,
+      "text_len": 10,
+      "text_hash": 13377052239980446376,
+      "modal_count": 1,
+      "modal_result": 1,
+      "worker_created": 1,
+      "worker_posts_sent": 1,
+      "worker_posts_received": 1,
+      "worker_exits": 1,
+      "sync_echo": 23130,
+      "wndproc_calls": 9,
+      "last_command": 2002,
+      "last_message": 32769,
+      "resets": 1,
+      "last_text": "第二次输入-λ-47",
+      "status_text": "点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1"
+    }
+  },
+  "message_sequence": [
+    {
+      "msg": "WM_CREATE",
+      "msg_id": 1,
+      "wparam": 0,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "host WM_CREATE after manual load"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 50332650,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSTextField delegate"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 1001,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSButton action"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 50332650,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSTextField delegate"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 1001,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSButton action"
+    },
+    {
+      "msg": "WM_P0_ECHO",
+      "msg_id": 32770,
+      "wparam": 23130,
+      "lparam": 0,
+      "ret": 23130,
+      "reason": "scenario synchronous echo"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 2001,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSMenu action"
+    },
+    {
+      "msg": "WM_COMMAND",
+      "msg_id": 273,
+      "wparam": 2002,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "native NSMenu action"
+    },
+    {
+      "msg": "WM_P0_WORKER_DONE",
+      "msg_id": 32769,
+      "wparam": 45057,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "posted message drain"
+    },
+    {
+      "msg": "WM_CLOSE",
+      "msg_id": 16,
+      "wparam": 0,
+      "lparam": 0,
+      "ret": 0,
+      "reason": "scenario close"
+    }
+  ],
+  "guest_execution": {
+    "dll_sha256": "a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602",
+    "main_instructions": 15933,
+    "main_api_counts": {
+      "RegisterClassExW": 1,
+      "CreateWindowExW": 5,
+      "ShowWindow": 1,
+      "UpdateWindow": 1,
+      "CreatePopupMenu": 1,
+      "AppendMenuW": 5,
+      "CreateMenu": 1,
+      "SetMenu": 1,
+      "GetWindowTextW": 3,
+      "SetWindowTextW": 14,
+      "SendMessageW": 2,
+      "MessageBoxW": 1,
+      "CreateThread": 1,
+      "DestroyWindow": 1,
+      "MessageBeep": 1
+    },
+    "worker_machines": [
+      {
+        "thread_id": "0xb001",
+        "instructions": 15,
+        "api_counts": {
+          "Sleep": 1,
+          "GetCurrentThreadId": 1,
+          "PostMessageW": 1,
+          "ExitThread": 1
+        }
+      }
+    ],
+    "wndproc_calls_in_guest_state": 9,
+    "host_message_entries": 10,
+    "host_api_calls": 43,
+    "sync_reentries_guest_to_host": 35,
+    "max_host_guest_depth": 1
+  },
+  "negative_case": {
+    "expected": "unsupported_api",
+    "observed": "unimplemented API USER32.dll!MessageBeep",
+    "guest_instructions_before_abort": 2,
+    "host_unsupported": "unimplemented API USER32.dll!MessageBeep",
+    "backend": "native"
+  },
+  "backend_proof": {
+    "backend": "native",
+    "api": "AppKit",
+    "windows": [
+      {
+        "handle": "0x1000",
+        "objc_class": "NSWindow"
+      }
+    ],
+    "controls": [
+      {
+        "handle": "0x1010",
+        "kind": "static",
+        "objc_class": "NSTextField"
+      },
+      {
+        "handle": "0x1020",
+        "kind": "static",
+        "objc_class": "NSTextField"
+      },
+      {
+        "handle": "0x1030",
+        "kind": "edit",
+        "objc_class": "NSTextField"
+      },
+      {
+        "handle": "0x1040",
+        "kind": "button",
+        "objc_class": "NSButton"
+      }
+    ],
+    "main_menu_is_nsmenu": true,
+    "compat_classes_used": false,
+    "main_thread": true,
+    "creation_thread": "MainThread",
+    "note": "NSWindow/NSButton/NSTextField/NSMenu/NSAlert objects above"
+  },
+  "backend_event_counts": {
+    "native": 16,
+    "compat": 0
+  },
+  "screenshots": [
+    {
+      "path": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/01-initial-native.png",
+      "sha256": "a35908cdfc996695505880792780aa86a6cdd85f7e01aced22966029f14fdaf8",
+      "size": 47988,
+      "file": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/01-initial-native.png: PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced"
+    },
+    {
+      "path": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/02-after-actions-native.png",
+      "sha256": "1e29da5cb4973073758213997cfb26814dcc5190585d149ee744dfaa14af8927",
+      "size": 57646,
+      "file": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/02-after-actions-native.png: PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced"
+    },
+    {
+      "path": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/03-modal-native.png",
+      "sha256": "4bd3ea04b6a2848e06091947f86506e4d37ccb696bd708260e3c092485f45bd6",
+      "size": 52597,
+      "file": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/03-modal-native.png: PNG image data, 520 x 438, 8-bit/color RGBA, non-interlaced"
+    },
+    {
+      "path": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/04-final-native.png",
+      "sha256": "59e5395a86047ca7d294de20153fea644cc2815667be5c715ae4d081d31aec4f",
+      "size": 50971,
+      "file": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/04-final-native.png: PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced"
+    }
+  ],
+  "task": "P0-UI-01",
+  "mode": "spike",
+  "backend": "native",
+  "dll": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/artifacts/p0_gui_test.dll",
+  "dll_sha256": "a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602",
+  "harness_sources": {
+    "__init__.py": "602de769d71f52db14946cf12b6da6e1fcbf6d36b4a8fc4a6812f2775a0ba383",
+    "compat_backend.py": "9ad8a571254f625e73683394862827050365018b2f30c380fdfe72b454e54655",
+    "guest_abi.py": "2cb1dc0cef2c0c56f472ee86939896f5bef5c586174527b931e1f528492a2002",
+    "guest_pe.py": "5f47c08f0fa54b00429fa3bbe056c5752160103ce72ca81c630f262c907aa985",
+    "logging_util.py": "bf08eecb20d71fec40fd948151072afe3e3a98886aba407dcb4c4501c4cbce1d",
+    "native_backend.py": "b353b17989927e55b2bd454fda124e88e901b34a1364d2f67a89317e4a898319",
+    "run.py": "e1c3c4782255bcbe33b5017b6b50d8803669102e00706c6b6206323018037e05",
+    "scenario.py": "079266545005c730446023caab49a76a62de77c058359ebf01878d5d8f50fec4",
+    "win32_host.py": "7fb239485cae6118786072d8d5bb250a42792a385955c53a82ac75411c824250"
+  },
+  "repo": {
+    "source_root": "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui",
+    "git_head": "586662a4ff09465d7d3aa453fb44e5aa6e880c79",
+    "git_branch": "p0/ui-spike"
+  },
+  "dependencies": {
+    "python": "3.15.0 (main, Oct  9 2026, 11:16:41) [Clang 21.0.0 (clang-2100.3.34.2)]",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "mac_ver": "27.0.1",
+    "unicorn": "2.1.4",
+    "pyobjc": "13.0",
+    "pefile": "2024.8.26"
+  },
+  "argv": [
+    "/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/harness/run.py",
+    "--backend",
+    "native",
+    "--dll",
+    "artifacts/p0_gui_test.dll",
+    "--out",
+    "evidence/native"
+  ],
+  "limitations": [
+    "P0 temporary Unicorn x86-64 execution bridge; not the product AOT/JIT core",
+    "host-owned message dispatcher; guest GetMessage/DispatchMessage is exercised only by the Windows reference run",
+    "compat is a P0 semantic harness, not a bundled final compat runtime; D3 remains open",
+    "no TLS/SEH/heap/real loader; declared Win32 import subset only"
+  ],
+  "started_wall": "2026-11-05T15:59:45+0800",
+  "duration_s": 2.573,
+  "error": null
+}

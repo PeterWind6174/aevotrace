@@ -1,0 +1,8 @@
+AUTO window created
+AUTO echoReturn=0x5A5A (expected 0x5A5A)
+STATE clicks=1 editChanges=2 textLen=12 textHash=3175B48FE300F0E4
+STATE modal=1 modalResult=1 workerCreated=1 postsSent=1 postsRecv=1 exits=1
+STATE syncEcho=23130 wndProcCalls=42 lastCommand=2001 lastMessage=0x8002 resets=1
+STATE lastText=Windows ????
+STATE status=??=1  ????=12  ??=1  ???/?/?=1/1/1
+AUTO OK: Windows reference state reached

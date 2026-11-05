@@ -1,0 +1,33 @@
+Microsoft (R) COFF/PE Dumper Version 14.51.36260.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file p0_gui_test.dll
+
+File Type: DLL
+
+  Section contains the following exports for p0_gui_test.dll
+
+    00000000 characteristics
+    FFFFFFFF time date stamp
+        0.00 version
+           1 ordinal base
+           7 number of functions
+           7 number of names
+
+    ordinal hint RVA      name
+
+          1    0 00001020 P0CreateMainWindow
+          2    1 00001170 P0GetState
+          3    2 00001260 P0ProbeUnsupported
+          4    3 00001270 P0Reset
+          5    4 00001320 P0RunGui
+          6    5 00001390 P0VersionW
+          7    6 000013A0 P0WndProc
+
+  Summary
+
+        1000 .data
+        1000 .pdata
+        1000 .rdata
+        2000 .text

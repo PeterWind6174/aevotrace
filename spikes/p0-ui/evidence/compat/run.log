@@ -1,0 +1,240 @@
+    0.031 guest.pe_loaded              [MainThread] path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/artifacts/p0_gui_test.dll sha256=a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602 image_base=0x180000000 image_size=24576 imports=['KERNEL32.dll!Sleep@0x60000000', 'KERNEL32.dll!CreateThread@0x60000010', 'KERNEL32.dll!GetCurrentThreadId@0x60000020', 'KERNEL32.dll!ExitThread@0x60000030', 'KERNEL32.dll!GetModuleHandleW@0x60000040', 'KERNEL32.dll!GetLastError@0x60000050', 'USER32.dll!GetMessageW@0x60000060', 'USER32.dll!TranslateMessage@0x60000070', 'USER32.dll!DispatchMessageW@0x60000080', 'USER32.dll!SendMessageW@0x60000090', 'USER32.dll!PostMessageW@0x600000a0', 'USER32.dll!DefWindowProcW@0x600000b0', 'USER32.dll!PostQuitMessage@0x600000c0', 'USER32.dll!RegisterClassExW@0x600000d0', 'USER32.dll!CreateWindowExW@0x600000e0', 'USER32.dll!DestroyWindow@0x600000f0', 'USER32.dll!ShowWindow@0x60000100', 'USER32.dll!SetMenu@0x60000110', 'USER32.dll!CreateMenu@0x60000120', 'USER32.dll!CreatePopupMenu@0x60000130', 'USER32.dll!AppendMenuW@0x60000140', 'USER32.dll!UpdateWindow@0x60000150', 'USER32.dll!SetWindowTextW@0x60000160', 'USER32.dll!GetWindowTextW@0x60000170', 'USER32.dll!MessageBoxW@0x60000180', 'USER32.dll!MessageBeep@0x60000190']
+    0.033 guest.return                 [MainThread] thread=main purpose=DllMain address=0x180001000 ret=0x1 instructions=5 elapsed_ms=0.214
+    0.033 guest.return                 [MainThread] thread=main purpose=P0Reset address=0x180001270 ret=0x180004200 instructions=68 elapsed_ms=0.191
+    0.033 api.call                     [MainThread] dll=USER32.dll api=RegisterClassExW args=['0x6201efa0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.034 host.register_class          [MainThread] class_name=AevotraceP0Window wndproc=0x1800013a0
+    0.034 api.return                   [MainThread] api=RegisterClassExW ret=0x1 thread=main
+    0.034 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003308', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.053 compat.window_created        [MainThread] handle=0x1000 objc_class=CompatWindow title=Aevotrace P0-UI-01 中文界面 thread=MainThread main_thread=True backend_note=P0 semantic harness; not final compat runtime
+    0.053 host.create_window           [MainThread] handle=0x1000 title=Aevotrace P0-UI-01 中文界面 width=520 height=190 visible=True
+    0.053 api.return                   [MainThread] api=CreateWindowExW ret=0x1000 thread=main
+    0.053 api.call                     [MainThread] dll=USER32.dll api=ShowWindow args=['0x1000', '0x5', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.053 host.show_window             [MainThread] handle=0x1000
+    0.053 api.return                   [MainThread] api=ShowWindow ret=0x1 thread=main
+    0.053 api.call                     [MainThread] dll=USER32.dll api=UpdateWindow args=['0x1000', '0x5', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.053 api.return                   [MainThread] api=UpdateWindow ret=0x1 thread=main
+    0.053 guest.return                 [MainThread] thread=main purpose=P0CreateMainWindow address=0x180001020 ret=0x1000 instructions=54 elapsed_ms=19.919
+    0.053 guest.window_created         [MainThread] handle=0x1000 title=Aevotrace P0-UI-01 中文界面
+    0.053 host.guest_enter             [MainThread] msg=WM_CREATE msg_id=1 wparam=0x0 lparam=0x0 handle=0x1000 depth=1 reason=host WM_CREATE after manual load
+    0.053 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003138', '0x180003128', '0x50000000', '0x10', '0xe', '0x1d4', '0x16'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.053 compat.control_created       [MainThread] handle=0x1010 control_kind=static objc_class=CompatStatic control_id=1004 text=初始化中… thread=MainThread main_thread=True
+    0.053 host.create_control          [MainThread] handle=0x1010 control_kind=static control_id=1004 text=初始化中… x=16 y=14 width=468 height=22
+    0.053 api.return                   [MainThread] api=CreateWindowExW ret=0x1010 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003138', '0x180003148', '0x50000000', '0x10', '0x2c', '0x1d4', '0x16'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 compat.control_created       [MainThread] handle=0x1020 control_kind=static objc_class=CompatStatic control_id=1003 text=业务状态：等待操作 thread=MainThread main_thread=True
+    0.054 host.create_control          [MainThread] handle=0x1020 control_kind=static control_id=1003 text=业务状态：等待操作 x=16 y=44 width=468 height=22
+    0.054 api.return                   [MainThread] api=CreateWindowExW ret=0x1020 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x200', '0x180003170', '0x180003160', '0x50000080', '0x10', '0x4e', '0x12c', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 compat.control_created       [MainThread] handle=0x1030 control_kind=edit objc_class=CompatEdit control_id=1002 text=初始文本 thread=MainThread main_thread=True
+    0.054 host.create_control          [MainThread] handle=0x1030 control_kind=edit control_id=1002 text=初始文本 x=16 y=78 width=300 height=28
+    0.054 api.return                   [MainThread] api=CreateWindowExW ret=0x1030 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003190', '0x180003180', '0x50000000', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 compat.control_created       [MainThread] handle=0x1040 control_kind=button objc_class=CompatButton control_id=1001 text=增加计数 thread=MainThread main_thread=True
+    0.054 host.create_control          [MainThread] handle=0x1040 control_kind=button control_id=1001 text=增加计数 x=332 y=78 width=152 height=28
+    0.054 api.return                   [MainThread] api=CreateWindowExW ret=0x1040 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=CreatePopupMenu args=['0x0', '0x180003190', '0x180003180', '0x50000000', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 api.return                   [MainThread] api=CreatePopupMenu ret=0x3000 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d1', '0x1800031a0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2001 text=关于(&A)…
+    0.054 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d2', '0x1800031b0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2002 text=启动工作线程(&W)
+    0.054 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x800', '0x0', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 host.append_menu             [MainThread] menu=0x3000 flags=0x800 value=0 text=
+    0.054 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.054 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d3', '0x1800031c8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.054 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2003 text=退出(&X)
+    0.054 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.055 api.call                     [MainThread] dll=USER32.dll api=CreateMenu args=['0x3000', '0x0', '0x7d3', '0x1800031c8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.055 api.return                   [MainThread] api=CreateMenu ret=0x3010 thread=main
+    0.055 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3010', '0x10', '0x3000', '0x1800031d8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.055 host.append_menu             [MainThread] menu=0x3010 flags=0x10 value=12288 text=文件(&F)
+    0.055 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.055 api.call                     [MainThread] dll=USER32.dll api=SetMenu args=['0x1000', '0x3010', '0x3000', '0x1800031d8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.055 compat.menu_set              [MainThread] items=[2001, 2002, 2003]
+    0.055 host.set_menu                [MainThread] handle=0x1000 items=['文件(&F)']
+    0.055 api.return                   [MainThread] api=SetMenu ret=0x1 thread=main
+    0.055 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x180004078', '0x80', '0x0', '0x3000', '0x18000166d', '0x3010', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.055 host.get_text                [MainThread] handle=0x1030 text=初始文本 copied=4
+    0.055 api.return                   [MainThread] api=GetWindowTextW ret=0x4 thread=main
+    0.056 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x21', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.056 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=0  文本长度=4  模态=0  线程发/收/退=0/0/0 notify=False
+    0.056 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.056 guest.return                 [MainThread] thread=main purpose=WndProc WM_CREATE address=0x1800013a0 ret=0x0 instructions=1632 elapsed_ms=3.23
+    0.056 host.guest_exit              [MainThread] msg=WM_CREATE msg_id=1 ret=0x0 depth=1 reason=host WM_CREATE after manual load
+    0.063 compat.show_window           [MainThread] handle=0x1000 window_number=19820 thread=MainThread main_thread=True
+    0.063 scenario.begin               [MainThread] backend=compat dll_sha256=a7934acee5520ac5c18ad1a4306682bba3b5c2263755bce30d261ee3da132602
+    0.573 screenshot                   [MainThread] name=01-initial-compat.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/01-initial-compat.png rc=0 exists=True size=119782 stderr= window_number=19820
+    0.573 host.guest_state_read        [MainThread] thread=main
+    0.574 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.393
+    0.574 scenario.state               [MainThread] label=initial state={'clicks': 0, 'edit_changes': 0, 'text_len': 4, 'text_hash': 12624396950412896480, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 1, 'last_command': 0, 'last_message': 1, 'resets': 1, 'last_text': '初始文本', 'status_text': '点击=0  文本长度=4  模态=0  线程发/收/退=0/0/0'}
+    0.574 scenario.check               [MainThread] name=initial_reset pass_=True detail=resets=1
+    0.574 scenario.check               [MainThread] name=initial_clicks pass_=True detail=
+    0.574 automation.edit_text         [MainThread] handle=0x1030 text=macOS 验收输入-β-2026-11 path=CompatEdit.set_string + change path
+    0.574 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x30003ea lparam=0x0 handle=0x1000 depth=1 reason=compat custom edit
+    0.574 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x6201eef0', '0x80', '0x0', '0x0', '0x1800017de', '0x0', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.574 host.get_text                [MainThread] handle=0x1030 text=macOS 验收输入-β-2026-11 copied=20
+    0.574 api.return                   [MainThread] api=GetWindowTextW ret=0x14 thread=main
+    0.575 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.575 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=0  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.575 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.575 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1871 elapsed_ms=0.926
+    0.575 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom edit
+    0.575 host.guest_state_read        [MainThread] thread=main
+    0.575 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.08
+    0.575 scenario.state               [MainThread] label=after_edit_a state={'clicks': 0, 'edit_changes': 1, 'text_len': 20, 'text_hash': 12646387704327668483, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 2, 'last_command': 1002, 'last_message': 273, 'resets': 1, 'last_text': 'macOS 验收输入-β-2026-11', 'status_text': '点击=0  文本长度=20  模态=0  线程发/收/退=0/0/0'}
+    0.575 scenario.check               [MainThread] name=edit_a_guest_saw_text pass_=True detail=macOS 验收输入-β-2026-11
+    0.575 scenario.check               [MainThread] name=edit_a_hash pass_=True detail=0xaf80fe9d18518303 vs 0xaf80fe9d18518303
+    0.575 scenario.check               [MainThread] name=edit_a_len pass_=True detail=
+    0.575 automation.button_click      [MainThread] handle=0x1040 path=CompatButton.mouseUp activation path
+    0.575 compat.button_action         [MainThread] handle=0x1040 control_id=1001 automation=True thread=MainThread main_thread=True
+    0.575 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x3e9 lparam=0x0 handle=0x1000 depth=1 reason=compat custom button
+    0.575 api.call                     [MainThread] dll=USER32.dll api=SendMessageW args=['0x1030', '0xd', '0x80', '0x6201eef0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.575 host.send_message            [MainThread] handle=0x1030 msg=WM_GETTEXT control_kind=edit
+    0.576 api.return                   [MainThread] api=SendMessageW ret=0x14 thread=main
+    0.576 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.576 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.576 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.576 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x1800031e8', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.577 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=按钮回调已同步更新业务状态 notify=False
+    0.577 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.577 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.577 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.577 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.577 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1875 elapsed_ms=1.288
+    0.577 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom button
+    0.577 host.guest_state_read        [MainThread] thread=main
+    0.577 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.069
+    0.577 scenario.state               [MainThread] label=after_click_1 state={'clicks': 1, 'edit_changes': 1, 'text_len': 20, 'text_hash': 12646387704327668483, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 3, 'last_command': 1001, 'last_message': 273, 'resets': 1, 'last_text': 'macOS 验收输入-β-2026-11', 'status_text': '点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0'}
+    0.577 scenario.check               [MainThread] name=click_1_count pass_=True detail=
+    0.577 scenario.check               [MainThread] name=click_1_label_updated_by_guest pass_=True detail=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0
+    0.577 automation.edit_text         [MainThread] handle=0x1030 text=第二次输入-λ-47 path=CompatEdit.set_string + change path
+    0.577 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x30003ea lparam=0x0 handle=0x1000 depth=1 reason=compat custom edit
+    0.577 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x6201eef0', '0x80', '0x0', '0x0', '0x1800017de', '0x0', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.577 host.get_text                [MainThread] handle=0x1030 text=第二次输入-λ-47 copied=10
+    0.577 api.return                   [MainThread] api=GetWindowTextW ret=0xa thread=main
+    0.578 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.578 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.578 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.578 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1718 elapsed_ms=0.76
+    0.578 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom edit
+    0.578 automation.button_click      [MainThread] handle=0x1040 path=CompatButton.mouseUp activation path
+    0.578 compat.button_action         [MainThread] handle=0x1040 control_id=1001 automation=True thread=MainThread main_thread=True
+    0.578 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x3e9 lparam=0x0 handle=0x1000 depth=1 reason=compat custom button
+    0.578 api.call                     [MainThread] dll=USER32.dll api=SendMessageW args=['0x1030', '0xd', '0x80', '0x6201eef0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.578 host.send_message            [MainThread] handle=0x1030 msg=WM_GETTEXT control_kind=edit
+    0.578 api.return                   [MainThread] api=SendMessageW ret=0xa thread=main
+    0.578 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.579 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.579 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.579 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x1800031e8', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.579 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=按钮回调已同步更新业务状态 notify=False
+    0.579 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.579 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.579 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.579 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.579 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1705 elapsed_ms=0.939
+    0.579 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom button
+    0.579 host.guest_state_read        [MainThread] thread=main
+    0.579 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.069
+    0.579 scenario.state               [MainThread] label=after_click_2 state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 5, 'last_command': 1001, 'last_message': 273, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0'}
+    0.579 scenario.check               [MainThread] name=click_2_count pass_=True detail=
+    0.579 scenario.check               [MainThread] name=text_b_guest_saw pass_=True detail=第二次输入-λ-47
+    0.579 scenario.check               [MainThread] name=text_b_hash pass_=True detail=0xb9a4d62339e0c2a8 vs 0xb9a4d62339e0c2a8
+    0.939 screenshot                   [MainThread] name=02-after-actions-compat.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/02-after-actions-compat.png rc=0 exists=True size=125775 stderr= window_number=19820
+    0.939 host.guest_enter             [MainThread] msg=WM_P0_ECHO msg_id=32770 wparam=0x5a5a lparam=0x0 handle=0x1000 depth=1 reason=scenario synchronous echo
+    0.940 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.940 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.940 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.940 guest.return                 [MainThread] thread=main purpose=WndProc WM_P0_ECHO address=0x1800013a0 ret=0x5a5a instructions=1488 elapsed_ms=1.002
+    0.940 host.guest_exit              [MainThread] msg=WM_P0_ECHO msg_id=32770 ret=0x5a5a depth=1 reason=scenario synchronous echo
+    0.940 scenario.check               [MainThread] name=sync_echo_return pass_=True detail=ret=0x5a5a
+    0.940 host.guest_state_read        [MainThread] thread=main
+    0.940 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.084
+    0.940 scenario.state               [MainThread] label=after_echo state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 23130, 'wndproc_calls': 6, 'last_command': 1001, 'last_message': 32770, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0'}
+    0.940 scenario.check               [MainThread] name=sync_echo_state pass_=True detail=
+    0.940 automation.menu_click        [MainThread] item_id=2001 label=关于(&A)… path=compat menu hit-test path
+    0.940 compat.menu_action           [MainThread] item_id=2001 automation=True thread=MainThread main_thread=True
+    0.940 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x7d1 lparam=0x0 handle=0x1000 depth=1 reason=compat custom menu
+    0.940 api.call                     [MainThread] dll=USER32.dll api=MessageBoxW args=['0x1000', '0x180003228', '0x180003208', '0x41', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.940 host.modal_enter             [MainThread] handle=0x1000 caption=Aevotrace 中文模态 text=这是同步模态测试。
+返回后业务模态计数加一。 style=0x41
+    0.943 compat.modal_run             [MainThread] caption=Aevotrace 中文模态 style=0x41
+    1.644 compat.modal_shown           [MainThread] window_number=19828 caption=Aevotrace 中文模态
+    1.754 screenshot                   [MainThread] name=03-modal-compat.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/03-modal-compat.png rc=0 exists=True size=86645 stderr= window_number=19828
+    1.761 compat.modal_result          [MainThread] result=1
+    1.761 host.modal_exit              [MainThread] result=1
+    1.761 api.return                   [MainThread] api=MessageBoxW ret=0x1 thread=main
+    1.762 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.762 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0 notify=False
+    1.762 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    1.762 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1527 elapsed_ms=821.576
+    1.762 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom menu
+    1.762 host.guest_state_read        [MainThread] thread=main
+    1.762 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.093
+    1.762 scenario.state               [MainThread] label=after_modal state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 23130, 'wndproc_calls': 7, 'last_command': 2001, 'last_message': 273, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0'}
+    1.762 scenario.check               [MainThread] name=modal_count pass_=True detail=modal=1
+    1.762 scenario.check               [MainThread] name=modal_result pass_=True detail=result=1
+    1.762 automation.menu_click        [MainThread] item_id=2002 label=启动工作线程(&W) path=compat menu hit-test path
+    1.762 compat.menu_action           [MainThread] item_id=2002 automation=True thread=MainThread main_thread=True
+    1.762 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x7d2 lparam=0x0 handle=0x1000 depth=1 reason=compat custom menu
+    1.762 api.call                     [MainThread] dll=KERNEL32.dll api=CreateThread args=['0x0', '0x0', '0x180002100', '0x1000', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.762 guest.thread_create          [MainThread] handle=0x2001 guest_start=0x180002100 param=0x1000 tid=0xb001 requested_by=main
+    1.763 api.return                   [MainThread] api=CreateThread ret=0x2001 thread=main
+    1.763 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=Sleep args=['0x28', '0x0', '0x0', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=1 tid=0xb001 during_guest_call=True direction=guest->host
+    1.763 guest.sleep                  [guest-worker-0xb001] thread=worker-0xb001 ms=40
+    1.764 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.764 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0 notify=False
+    1.764 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    1.764 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1536 elapsed_ms=1.574
+    1.764 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=compat custom menu
+    1.808 api.return                   [guest-worker-0xb001] api=Sleep ret=0x0 thread=worker-0xb001
+    1.808 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=GetCurrentThreadId args=['0x28', '0x0', '0x0', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    1.808 api.return                   [guest-worker-0xb001] api=GetCurrentThreadId ret=0xb001 thread=worker-0xb001
+    1.808 api.call                     [guest-worker-0xb001] dll=USER32.dll api=PostMessageW args=['0x1000', '0x8001', '0xb001', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    1.808 host.post_message            [guest-worker-0xb001] handle=0x1000 msg=WM_P0_WORKER_DONE wparam=0xb001 from_thread=worker-0xb001
+    1.808 api.return                   [guest-worker-0xb001] api=PostMessageW ret=0x1 thread=worker-0xb001
+    1.808 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=ExitThread args=['0x0', '0x8001', '0xb001', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    1.809 guest.exit_thread            [guest-worker-0xb001] thread=worker-0xb001 code=0
+    1.809 guest.thread_exit            [guest-worker-0xb001] thread=worker-0xb001 instructions=15
+    1.809 worker.finished              [guest-worker-0xb001] tid=0xb001 instructions=15 api_counts={'Sleep': 1, 'GetCurrentThreadId': 1, 'PostMessageW': 1, 'ExitThread': 1}
+    1.828 host.drain_post              [MainThread] msg=WM_P0_WORKER_DONE handle=0x1000 wparam=0xb001
+    1.828 host.guest_enter             [MainThread] msg=WM_P0_WORKER_DONE msg_id=32769 wparam=0xb001 lparam=0x0 handle=0x1000 depth=1 reason=posted message drain
+    1.829 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x180003258', '0xb001', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.829 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=工作线程 PostMessage 已送达 notify=False
+    1.829 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    1.829 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.830 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1 notify=False
+    1.830 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    1.830 guest.return                 [MainThread] thread=main purpose=WndProc WM_P0_WORKER_DONE address=0x1800013a0 ret=0x0 instructions=1563 elapsed_ms=1.048
+    1.830 host.guest_exit              [MainThread] msg=WM_P0_WORKER_DONE msg_id=32769 ret=0x0 depth=1 reason=posted message drain
+    1.830 host.guest_state_read        [MainThread] thread=main
+    1.830 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.073
+    1.830 scenario.wait_ok             [MainThread] label=worker post/exit state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 1, 'worker_posts_sent': 1, 'worker_posts_received': 1, 'worker_exits': 1, 'sync_echo': 23130, 'wndproc_calls': 9, 'last_command': 2002, 'last_message': 32769, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1'}
+    1.830 scenario.check               [MainThread] name=worker_created pass_=True detail=
+    1.830 scenario.check               [MainThread] name=worker_posts pass_=True detail=
+    1.830 scenario.check               [MainThread] name=worker_exits pass_=True detail=
+    1.953 screenshot                   [MainThread] name=04-final-compat.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/04-final-compat.png rc=0 exists=True size=125494 stderr= window_number=19820
+    1.953 scenario.check               [MainThread] name=modal_screenshot_saved pass_=True detail=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/03-modal-compat.png
+    1.954 host.guest_state_read        [MainThread] thread=main
+    1.954 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.185
+    1.954 scenario.state               [MainThread] label=final_before_close state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 1, 'worker_posts_sent': 1, 'worker_posts_received': 1, 'worker_exits': 1, 'sync_echo': 23130, 'wndproc_calls': 9, 'last_command': 2002, 'last_message': 32769, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1'}
+    1.954 scenario.check               [MainThread] name=final_clicks pass_=True detail=
+    1.954 scenario.check               [MainThread] name=final_edit_changes pass_=True detail=editChanges=2
+    1.954 scenario.check               [MainThread] name=final_text pass_=True detail=
+    1.954 scenario.check               [MainThread] name=final_wndproc pass_=True detail=wndproc=9
+    1.954 host.guest_enter             [MainThread] msg=WM_CLOSE msg_id=16 wparam=0x0 lparam=0x0 handle=0x1000 depth=1 reason=scenario close
+    1.954 api.call                     [MainThread] dll=USER32.dll api=DestroyWindow args=['0x1000', '0x10', '0x0', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.960 compat.close_window          [MainThread] handle=0x1000
+    1.960 host.destroy_window          [MainThread] handle=0x1000 control_kind=main
+    1.960 api.return                   [MainThread] api=DestroyWindow ret=0x1 thread=main
+    1.960 guest.return                 [MainThread] thread=main purpose=WndProc WM_CLOSE address=0x1800013a0 ret=0x0 instructions=25 elapsed_ms=5.837
+    1.960 host.guest_exit              [MainThread] msg=WM_CLOSE msg_id=16 ret=0x0 depth=1 reason=scenario close
+    2.171 scenario.check               [MainThread] name=window_closed pass_=True detail=
+    2.171 api.call                     [MainThread] dll=USER32.dll api=MessageBeep args=['0xffffffff', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    2.171 api.unsupported              [MainThread] dll=USER32.dll api=MessageBeep
+    2.171 scenario.negative_pass       [MainThread] expected=unsupported_api observed=unimplemented API USER32.dll!MessageBeep guest_instructions_before_abort=2 host_unsupported=unimplemented API USER32.dll!MessageBeep backend=compat
+    2.171 scenario.check               [MainThread] name=negative_unsupported_api pass_=True detail=
+    2.171 scenario.check               [MainThread] name=compat_no_native_events pass_=True detail=native_events=0
+    2.171 scenario.end                 [MainThread] checks={'initial_reset': True, 'initial_clicks': True, 'edit_a_guest_saw_text': True, 'edit_a_hash': True, 'edit_a_len': True, 'click_1_count': True, 'click_1_label_updated_by_guest': True, 'click_2_count': True, 'text_b_guest_saw': True, 'text_b_hash': True, 'sync_echo_return': True, 'sync_echo_state': True, 'modal_count': True, 'modal_result': True, 'worker_created': True, 'worker_posts': True, 'worker_exits': True, 'modal_screenshot_saved': True, 'final_clicks': True, 'final_edit_changes': True, 'final_text': True, 'final_wndproc': True, 'window_closed': True, 'negative_unsupported_api': True, 'compat_no_native_events': True} screenshots=['/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/01-initial-compat.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/02-after-actions-compat.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/04-final-compat.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/compat/03-modal-compat.png']

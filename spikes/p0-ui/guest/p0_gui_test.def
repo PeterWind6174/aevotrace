@@ -1,0 +1,9 @@
+LIBRARY p0_gui_test
+EXPORTS
+    P0WndProc
+    P0Reset
+    P0GetState
+    P0VersionW
+    P0ProbeUnsupported
+    P0CreateMainWindow
+    P0RunGui
