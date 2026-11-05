@@ -1,6 +1,6 @@
 # P0-CALLBACK-ABI-01：最小 Host↔Guest 回调契约
 
-状态：完成（契约与固定 fixture 已提交；compiler/platform 已对 v2 提交会签；reviewer 最终复核进行中）。
+状态：完成（契约与固定 fixture 已提交；compiler/platform 已对 v2 提交会签；reviewer 最终复核 SIGN-OFF）。
 
 ## 输入与责任
 
@@ -35,4 +35,4 @@
 
 - compiler：`SIGN-OFF: v2 committed accepted`（session `ses_e5452516effeU230iYUz7Sqarq`）。
 - platform：`SIGN-OFF: v2 committed accepted`（session `ses_e5452516cffeTcnkrlZmejylWj`）。
-- 最终 v2 包含 `trace_aot`、`config_size`、`destroy` 状态、`guest_info` 栈边界和 `total_jit_blocks`；所有 in-tree C/Python/测试使用 v2，Guest ABI 仍 v1。最终 QA-final 在 `afff569` PASS；reviewer 最终复核进行中。
+- 最终 v2 包含 `trace_aot`、`config_size`、`destroy` 状态、`guest_info` 栈边界和 `total_jit_blocks`；所有 in-tree C/Python/测试使用 v2，Guest ABI 仍 v1。最终 QA-final 在 `afff569` PASS；reviewer `SIGN-OFF: accepted`（session `ses_e53bdd5a4ffencHGIFWSPUb7fE`）。

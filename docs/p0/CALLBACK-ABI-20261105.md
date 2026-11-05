@@ -1,6 +1,6 @@
 # P0 最小 Host↔Guest 回调契约（试验 v2 / 实现版）
 
-日期：2026-11-05。状态：compiler/platform 已对提交的 v2 会签；reviewer 最终集成复核进行中。本文件只冻结本轮 P0-CALLBACK-INTEGRATION-01 所需的最小边界，不是 P1 的完整 ABI、PE、TSO 或异常契约。
+日期：2026-11-05。状态：compiler/platform/reviewer 已会签（最终代码 HEAD `afff569`；后续仅文档提交）。本文件只冻结本轮 P0-CALLBACK-INTEGRATION-01 所需的最小边界，不是 P1 的完整 ABI、PE、TSO 或异常契约。
 
 ## 1. 范围与不承诺
 
@@ -254,6 +254,6 @@ Host 异常边界：v0 只承诺捕获 C++ 异常并映射为 `HOST`；Host 回�
 | --- | --- | --- |
 | compiler | SIGN-OFF：v2 committed accepted（HEAD afff569） | ses_e5452516effeU230iYUz7Sqarq |
 | platform | SIGN-OFF：v2 committed accepted（HEAD afff569） | ses_e5452516cffeTcnkrlZmejylWj |
-| reviewer | 最终集成复核进行中 | ses_e53bdd5a4ffencHGIFWSPUb7fE |
+| reviewer | SIGN-OFF：accepted（最终代码 HEAD afff569） | ses_e53bdd5a4ffencHGIFWSPUb7fE |
 
 修订摘要（v2）：create 改为状态返回；HostImport 改为状态+`out_rax`；导入 ID 由 Host 提供并校验；增加 `guest_info`（含栈基址/栈顶）；明确 RSP=S+8、shadow `[S+8,S+0x28)`、哨兵+错误 RSP=INTERNAL；明确 reset/preserve、per-call/累计计数（含 `total_jit_blocks`）、`call_index`；明确 NO_BLOCK/JIT 分类和 AOT 块表+输入哈希比对；两阶段提交；错误 RSP 残留；C++/ObjC 异常边界；Unicorn 依赖抽取和 backend proof；允许回调内 guest_read/write；fixture helper 固定返回 op；增加测试用 JIT/INTERNAL 故障注入；create/destroy 状态可观察；`trace_aot`/`config_size` 纳入 v2。

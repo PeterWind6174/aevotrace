@@ -1,6 +1,6 @@
 # P0-CORE-BRIDGE-01：可复用 ENGINE 执行桥
 
-状态：完成（共享 JIT/bridge/无 GUI 测试已在最终 HEAD `afff569` 复跑通过；QA-final PASS）。
+状态：完成（共享 JIT/bridge/无 GUI 测试已在最终 HEAD `afff569` 复跑通过；QA-final PASS；reviewer 最终复核 SIGN-OFF）。
 
 ## 输入与责任
 
@@ -47,4 +47,4 @@
 - 标准 FNV-1a-64 输入身份修正：translator/AOT 的 `aev_input_hash=0xf789f5ee1e447e4e` 与独立计算结果一致；mutated AOT 仍被 `ABI_MISMATCH` 拒绝。
 - `ctest` 4/4 PASS；`p0_callback_bridge` 77/77 `CHECK` 通过（HostImport 失败 `host_import_id=3/4/5`、bad entry/import 校验、AOT/JIT、100 次、负例矩阵）；callback 脚本 `ALL CALLBACK CHECKS PASSED`，CASE 与 Windows reference 一致。
 - 最终构建产物：`libcallback_aot.dylib` `5773a3b61d9a...`，`libaev_bridge.dylib` `d6bcdc1e374d...`（构建目录/HEAD 绑定；AOT dylib 因路径/install name 可能跨构建目录不同，LLVM IR 同一）。
-- 独立 QA-final 在 `afff569` PASS：报告 `.local/results/P0-CALLBACK-INTEGRATION-01/QA-final/REPORT.md`；Windows reference `4f6929f7...`/27 insns MATCH；GUI compat/native 各 43/43。
+- 独立 QA-final 在 `afff569` PASS：报告 `.local/results/P0-CALLBACK-INTEGRATION-01/QA-final/REPORT.md`；Windows reference `4f6929f7...`/27 insns MATCH；GUI compat/native 各 43/43；reviewer 最终复核 `SIGN-OFF: accepted`。

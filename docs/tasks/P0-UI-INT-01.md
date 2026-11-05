@@ -1,6 +1,6 @@
 # P0-UI-INT-01：ENGINE 核心与双 GUI 后端的最小集成
 
-状态：实现完成（compat/native 自动链在最终 HEAD `afff569` 通过；QA-final PASS；人工 GUI/输入法待验收；reviewer 最终复核进行中）。
+状态：实现完成（compat/native 自动链在最终 HEAD `afff569` 通过；QA-final PASS；reviewer 最终复核 SIGN-OFF；人工 GUI/输入法待验收）。
 
 ## 输入与责任
 
@@ -37,6 +37,6 @@
 - 自动序列：alpha `Aevoβ中` op7、beta `macOS-47` op9，Guest 结果 `3828036654`/`614625053`，与 Windows reference 一致；独立序列 `GUI-独立-输入-2026-11` op `0x1357` 由独立 FNV oracle 校验，Guest 结果 `3146212972`。结果控件显示 Guest 计算的 FNV hash/len/op（Host 不计算最终 XOR），最终 Guest RAX 在 summary/日志中校验。
 - 100 次连续回调：同一 bridge/实例 `loop_100_counter` PASS（+100）；每击 `jit_compiles=0`、`jit_execs>0`；`total_jit_compiles=1`、`total_jit_execs=924`（含序列/负例，两后端相同）；AOT 每击 4 块，JIT `0x140001020` 实际编译/执行，stderr AOT/JIT 轨迹完整。
 - 负例：直接未知导入 `UNKNOWN_IMPORT`、事件驱动未知导入（结果控件和计数器均不变）、非法内存 `MEMORY`、未支持重入 `REENTRY`（外层仍 OK）、helper 成功后 Guest 故障 `MEMORY` 且结果控件不更新；故障后正常序列恢复；强制 native 失败退出 1，`compat_events=0`、`native_events=5`、`compat_classes_used=False`。
-- 证据：路径 `.local/results/P0-CALLBACK-INTEGRATION-01/gui-final4/{compat,native}/summary.json`，两后端各 43/43 检查、4 张 PNG（compat 1120x420，native 1120x484）；`QA-final/REPORT.md` 为独立 QA 在 `afff569` 的 PASS 报告；Windows reference `windows-reference-final2.log`（对象 `4f6929f7...`、`AEVTEXT_INSNS 27 MATCH`、CASE、`BUILD_RUN_OK`）。
+- 证据：路径 `.local/results/P0-CALLBACK-INTEGRATION-01/gui-final4/{compat,native}/summary.json`，两后端各 43/43 检查、4 张 PNG（compat 1120x420，native 1120x484）；`QA-final/REPORT.md` 为独立 QA 在 `afff569` 的 PASS 报告；Windows reference `windows-reference-final2.log`（对象 `4f6929f7...`、`AEVTEXT_INSNS 27 MATCH`、CASE、`BUILD_RUN_OK`）；reviewer 最终复核 `SIGN-OFF: accepted`。
 - 自动检查：`run_engine_gui.sh` 两后端 + 跨后端一致性 + forced native failure 全部通过；B 桥测试最终 77/77 checks、ctest 4/4。
 - 未完成/边界：无通用 PE/Win32、TLS/SEH、线程/模态/任意重入、真实应用、Trace/失效、`.app`、性能；`compat` 仍是 P0 语义 harness；Windows 可见窗口/物理键鼠/焦点/输入法/人工观感待验收；旧 Unicorn 对照路径未重新运行真实 DLL，只做 import 回归。
