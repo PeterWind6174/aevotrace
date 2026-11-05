@@ -48,7 +48,7 @@
   - WinMerge 2.16.60 `winmerge-2.16.60-x64-exe.zip`：`be3f850ed2e450c474928ccb67d2998e812da90dea1240a46352714553342522`。
   - PuTTY 0.85 `putty-0.85-w64.zip`：`e0b36e5381ecc78dd06a291bab25fb9d95bc991d0d864cf2741a5bde82816668`。
   - Notepad++ 8.9.8.1 `npp.8.9.8.1.portable.x64.zip`：`beddf5548e75c97930d1575ba1c7d113e6e2b33d0a200310e734ca08e225f414`。
-- 推荐：7-Zip File Manager 26.05（原生 Win32/公共控件；无 MFC/.NET/Chromium；主工作流离线可验证）；备选 WinMerge 2.16.60。PuTTY 0.85（MIT）与 Notepad++ 8.9.8.1（GPL-3.0）作为后续候选。
+- 推荐：7-Zip File Manager 26.05（原生 Win32/公共控件；无 MFC/.NET/Chromium；主工作流离线可验证）。备选不按 WinMerge 排序：binary 的 PE/API 证据显示 WinMerge 2.16.60 有 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调，复杂度最高；PuTTY 0.85（MIT，网络/加密/自绘终端）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。
 - 首轮 7-Zip 工作流：打开 `fixtures/scope-fixture.7z` → 列出 4 文件/2 目录 → 解压 → 校验 4 个成员 SHA-256 → 退出；Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列。
 - fixture：`b1f05255839f7ce6761338e129fc3ed99b0483c391f6efd54c5fc8e62ed82e68`；`7zz t` 自检通过，成员哈希见 `fixtures/MANIFEST.txt`。
 - 独立复核：coordinator 复算 7-Zip 包/主模块哈希、`7zFM.exe` 292 个导入符号、TLS 目录（无）、fixture 哈希与解压；与报告一致。

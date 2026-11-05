@@ -5,7 +5,7 @@
 ## 输入与责任
 
 - 阶段、需求 ID、前置任务：P0；R01/R02/R06/R08；可与 SCOPE 并行。
-- owner / reviewer / QA：platform（lead）+ binary（contributor） / reviewer / qa（按需）。
+- owner / reviewer / QA：binary（lead）+ platform（contributor） / reviewer / qa（按需）。
 - 基线 commit 或源码包哈希：`373becbdd7a65cafd63a98cb526bb1a9c933f731`。
 - 分支 / worktree / Windows 工作目录：调查任务，不改产品源码；报告在 `.local/results/P0-ABI-01/`。
 - 公共 ABI / artifact / 平台接口版本：草案，供 P0-ADR-01 冻结，不直接实现。

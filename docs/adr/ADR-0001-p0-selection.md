@@ -80,7 +80,7 @@
 - D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0-UI-01 只证明最小回调/控件路线，不等于产品完成。
 - D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定。
 - D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 已完成调查/方案（报告 SHA-256 `7f840a...b484e`），但未实现、未运行 Trace，**D6 标未决**，P0-05 不能据此关闭。
-- D7 首版真实应用与支持矩阵：候选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）优先，WinMerge 2.16.60（GPL-2.0）备选；Notepad++ 8.9.8.1（GPL-3.0）和 PuTTY 0.85（MIT）作为后续候选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 不宣称已运行。
+- D7 首版真实应用与支持矩阵：主选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）。备选不按 WinMerge 排序：PE/API 证据显示 WinMerge 2.16.60 的 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调与可选 WebView2 组件明显更难；PuTTY 0.85（MIT，但网络/加密/终端自绘）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 不宣称已运行。
 
 ## P1 契约候选（待证据确认，不冻结）
 

@@ -40,10 +40,11 @@
 ## 4. 候选应用与支持矩阵（P0-SCOPE-01）
 
 - 固定候选与官方哈希：7-Zip 26.05（`fd99e86f...47d0`）、WinMerge 2.16.60（`be3f850e...5222`）、PuTTY 0.85（`e0b36e53...6668`）、Notepad++ 8.9.8.1（`beddf554...f414`）；四个包均与官方发布值匹配。
-- 推荐首选：7-Zip File Manager 26.05，`7zFM.exe` + `7z.dll`；原生 Win32/公共控件，无 MFC/.NET/Chromium；主工作流离线可验证。备选：WinMerge 2.16.60（静态 MFC/ATL + GDI+ + COM，API 面更大）。
-- 后续候选：PuTTY 0.85（MIT，但网络/加密/线程/自绘终端风险高）；Notepad++ 8.9.8.1（GPL-3.0，21 个直接 DLL、插件/更新器、Scintilla 自绘，风险高）。
+- 推荐首选：7-Zip File Manager 26.05，`7zFM.exe` + `7z.dll`；原生 Win32/公共控件，无 MFC/.NET/Chromium；主工作流离线可验证。备选不按 WinMerge 排序：binary 的 PE/API 证据显示 WinMerge 2.16.60 有 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调，复杂度最高；PuTTY 0.85（MIT，网络/加密/自绘终端）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。
+- 后续候选：PuTTY 0.85、Notepad++ 8.9.8.1；均需独立范围，不与 7-Zip 首版混合宣称。
 - 7-Zip 首轮工作流：打开 `scope-fixture.7z`（SHA-256 `b1f05255...e68`）→ 列出 4 文件/2 目录 → 解压 → 校验成员 SHA-256 → 退出；Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列。
-- 未验证：没有运行任何候选 GUI；COM/Shell/拖放、`7zG.exe`、注册表、DPI/IME、Authenticode、`native` 自绘边界均未测。报告见 `.local/results/P0-SCOPE-01/app-candidates.md`。
+- PE/API 事实：7zFM 292 导入/10 DLL，无 TLS 回调、无 CFG、无 Authenticode；`7z.dll` 89 导入、含 AVX/SHA-512 代码路径；WinMerge 762 导入、TLS 2 回调、CFG 函数表；Notepad++/PuTTY TLS 目录存在但非空回调为 0。`tls_callbacks` 口径统一为“目录存在/非空回调数量”，不混用。
+- 未验证：没有运行任何候选 GUI；COM/Shell/拖放、`7zG.exe`、注册表、DPI/IME、Authenticode、`native` 自绘边界均未测。报告见 `.local/results/P0-SCOPE-01/app-candidates.md` 与 `binary-report.md`。
 
 ## 4.1 需求覆盖映射（防止把调查当成能力）
 
