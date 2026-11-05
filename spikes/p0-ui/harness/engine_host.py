@@ -268,6 +268,24 @@ class EngineGuiHost:
         self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
         return result.status
 
+    def probe_unknown_import_event(self) -> tuple[int, bool, bool]:
+        """Trigger the failure through the real button event path.
+
+        The result control must remain at its previous text and the Guest
+        counter must not change, because dispatch_command commits only on OK.
+        """
+        label_before = self.result_text
+        counter_before = self._read_counter()
+        self._event_update_override = UNKNOWN_IMPORT
+        self.backend.click_button(self.button_handle)
+        self._event_update_override = None
+        self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
+        return (
+            self.last_status,
+            self.result_text == label_before,
+            self._read_counter() == counter_before,
+        )
+
     def probe_invalid_memory(self) -> int:
         result = self._call_guest(3, text=None, len_units=4,
                                   text_addr=BAD_ADDRESS)

@@ -1,6 +1,6 @@
 # P0-CORE-BRIDGE-01：可复用 ENGINE 执行桥
 
-状态：计划已准备，尚未派发。
+状态：实现完成（共享 JIT/bridge/无 GUI 测试已提交；最终 HEAD QA 复核进行中）。
 
 ## 输入与责任
 

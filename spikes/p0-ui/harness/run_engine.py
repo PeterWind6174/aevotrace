@@ -151,6 +151,14 @@ def main(argv=None) -> int:
         summary.update(base_summary)
         summary["dependencies_after"] = dependency_info()
         summary["screenshots"] = _screenshot_info(scenario.screenshots)
+        linkage = summary.get("bridge_linkage") or {}
+        deps_after = summary.get("dependencies_after") or {}
+        if (linkage.get("has_unicorn") or linkage.get("has_pefile") or
+                deps_after.get("unicorn_loaded") or
+                deps_after.get("pefile_loaded") or
+                deps_after.get("guest_pe_loaded")):
+            summary["success"] = False
+            summary["error"] = "engine path loaded Unicorn/pefile/guest_pe"
         summary["success"] = bool(summary.get("success")) and bool(summary["screenshots"])
         exit_code = 0 if summary["success"] else 1
     except Exception as exc:  # noqa: BLE001 - evidence must capture hard failures

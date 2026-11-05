@@ -131,20 +131,22 @@ class EngineScenario:
                     WINDOWS_REFERENCE["beta"],
                     str((state_b["bridge"] or {}).get("guest_rax")))
 
-        # Independent/held-out sequence: not used to choose the fixture or AOT.
-        text_c = "独立-Ω-93"
-        self.host.button_op = 0x5A5A
+        # Independent/held-out sequence: this text/op is not in the Windows
+        # reference or the fixture preparation set; its oracle is computed
+        # independently in Python.
+        text_c = "GUI-独立-输入-2026-11"
+        self.host.button_op = 0x1357
         self.backend.set_edit_text(edit, text_c)
         self.backend.click_button(button)
         state_c = self._snap("sequence_c_hidden")
         self._check("sequence_c_counter", state_c["counter"] == 6,
                     str(state_c["counter"]))
-        expected_c = self._expected_label(text_c, 0x5A5A)
+        expected_c = self._expected_label(text_c, 0x1357)
         self._check("sequence_c_label", state_c["result_text"] == expected_c,
                     f"{state_c['result_text']} != {expected_c}")
-        self._check("sequence_c_guest_rax_windows",
+        self._check("sequence_c_guest_rax_independent",
                     (state_c["bridge"] or {}).get("guest_rax") ==
-                    WINDOWS_REFERENCE["hidden"],
+                    self._expected_guest_rax(text_c, 0x1357),
                     str((state_c["bridge"] or {}).get("guest_rax")))
 
         self.backend.pump(0.2)
@@ -209,6 +211,19 @@ class EngineScenario:
         state = self.host.read_state()
         self._check("invalid_memory_counter", state["counter"] == counter_before)
         self._check("invalid_memory_label", state["result_text"] == label_before)
+
+        # The same failure through the real button event path; dispatch_command
+        # must not commit the pending value on non-OK.
+        status, label_same, counter_same = self.host.probe_unknown_import_event()
+        self.negative["unknown_import_event"] = {
+            "status": status,
+            "label_unchanged": label_same,
+            "counter_unchanged": counter_same,
+        }
+        self._check("unknown_import_event_status",
+                    status == AEV_BRIDGE_ERR_UNKNOWN_IMPORT, str(status))
+        self._check("unknown_import_event_label", label_same)
+        self._check("unknown_import_event_counter", counter_same)
 
         # Negative: unsupported reentry; outer call must still complete.
         counter_before = self.host.read_state()["counter"]

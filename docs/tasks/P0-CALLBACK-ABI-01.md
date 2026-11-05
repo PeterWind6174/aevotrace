@@ -1,6 +1,6 @@
 # P0-CALLBACK-ABI-01：最小 Host↔Guest 回调契约
 
-状态：计划已准备，尚未派发。
+状态：完成（契约与固定 fixture 已提交；compiler/platform/reviewer 已会签，最终 v2 复核进行中）。
 
 ## 输入与责任
 
