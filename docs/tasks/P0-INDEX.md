@@ -18,6 +18,7 @@
 | P0-PKG-01 | 最小 ARM64 `.app`/随包依赖/签名探针 | platform + qa | 是（隔离 worktree） | 未开始 |
 | P0-BUILD-REPRO-01 | ENGINE/UI 构建可复现口径 | compiler + qa | 是（隔离 worktree） | 未开始 |
 | P0-CORE-FIX-01 | 执行核心 F1–F5 正确性修复与回归 | compiler | 是（隔离 worktree） | 进行中 |
+| P0-CORE-FIX-QA-01 | F1–F5 修复的独立复跑 | qa | 否 | 未开始（待修复提交） |
 | P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 完成（ADR；P0 不通过；P1 输入） |
 | P0-REVIEW-01 | 对 ADR、spike 代码与 QA 证据做独立只读审查 | reviewer | 否 | 完成（P0 不通过维持；意见已合并） |
 
