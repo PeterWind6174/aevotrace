@@ -19,6 +19,8 @@
 | P1-PE-01 | binary | P1-CONTRACT-01 | PE32+ 映射、导入/导出、重定位、资源、TLS/初始化元数据、模块身份 | 模块身份 schema owner |
 | P1-CORE-01 | compiler | P1-CONTRACT-01、P1-PE-01（模块身份） | x64 解码/语义子集、ARM64 生成、AOT 调度、JIT 交接、基础失效 | 消费 binary 的模块身份 |
 | P1-PLATFORM-01 | platform | P1-CONTRACT-01 | kernel32/user32 基础子集、Guest/Host ABI 桥、回调、LastError、线程状态 | 先做测试族需要的 API |
+| P1-ABI-01 | binary + platform | P1-CONTRACT-01 | GuestState/桥接/异常/PE 能力表/TEB 版本化 | 与 P1-PLATFORM-01 共用 ABI 契约 |
+| P1-MEM-01 | compiler + qa | P1-CORE-01、P1-ABI-01 | x86 TSO/原子/未对齐/跨页/权限失败 litmus | 全部当前未验证；先声明保证级别 |
 | P1-TEST-01 | qa | P1-BUILD-01、P1-CONTRACT-01 | 固定 Win32 测试族、参考结果、独立验证输入、差分报告 | 准备集/独立集分开；作为 P1 验收 gate |
 | P1-TRACE-01 | binary + compiler | P1-CONTRACT-01、P1-CORE-01 | 动态发现记录、输入身份绑定、增量合并和失效 | 不把一次 Trace 当回放 |
 | P1-GUI-COMPAT-01 | platform | P1-CONTRACT-01、P1-CORE-01、P1-PLATFORM-01 | compat 窗口/控件/消息/模态最小产品路径 | 选定兼容实现，ARM64/no-Rosetta；与 native 共用核心 |
