@@ -72,15 +72,15 @@
 - 建议：Windows 原生执行负责业务参考输出/文件/事件；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录。SSH 不是 Trace 通道。
 - 待 P0-TRACE-01 验证记录格式、开销和失效规则。
 
-## 决策（待填）
+## 决策（proposed，待 P0-QA-01/P0-REVIEW-01 证据确认）
 
-- D1 执行核心：
-- D2 AOT/JIT 交接与 artifact：
-- D3 `compat` 平台路线：
-- D4 `native` GUI 路线：
-- D5 构建/语言/最低系统：
-- D6 采集与准备执行：
-- D7 首版真实应用与支持矩阵：
+- D1 执行核心：优先自建 x64 前端 + LLVM AArch64 后端；P0-ENGINE-01 先证明最小 AOT/JIT 闭环。Remill（Apache-2.0）作为 P1 指令语义覆盖候选，需先做固定版本构建/许可/集成验证；QEMU/FEX/Box64/Rosetta 不作为首版直接执行核心。
+- D2 AOT/JIT 交接与 artifact：AOT 模块优先独立签名 dylib + 模块描述符/调度表；JIT 回退用 LLVM ORC 或等价真实编译；保留静态链接作为 spike 降级，但必须标注重定位/动态加载未验证。
+- D3 `compat` 平台路线：自建 Win32 兼容层为候选；Wine x86-64 + Rosetta 违反无 Rosetta 要求；Wine ARM64 复用需先证明 PE/ABI/许可可行，P0 不选定。
+- D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0-UI-01 只证明最小回调/控件路线，不等于产品完成。
+- D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定。
+- D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 只有调查/方案时必须标未决。
+- D7 首版真实应用与支持矩阵：候选 7-Zip 26.05（LGPL + unRAR 限制）优先，Notepad++ 8.9.8.1（GPL-2.0）备选；最终由用户确认，P0 不宣称已运行。
 
 ## P1 契约候选（待证据确认，不冻结）
 
@@ -91,6 +91,16 @@
 - Artifact manifest：格式版本、输入/模块身份、转换器/运行时/后端/helper ABI 版本、目标特性、重定位假设、配置、构建 ID。
 - 平台后端：`compat`/`native` 能力表、API 支持状态、未支持时的错误、禁止静默回退。
 - 测试结果：场景 ID、输入哈希、环境、命令、退出码、stdout/stderr/文件副作用、事件序列、AOT/JIT 统计、后端 ID。
+
+## Artifact 方案候选（P1 冻结前）
+
+- 构建目录按应用/模式隔离；`.app` 内含 ARM64 主程序、执行运行时、模式后端和签名的 AOT 模块。
+- AOT 模块优先采用独立签名 dylib + 导出模块描述符/调度表；`dlopen` 前校验签名/架构/ABI/输入哈希。若 P0 只能静态链接，必须在报告中标“动态加载/重定位未验证”。
+- Guest 原始 EXE/DLL 只作为输入/资源/调试材料，不能被当作执行入口；主执行链必须进入 AOT/JIT 生成的 ARM64 代码。
+- 运行时新增 JIT 缓存/Trace 写入 `~/Library/Application Support/Aevotrace/` 或 Caches，不修改已签名包。
+- manifest 记录输入/模块哈希、代码版本、转换器/运行时/helper/后端 ABI、目标特性、模式、构建 ID、重定位假设。
+- 所有可执行依赖检查 `lipo -archs`/`file`，主执行链不得要求 Rosetta。
+- 本地开发签名可 ad-hoc；分发签名/公证/JIT entitlement 作为独立交付检查，不在 P0 宣称完成。
 
 ## 后果
 
