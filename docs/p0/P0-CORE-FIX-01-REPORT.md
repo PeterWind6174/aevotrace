@@ -41,7 +41,7 @@
 - `ctest`：**2/2 通过**（原 `p0_engine_closed_loop` + 新 `p0_core_fix_semantics`）。
 - 原 5 case：**22 PASS / 0 FAIL**，`reference.diff` 0 字节；AOT/JIT/ASLR/负例保持。
 - 新 semantics：**364 PASS / 0 FAIL**；F1 10 形式、F2 ORC ARM64 执行、F3 JIT+AOT（含第二条指令故障 PC=0x140001005、无寄存器/内存/flags/RSP/RIP 副作用）、F4 `pop rsp`/16 位拒绝、F5 helper 25 例 + JIT 22 例、4/2/1 位回归。
-- 独立 QA：`P0-CORE-FIX-QA-01` PASS；`checks.tsv` 123 PASS + 1 N/A（IMUL AOT by design）；`ssh win` 重跑参考输出一致（CRLF/LF 归一化），参考 exe `80b6429f...`。
+- 独立 QA：`P0-CORE-FIX-QA-01` PASS；`checks.tsv` 123 PASS + 1 N/A（IMUL AOT by design）；`ssh win` 重跑参考输出一致（CRLF/LF 归一化），参考 exe `80b6429f...`；coordinator 在最终 HEAD `8c0fc15` 复跑 `ctest` 2/2。
 - Reviewer：未发现 F1–F5 代码级阻断，建议合并；非阻断测试补强与零 AOT block 非法 IR 另列。
 
 ## 5. 关键哈希
