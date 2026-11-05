@@ -1,0 +1,12 @@
+
+File: .worktrees/p0-callback-integration/spikes/p0-engine/testdata/callback/aev_callback_fixture.obj
+Format: COFF-x86-64
+Arch: x86_64
+AddressSize: 64bit
+Relocations [
+  Section (5) .pdata {
+    0x0 IMAGE_REL_AMD64_ADDR32NB $LN16 (9)
+    0x4 IMAGE_REL_AMD64_ADDR32NB $LN16 (9)
+    0x8 IMAGE_REL_AMD64_ADDR32NB $unwind$aev_guest_callback (12)
+  }
+]

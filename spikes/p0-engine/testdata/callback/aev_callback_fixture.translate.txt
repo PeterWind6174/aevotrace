@@ -1,0 +1,3 @@
+translated input=spikes/p0-engine/testdata/callback/aev_callback_fixture.obj entry=aev_guest_callback entry_addr=0x140001000 functions=1 aot_blocks=4 jit_blocks=1
+function aev_guest_callback addr=0x140001000 bytes=86 insns=27 blocks=5
+  JIT-only block 0x140001020: AOT coverage boundary: imul delegated to JIT

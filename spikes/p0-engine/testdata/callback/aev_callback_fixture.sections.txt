@@ -1,0 +1,11 @@
+
+.worktrees/p0-callback-integration/spikes/p0-engine/testdata/callback/aev_callback_fixture.obj:	file format coff-x86-64
+
+Sections:
+Idx Name          Size     VMA              Type
+  0 .drectve      0000002f 0000000000000000 
+  1 .debug$S      0000009c 0000000000000000 DATA, DEBUG
+  2 .aevtext      00000056 0000000000000000 TEXT
+  3 .xdata        0000000c 0000000000000000 DATA
+  4 .pdata        0000000c 0000000000000000 DATA
+  5 .chks64       00000030 0000000000000000 

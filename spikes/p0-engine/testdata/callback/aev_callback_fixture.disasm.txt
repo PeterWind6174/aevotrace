@@ -1,0 +1,33 @@
+
+.worktrees/p0-callback-integration/spikes/p0-engine/testdata/callback/aev_callback_fixture.obj:	file format coff-x86-64
+
+Disassembly of section .aevtext:
+
+0000000000000000 <aev_guest_callback>:
+       0:      	movq	%rbx, 0x8(%rsp)
+       5:      	pushq	%rdi
+       6:      	subq	$0x20, %rsp
+       a:      	xorl	%eax, %eax
+       c:      	movq	%r9, %rdi
+       f:      	movq	%r8, %r11
+      12:      	movl	$0x811c9dc5, %ebx       # imm = 0x811C9DC5
+      17:      	testq	%r8, %r8
+      1a:      	je	0x37 <aev_guest_callback+0x37>
+      1c:      	nopl	(%rax)
+      20:      	movzwl	(%rdx,%rax,2), %r10d
+      25:      	incq	%rax
+      28:      	xorl	%ebx, %r10d
+      2b:      	imull	$0x1000193, %r10d, %ebx # imm = 0x1000193
+      32:      	cmpq	%r11, %rax
+      35:      	jb	0x20 <aev_guest_callback+0x20>
+      37:      	movl	%ecx, %r8d
+      3a:      	movq	%r11, %rdx
+      3d:      	movl	%ebx, %ecx
+      3f:      	callq	*(%r9)
+      42:      	movq	0x8(%rdi), %rcx
+      46:      	incq	(%rcx)
+      49:      	xorl	%ebx, %eax
+      4b:      	movq	0x30(%rsp), %rbx
+      50:      	addq	$0x20, %rsp
+      54:      	popq	%rdi
+      55:      	retq

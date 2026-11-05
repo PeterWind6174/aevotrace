@@ -1,0 +1,10 @@
+{
+  "input": "spikes/p0-engine/testdata/callback/aev_callback_fixture.obj",
+  "entry": "aev_guest_callback",
+  "entry_address": 5368713216,
+  "aot_block_count": 4,
+  "jit_block_count": 1,
+  "functions": [
+    {"name": "aev_guest_callback", "address": 5368713216, "bytes": 86, "blocks": [{"rip": 5368713216, "jit_only": false, "reason": ""}, {"rip": 5368713244, "jit_only": false, "reason": ""}, {"rip": 5368713248, "jit_only": true, "reason": "AOT coverage boundary: imul delegated to JIT"}, {"rip": 5368713271, "jit_only": false, "reason": ""}, {"rip": 5368713282, "jit_only": false, "reason": ""}]}
+  ]
+}
