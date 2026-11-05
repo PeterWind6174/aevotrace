@@ -10,10 +10,15 @@
 | P0-ABI-01 | x64 Windows ABI、TLS、异常、回调、内存模型与依赖许可调查 | binary（lead）+ platform | 否 | 完成（调查；运行时未验证） |
 | P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary（lead）+ compiler | 否 | 待审查（仅方案，未实现/未运行） |
 | P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 完成（QA 功能 PASS；V-1/P-1 转 P1） |
-| P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 完成（功能 + W-1/W-2 QA PASS；人工待验） |
+| P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 待人工验证（自动部分完成；W-1/W-2 PASS） |
 | P0-QA-01 | 对 ENV/ENGINE/UI 指定提交和产物做独立复跑与反伪证检查 | qa | 否 | 完成（功能 + W-1/W-2 PASS；整体 P0 不通过） |
-| P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 待审查（草案 + 证据齐） |
-| P0-REVIEW-01 | 对 ADR、spike 代码与 QA 证据做独立只读审查 | reviewer | 否 | 进行中 |
+| P0-UI-INT-01 | ENGINE 核心替换 Unicorn，跑通双后端回调 | platform + compiler | 是（隔离 worktree） | 未开始 |
+| P0-TRACE-SPIKE-01 | 自建核心 Guest PC/基本块/间接目标记录 | compiler + binary | 是（隔离 worktree） | 未开始 |
+| P0-APP-RUN-01 | 7-Zip 26.05 Windows 参考工作流 | qa | 否 | 未开始 |
+| P0-PKG-01 | 最小 ARM64 `.app`/随包依赖/签名探针 | platform + qa | 是（隔离 worktree） | 未开始 |
+| P0-BUILD-REPRO-01 | ENGINE/UI 构建可复现口径 | compiler + qa | 是（隔离 worktree） | 未开始 |
+| P0-ADR-01 | 汇总证据，形成选型 ADR、支持矩阵与 P1 契约草案 | coordinator | 否 | 完成（ADR；P0 不通过；P1 输入） |
+| P0-REVIEW-01 | 对 ADR、spike 代码与 QA 证据做独立只读审查 | reviewer | 否 | 完成（P0 不通过维持；意见已合并） |
 
 > 多 owner 任务只有一个 lead，另一角色为 contributor；结论冲突由 lead 汇总，coordinator 裁决。
 

@@ -1,6 +1,6 @@
 # P0-ADR-01：P0 选型 ADR、支持矩阵与 P1 契约草案
 
-状态：进行中（ADR 草案与 proposed 决策已写；等待 P0-QA-01/P0-REVIEW-01）。
+状态：完成（ADR 草案与 proposed D1–D7；reviewer 终审 P0 整体不通过；仅作 P1 规划输入）。
 
 ## 输入与责任
 

@@ -1,6 +1,6 @@
 # ADR-0001：P0 执行引擎、平台路线与双 GUI 后端选型（草案）
 
-状态：待 reviewer 终审；不是“P0 整体通过”。
+状态：reviewer 终审完成；P0 整体不通过维持；本 ADR 仅作 P1 规划输入。
 日期：2026-11-05。
 决策者：coordinator；审查：reviewer；证据责任人：compiler / platform / binary / qa。
 
@@ -10,6 +10,13 @@
 - 已关闭：UI W-1（构建脚本 `cmd.exe /c` 下 `Get-FileHash` 失败）与 W-2（DLL 固定哈希不可复现）；`/Brepro` 后新固定 DLL `c5b89e83...`，连续构建一致。
 - 未通过/未完成：P0-UI 仍是 Unicorn 临时桥接 + 自建语义 compat，未与 ENGINE 核心集成；D3 最终 compat 运行库未选定；P0-TRACE 只有方案，无实际记录，D6 未决；V-1 代码版本/失效未实现；P-1/R05 `.app`/随包依赖/签名/无开发工具运行未满足；真实 7-Zip 未在 Windows 运行；同核心 JIT-only/持久化缓存 JIT/AOT Hybrid 性能未测；GUI 可见窗口/物理输入/输入法/焦点/外观待人工。
 - 因此本 ADR 只能作为 **P1 规划输入**，不能宣布 P0 阶段完成或首版能力。
+
+### 独立审查结论（P0-REVIEW-01）
+
+- ENGINE 证据可排除 Host 重写/固定回放/只跑 JIT；UI 证据可排除 Host 改状态/只跑一侧/静默回退；W-1/W-2 关闭可信。
+- P0 整体不通过维持：P0-03（选定核心+兼容实现集成）与 P0-05（实际 Trace）未闭合；R05/P-1、V-1、真实应用、性能三类对照、人工 GUI 未完成。
+- 审查指出的支持矩阵缺失、UI 状态口径、WinMerge 备选冲突、TLS 字段混用、QA 旧报告、ENGINE “unsigned”措辞等已在 coordinator 文档中处理；支持矩阵见 `docs/p0/SUPPORT-MATRIX.md`。
+- 非阻断但需 P1 处理：UI `DefWindowProcW/TranslateMessage/DispatchMessageW` 占位返回、ENGINE `aev_load` 失败返回 0、UI 证据 `git_head` 旧值、ENGINE README/REPORT 的签名措辞。
 
 ## 背景
 
@@ -33,7 +40,7 @@
 | QEMU TCG | https://www.qemu.org/docs/master/devel/tcg.html | 文档已读；未构建 |
 | Remill | https://github.com/lifting-bits/remill | README/许可已读；未构建 |
 | LLVM 23.1.4 | 本机 `/opt/homebrew/opt/llvm` | 本机版本已核对；未做许可文件全文审查 |
-| Capstone 5.0.9 | 本机 `/opt/homebrew/opt/capstone` | 本机版本已核对；许可证待 P0-ABI 清单确认 |
+| Capstone 5.0.9 | 本机 `/opt/homebrew/opt/capstone` | 本机版本已核对；P0-ABI 已记录 BSD-3-Clause |
 
 ## 决策驱动
 
@@ -51,7 +58,7 @@
 
 | 候选 | 已知事实 | 待验证 | 初步风险 |
 | --- | --- | --- | --- |
-| 自建 x64 frontend + LLVM AArch64 | LLVM 23.1.4 可用，Apache-2.0 with LLVM exceptions；P0-ENGINE-01 正在验证 | x64 语义覆盖、AOT 重定位、ORC JIT 交接 | 自建 lifter 工作量大；异常/自修改代码后置 |
+| 自建 x64 frontend + LLVM AArch64 | LLVM 23.1.4 可用，Apache-2.0 with LLVM exceptions；P0-ENGINE-01 spike 已验证 AOT/JIT 闭环 | 完整 x64 语义覆盖、PE 重定位、异常/失效 | 自建 lifter 工作量大；异常/自修改代码后置 |
 | Remill（指令语义库）+ 自建发现/运行时 + LLVM | Apache-2.0；README 声明支持 x86-64/AVX/AVX512 语义、macOS、LLVM 15+；未在本项目构建 | 固定版本构建、Windows PE 集成、生成的 IR 与 AOT/JIT 交接、体积/性能 | 依赖重、LLVM 版本耦合；不能直接提供 PE 装载/运行时 |
 | QEMU TCG | JIT；GPLv2；未见 AOT 导出接口 | 是否能导出可重定位代码、嵌入成本 | 许可与 AOT 目标不符 |
 | FEX-Emu | MIT；面向 ARM64 Linux；需 x86-64 RootFS；code cache 是运行期缓存 | macOS 可用性、AOT 导出 | 非 macOS、非 PE |
@@ -72,7 +79,7 @@
 ### 语言与构建
 
 - 建议：C++20 + C ABI 核心，Objective-C++ 平台适配，Python 编排；CMake + Ninja；macOS 最低版本待定。
-- 待 P0-ENGINE-01/P0-UI-01 证明工具链可用后冻结。
+- 工具链已在 P0-ENGINE-01/P0-UI-01 验证；D5 仍待 reviewer/用户确认最低 macOS 版本后冻结。
 
 ### 准备执行与记录
 
@@ -97,7 +104,7 @@
 - D4 `native` GUI 路线：AppKit 原生窗口/控件适配；P0 UI 已验证 NSWindow/NSTextField/NSButton/NSMenu/NSAlert、主线程和回调；产品化仍缺 Guest 消息泵/引擎集成。
 - D5 构建/语言/最低系统：C++20 + C ABI 核心、Objective-C++ 平台适配、Python 编排、CMake/Ninja；最低 macOS 版本待定；UI `/Brepro` 与构建脚本已修复。
 - D6 采集与准备执行：Windows 原生执行负责业务参考输出；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录；SSH 不是 Trace 通道。P0-TRACE-01 只有调查/方案，**D6 未决**，P0-05 不能关闭。
-- D7 首版真实应用与支持矩阵：主选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）。备选不按 WinMerge 排序：PE/API 证据显示 WinMerge 2.16.60 的 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调与可选 WebView2 组件明显更难；PuTTY 0.85（MIT，但网络/加密/终端自绘）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 未运行该应用。
+- D7 首版真实应用与支持矩阵：主选 7-Zip 26.05（LGPL-2.1+，含 unRAR/BSD 组件；`7zFM.exe` + `7z.dll`）。备选不按 WinMerge 排序：PE/API 证据显示 WinMerge 2.16.60 的 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调与可选 WebView2 组件明显更难；PuTTY 0.85（MIT，但网络/加密/终端自绘）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。首轮 7-Zip 工作流限定为“打开归档→列出→解压→校验→退出”，Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列；最终由用户确认，P0 未运行该应用。输入/指令/PE/GUI/真实应用 consolidated 矩阵见 `docs/p0/SUPPORT-MATRIX.md`。
 
 ## P1 契约候选（待证据确认，不冻结）
 
@@ -145,6 +152,7 @@
 - 真实应用的最终选择与工作流；7-Zip 启动时 COM/Shell/拖放是否无条件调用未验证。
 - TEB/PEB 版本化布局与 `WindowsBuildId` 支持范围；`GS:0x68` LastError 未实测。
 - 首版 C++ EH/SEH 级别；7-Zip 的 `__CxxFrameHandler` 是否首版必须。
+- R07 性能 gate：同核心 JIT-only / 持久化缓存 JIT / AOT Hybrid 三类对照在 P1/P6 的冻结阈值，P0 只有原始混合路径数据。
 - x86-64 TSO 保证级别：保守全屏障、分级同步还是首版只保证单线程/显式同步。
 - `native` 对自绘 list/tree/进度/终端的容忍边界；不能宣称全部原生。
 - 动态代码、异常/SEH、TLS、多线程的 P1 优先级。

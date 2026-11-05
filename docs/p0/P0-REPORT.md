@@ -1,6 +1,6 @@
 # P0 报告：范围、选型与高风险验证
 
-状态：进行中（等待 SCOPE/ABI/TRACE/ENGINE/UI 证据；不得据此宣称 P0 通过或产品已实现）。
+状态：reviewer 终审完成；**P0 整体不通过**（功能路径有条件验证，阶段 gate 未闭合）。不得据此宣称 P0 通过或产品已实现。
 日期：2026-11-05。基线：`373becbdd7a65cafd63a98cb526bb1a9c933f731`；任务记录提交：`586662a4ff09465d7d3aa453fb44e5aa6e880c79`。
 
 ## 1. 基线与协作
@@ -20,14 +20,14 @@
 | 任务 | 状态 | 关键证据 | 失败/未测 |
 | --- | --- | --- | --- |
 | P0-ENV-01 | 完成 | Windows x64 编译/运行/回传，76/76 哈希一致，15 项 Mac 校验 PASS | GUI/AOT/JIT 不在范围 |
-| P0-SCOPE-01 | 静态调查完成（待复核） | 4 个候选官方哈希匹配；7-Zip 26.05 推荐、WinMerge 2.16.60 备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
+| P0-SCOPE-01 | 完成（静态调查） | 4 个候选官方哈希匹配；7-Zip 26.05 主选；WinMerge 不作首版备选；7-Zip fixture 可解压 | 未在 Windows 运行任何应用 |
 | P0-ABI-01 | 调查完成 | x64 调用约定/影子空间/栈对齐实测；TEB 版本化、TLS 计数、PE/异常/内存序清单；许可表 | 运行时 ABI/内存序/异常未实测 |
 | P0-TRACE-01 | 调查完成，未验证 | 三层分工、记录字段草案、准备/验证集隔离方案；CLI 退出 0 | 无实际 Trace/样例/记录实现；D6 未决 |
 | P0-ENGINE-01 | 完成（QA 功能 PASS） | commit `a4ef11c`；AOT dylib/ASLR/JIT ORC/负例证据；5 用例匹配 Windows 参考；QA 三方输出一致 | V-1 代码失效未实现；P-1 `.app` 未满足 |
-| P0-UI-01 | 完成（QA 功能 + W-1/W-2 PASS） | commit `847dad7`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例；新固定 DLL `c5b89e83...` 可复现；QA 复核通过 | Unicorn 临时桥接；与 ENGINE 未集成；人工 GUI 待验 |
+| P0-UI-01 | 待人工验证（自动部分完成） | commit `847dad7`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例；新固定 DLL `c5b89e83...` 可复现；QA 复核通过 | Unicorn 临时桥接；与 ENGINE 未集成；人工 GUI 待验 |
 | P0-QA-01 | 完成（功能 + W-1/W-2 PASS；P0 不通过） | 独立复跑 ENGINE/UI/Windows；三方输出一致；W-1/W-2 关闭；V-1/P-1 记录 | 性能/人工/`.app` 未测 |
-| P0-ADR-01 | 待审查（草案） | `docs/adr/ADR-0001-p0-selection.md` proposed D1–D7 | 待 reviewer 终审 |
-| P0-REVIEW-01 | 进行中 | 预审 + 最终审查 bundle | 待结论 |
+| P0-ADR-01 | 完成（ADR；P0 不通过） | `docs/adr/ADR-0001-p0-selection.md` D1–D7 + `docs/p0/SUPPORT-MATRIX.md` | 需用户确认 D3/D5/D6/D7 等 |
+| P0-REVIEW-01 | 完成（审查意见已收） | 功能路径可信；P0 整体不通过；支持矩阵/状态/文档项已收口 | 阻断项保留为 P0 收尾/P1 |
 
 ## 3. Windows 参考机与双机流程（P0-ENV-01）
 
@@ -40,11 +40,13 @@
 
 ## 4. 候选应用与支持矩阵（P0-SCOPE-01）
 
+- Consolidated 矩阵：`docs/p0/SUPPORT-MATRIX.md`（指令/PE/GUI/真实应用/需求映射）。
+
 - 固定候选与官方哈希：7-Zip 26.05（`fd99e86f...47d0`）、WinMerge 2.16.60（`be3f850e...5222`）、PuTTY 0.85（`e0b36e53...6668`）、Notepad++ 8.9.8.1（`beddf554...f414`）；四个包均与官方发布值匹配。
 - 推荐首选：7-Zip File Manager 26.05，`7zFM.exe` + `7z.dll`；原生 Win32/公共控件，无 MFC/.NET/Chromium；主工作流离线可验证。备选不按 WinMerge 排序：binary 的 PE/API 证据显示 WinMerge 2.16.60 有 762 个导入、静态 MFC/ATL、GDI+、COM/OLEACC、CFG/TLS 2 回调，复杂度最高；PuTTY 0.85（MIT，网络/加密/自绘终端）或 Notepad++ 8.9.8.1（GPL-3.0，Scintilla/D2D/插件）仅在其范围被纳入时作条件式备选。
 - 后续候选：PuTTY 0.85、Notepad++ 8.9.8.1；均需独立范围，不与 7-Zip 首版混合宣称。
 - 7-Zip 首轮工作流：打开 `scope-fixture.7z`（SHA-256 `b1f05255...e68`）→ 列出 4 文件/2 目录 → 解压 → 校验成员 SHA-256 → 退出；Shell/拖放/UNC/密码/多卷/`7zG.exe` IPC 单列。
-- PE/API 事实：7zFM 292 导入/10 DLL，无 TLS 回调、无 CFG、无 Authenticode；`7z.dll` 89 导入、含 AVX/SHA-512 代码路径；WinMerge 762 导入、TLS 2 回调、CFG 函数表；Notepad++/PuTTY TLS 目录存在但非空回调为 0。`tls_callbacks` 口径统一为“目录存在/非空回调数量”，不混用。
+- PE/API 事实：7zFM 292 导入/10 DLL，无 TLS 回调、无 CFG、无 Authenticode；`7z.dll` 89 导入、含 AVX/SHA-512 代码路径；WinMerge 762 导入、TLS 2 回调、CFG 函数表；Notepad++/PuTTY TLS 目录存在但非空回调为 0。TLS 口径拆为 `tls_directory_present` 与 `tls_callback_count`（N++/PuTTY 目录存在、回调 0；WinMerge 2），不混用。
 - 未验证：没有运行任何候选 GUI；COM/Shell/拖放、`7zG.exe`、注册表、DPI/IME、Authenticode、`native` 自绘边界均未测。报告见 `.local/results/P0-SCOPE-01/app-candidates.md` 与 `binary-report.md`。
 
 ## 4.1 需求覆盖映射（防止把调查当成能力）
@@ -85,7 +87,7 @@
 
 ## 6.1 独立 QA（P0-QA-01）
 
-- 独立 QA CLI worker 在 detached worktree 重新构建/运行 ENGINE `a4ef11c` 与 UI `60ba7a6`，不采信实现者报告。
+- 独立 QA CLI worker 在 detached worktree 重新构建/运行 ENGINE `a4ef11c` 与 UI 初始 `60ba7a6`，不采信实现者报告；W-1/W-2 修复后又在 UI `847dad7` 做聚焦复核。
 - ENGINE：CMake/Ninja/ctest 0；5 用例与 Windows 参考一致；AOT dylib arm64、独立 runner dlopen、ORC JIT 真实编译并返回 AOT；ASLR 两次基址不同；未知目标/`cdq`/`lock xadd` 显式非零失败。QA 重编译 Windows 参考 exe 哈希 `9159c74f...` 与实现者一致，三方输出逐字相等。
 - UI：固定 DLL `a7934ace...`；compat/native 各 25/25 checks、状态/消息序列/Guest 指令计数一致；native 真实 AppKit 控件/主线程、compat 自绘、无跨后端事件、`MessageBeep` 负例、8 张截图；Windows `/check` 0、`/auto` 0，`state_utf8.txt` 15/15 字段一致。
 - FAIL W-1（已关闭）：`build_msvc.ps1` 在 `cmd.exe /c ...; exit $LASTEXITCODE` 下 rc=1（`Get-FileHash` 受 `PSModulePath` 影响不可识别）；UI 修复 `847dad7` 改用 .NET SHA256；聚焦 QA 实测 `cmd.exe /c` 下 rc=0/`BUILD OK`。
@@ -120,7 +122,7 @@
 - Rosetta：Apple 官方支持页说明 macOS 27 及更早可用，macOS 28 起仅特定旧游戏保留有限功能；产品 Host 路径不得依赖 Rosetta。
 - 截图/辅助功能：当前进程 `screencapture` 与 System Events 窗口读取已可用；自动化截图仍需按最终用户权限复核。
 
-## 10. P0 结论（待 reviewer 终审）
+## 10. P0 结论（reviewer 终审后）
 
 - **已成立（独立 QA 复跑）**：
   - Windows x64 编译/运行/回传、哈希与退出码机制（P0-ENV-01）。
@@ -135,7 +137,7 @@
 - **不得宣称**：首版完成、7-Zip 已支持、compat/native 产品模式已实现、AOT 已带来加速、无 Rosetta 的独立 `.app` 已交付。
 - **选型建议**：D1 自建 x64 前端+LLVM（D1 有 P0 证据）；D2 AOT 签名 dylib+ORC JIT（有 spike 证据，PE/重定位/失效待 P1）；D3 未决；D4 AppKit native（有证据，产品化待引擎/消息泵集成）；D5 C++/ObjC++/Python/CMake/Ninja（最低 macOS 待定）；D6 未决；D7 7-Zip 26.05 主选、WinMerge 不作首版备选、PuTTY/Notepad++ 条件式。
 - **下一批**：P0 收尾（UI 核心集成、TRACE 实际记录、7-Zip Windows 参考、最小 `.app`/R05、构建复现口径）+ P1-CONTRACT-01 + P1-PE/CORE/PLATFORM/TEST/ABI/MEM/TRACE；详见 `docs/tasks/P1-INDEX.md` 与 ADR。
-- **P0 整体状态**：**未通过**（有条件的功能验证完成；P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）。
+- **P0 整体状态**：**未通过**（有条件的功能验证完成；P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）。reviewer 终审维持该结论，并指出支持矩阵/状态口径/文档一致性需收口；本报告已更新。
 
 ## 11. 命令与证据索引
 
