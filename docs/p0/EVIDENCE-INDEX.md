@@ -19,10 +19,12 @@
 - fixture `scope-fixture.7z`：`b1f05255839f7ce6761338e129fc3ed99b0483c391f6efd54c5fc8e62ed82e68`；`7zz t` 通过。
 - 未运行任何候选 GUI；COM/Shell/拖放、`7zG.exe`、Authenticode 未验证。
 
-## P0-ABI-01（进行中）
+## P0-ABI-01（完成，调查）
 
-- 报告：待 `.local/results/P0-ABI-01/`
-- 依赖/许可证：待填
+- 报告：`.local/results/P0-ABI-01/binary-abi.md`，SHA-256 `3e8ca3e89db6301a734f5cef76ed18896532acad7b5b28c7d6aa6e0d15d9bbb4`
+- 证据：`.local/results/P0-ABI-01/spike/`、`binary-evidence/`
+- x64 调用约定/影子空间/栈对齐交叉编译实测；TEB/PEB 版本化、TLS 计数、PE/异常/内存序清单；运行时 ABI/TSO/异常未实测。
+- TLS 口径：7-Zip 无 TLS；Notepad++/PuTTY 目录存在但非空回调 0；WinMerge 2 个回调。
 
 ## P0-TRACE-01（调查完成，未验证）
 
@@ -30,22 +32,27 @@
 - CLI 日志：`.local/results/P0-TRACE-01/cli.log`（退出 0）
 - 仅方案；无实际 Trace/样例/记录实现；D6 未决。
 
-## P0-ENGINE-01（进行中）
+## P0-ENGINE-01（完成，QA 功能 PASS）
 
-- worktree：`.worktrees/p0-engine`，分支 `p0/engine-spike`
-- 报告/日志：待工作树内 `.local/results/P0-ENGINE-01/` 或 `.local/results/P0-ENGINE-01/`
-- 输入/产物哈希：待填
+- worktree：`.worktrees/p0-engine`，分支 `p0/engine-spike`，commit `a4ef11c723c929a61030ef3e0ae8fc8fba537ab2`
+- 报告：`.worktrees/p0-engine/spikes/p0-engine/REPORT.md`、`README.md`、`ROUTE_B.md`、`THIRD_PARTY.md`
+- 证据：`.worktrees/p0-engine/.local/results/P0-ENGINE-01/final/`；QA 复跑在 `.local/results/P0-QA-01/engine-results/`
+- 输入 COFF `a12fa7ff...7b1e`；AOT dylib/runner 哈希随构建目录变化（install name），IR/object 可复现；QA 三方输出一致。
+- V-1 加载时代码版本/失效未实现；P-1 `.app`/随包依赖未满足。
 
-## P0-UI-01（进行中）
+## P0-UI-01（完成，QA 功能 + W-1/W-2 PASS）
 
-- worktree：`.worktrees/p0-ui`，分支 `p0/ui-spike`
-- 报告/日志/截图：待工作树内或 `.local/results/P0-UI-01/`
-- Windows 参考程序哈希：待填
+- worktree：`.worktrees/p0-ui`，分支 `p0/ui-spike`；spike `60ba7a6`，修复 `847dad737a3b8b34138f185167e613e1a194fed3`
+- 报告/证据：`spikes/p0-ui/REPORT.md`、`README.md`、`evidence/`；QA 证据 `.worktrees/p0-qa-ui2/spikes/p0-ui/qa-evidence2/`
+- 固定 DLL `c5b89e83...`（`/Brepro`）；driver `ad6007d0...`；compat/native 各 25 checks；Windows `/check`/`/auto` 15/15。
+- W-1/W-2 已关闭；旧/新 DLL 整体差 1165 字节（`.text` 相同）；Unicorn 仅 P0，D3 未决。
 
-## P0-ADR-01 / P0-REVIEW-01
+## P0-ADR-01 / P0-QA-01 / P0-REVIEW-01
 
-- ADR 草案：`docs/adr/ADR-0001-p0-selection.md`
-- 审查：待 reviewer 对 ADR 和证据的独立意见
+- ADR：`docs/adr/ADR-0001-p0-selection.md`（待 reviewer 终审）
+- QA 报告：`.local/results/P0-QA-01/REPORT.md`；聚焦复核 `.local/results/P0-QA-01/RECHECK.md`
+- 审查 bundle：`.local/results/P0-REVIEW-01/`（engine.patch、ui.patch、EVIDENCE.md、REVIEW-TASK.md）
+- P0 整体：未通过（P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）
 
 ## 平台探针（coordinator 自查）
 
