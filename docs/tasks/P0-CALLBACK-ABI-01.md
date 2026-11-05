@@ -1,6 +1,6 @@
 # P0-CALLBACK-ABI-01：最小 Host↔Guest 回调契约
 
-状态：完成（契约与固定 fixture 已提交；compiler/platform/reviewer 已会签，最终 v2 复核进行中）。
+状态：完成（契约与固定 fixture 已提交；compiler/platform 已对 v2 提交会签；reviewer 最终复核进行中）。
 
 ## 输入与责任
 
@@ -30,3 +30,9 @@
 - 转换可行性：使用现有 `aev-translate` 对固定对象生成 `4 aot_blocks / 1 jit_blocks`，无 unsupported instruction；`aev_callback_fixture.manifest.json`、反汇编、section/relocation 文本已随 fixture 提交。
 - 会签：compiler `SIGN-OFF`（session `ses_e5452516effeU230iYUz7Sqarq`），platform `SIGN-OFF`（session `ses_e5452516cffeTcnkrlZmejylWj`），reviewer `SIGN-OFF`（session `ses_e543f2eb5ffeE1WTA9hZhVBeS1`；非阻断备注进入 B/C）。实际模型/档位以根 `.local/results/P0-CALLBACK-INTEGRATION-01/session-*.json` 的 `session_v2` 元数据为准。
 - 未完成/边界：A 不实现 bridge/GUI，不声称回调链已通；通用 PE/Win32、重入/线程、Trace、版本失效、.app、性能均不在本轮。
+
+## 最终 v2 会签（2026-11-06，HEAD `afff569`）
+
+- compiler：`SIGN-OFF: v2 committed accepted`（session `ses_e5452516effeU230iYUz7Sqarq`）。
+- platform：`SIGN-OFF: v2 committed accepted`（session `ses_e5452516cffeTcnkrlZmejylWj`）。
+- 最终 v2 包含 `trace_aot`、`config_size`、`destroy` 状态、`guest_info` 栈边界和 `total_jit_blocks`；所有 in-tree C/Python/测试使用 v2，Guest ABI 仍 v1。最终 QA-final 在 `afff569` PASS；reviewer 最终复核进行中。

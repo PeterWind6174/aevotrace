@@ -1,6 +1,6 @@
 # 下一轮计划：共同回调 ABI 与双 GUI 最小集成
 
-日期：2026-11-05。状态：A/B/C 已执行；最终 HEAD 复跑与独立复核进行中。实际基线：main `c91a3f7`。
+日期：2026-11-05。状态：A/B/C 已执行；最终 HEAD `afff569` 的独立 QA 已通过，compiler/platform v2 已会签；reviewer 最终复核进行中。实际基线：main `c91a3f7`。
 
 ## 目标
 
