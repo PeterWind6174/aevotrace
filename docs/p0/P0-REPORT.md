@@ -64,7 +64,15 @@
 
 ## 6. 双 GUI 后端（待 P0-UI-01）
 
-## 7. ABI、依赖与许可（待 P0-ABI-01）
+## 7. ABI、依赖与许可（P0-ABI-01）
+
+- 已交叉编译/反汇编验证：RCX/RDX/R8/R9、XMM0–3、32 字节 shadow、第 5/6 参数 `[rsp+0x28/0x30]`、调用点 16 字节对齐；非叶函数 `.pdata/.xdata`；`GS:0x58` TLS 路径；`DefWindowProcW` 是 `NTDLL.NtdllDefWindowProc_W` forwarder（`ssh win` `dumpbin`）。
+- GuestState 至少需要 GPR/RIP/RFLAGS/FS_BASE/GS_BASE/XMM0–15/MXCSR/x87/TEB/LastError/线程栈；TEB/PEB 必须版本化，不能把完整偏移当稳定 ABI；`GS:0x68` 未实测。
+- `SendMessage` 同线程直接重入、跨线程阻塞并泵消息；`native` 不能异步化后仍宣称兼容。Guest SEH/C++ EH 不能穿过 Host 帧；7-Zip 有 212 个 `__CxxFrameHandler` 函数，首版 C++ EH 级别必须显式决定。
+- PE 需覆盖 forwarder/API set/delay import/TLS 回调/异常目录/load config/CFG/资源；`RELOCS_STRIPPED` + 基址冲突必须诊断。
+- 内存序/原子/未对齐/跨页/权限/映射代次全部未实测；P1 必须先声明 TSO 保证级别。
+- 依赖许可：LLVM Apache-2.0 WITH LLVM-exception；Capstone BSD-3-Clause；Remill Apache-2.0（未构建）；QEMU GPLv2；FEX/Box64 MIT；Wine LGPL-2.1+；Unicorn GPLv2（仅 P0）。未集成、未做法律结论。
+- 报告：`.local/results/P0-ABI-01/binary-abi.md`。
 
 ## 8. 准备执行与记录（P0-TRACE-01）
 

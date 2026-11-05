@@ -72,6 +72,16 @@
 - 建议：Windows 原生执行负责业务参考输出/文件/事件；目标端自建执行核心负责 Guest PC/基本块/间接目标/代码版本记录。SSH 不是 Trace 通道。
 - 待 P0-TRACE-01 验证记录格式、开销和失效规则。
 
+## ABI 结论（P0-ABI-01，调查）
+
+- Windows x64 调用约定已交叉编译/反汇编验证：RCX/RDX/R8/R9、XMM0–3、32 字节 shadow、第 5/6 参数 `[rsp+0x28/0x30]`、调用点 16 字节对齐；非叶函数需要 `.pdata/.xdata`。
+- GuestState 不能只用 GPR+少量 XMM：至少 GPR/RIP/RFLAGS/FS_BASE/GS_BASE/XMM0–15/MXCSR/x87/TEB/LastError/线程栈；AVX/AVX-512 未支持时显式诊断。
+- TEB/PEB 是版本化、非稳定 ABI：`GS:0x58/0x60` 已由编译器实测，`GS:0x68` 未实测；禁止把完整 TEB 偏移写成无版本常量。
+- `SendMessage` 同线程直接重入、跨线程阻塞并泵消息；`native` 不能异步化后仍宣称 Windows 兼容。模态/重入/线程退出必须按 Guest 语义。
+- Guest SEH/C++ EH 不能穿过 Host 帧；7-Zip 有 212 个函数使用 `msvcrt!__CxxFrameHandler`，首版是否支持 C++ EH 必须显式决定，不能静默。
+- PE 装载需覆盖 forwarder/API set/delay import/TLS 回调/`.pdata`/load config/CFG/资源；`RELOCS_STRIPPED` + 基址冲突必须诊断。
+- x86-64 TSO 与 ARM64 弱序差异、`LOCK`/原子/未对齐/跨页/权限失败/映射代次全部未实测；P1 必须先声明保证级别，不能默认“同地址映射等价”。
+
 ## 决策（proposed，待 P0-QA-01/P0-REVIEW-01 证据确认）
 
 - D1 执行核心：优先自建 x64 前端 + LLVM AArch64 后端；P0-ENGINE-01 先证明最小 AOT/JIT 闭环。Remill（Apache-2.0）作为 P1 指令语义覆盖候选，需先做固定版本构建/许可/集成验证；QEMU/FEX/Box64/Rosetta 不作为首版直接执行核心。
@@ -112,9 +122,13 @@
 
 - 目标 macOS 最低版本与签名/公证范围。
 - JIT entitlement 与独立 `.app` 的发布方式。
-- 首版 x64 指令/SSE/AVX 子集。
-- 兼容层是自建还是基于 Wine 代码的可许可复用。
-- 真实应用的最终选择与工作流。
+- 首版 x64 指令/SSE/AVX 子集；真实候选含 AVX/AVX2/FMA/SHA 路径，CPUID 必须与执行能力一致。
+- 兼容层是自建还是基于 Wine 代码的可许可复用；`compat` 最终实现未选定。
+- 真实应用的最终选择与工作流；7-Zip 启动时 COM/Shell/拖放是否无条件调用未验证。
+- TEB/PEB 版本化布局与 `WindowsBuildId` 支持范围；`GS:0x68` LastError 未实测。
+- 首版 C++ EH/SEH 级别；7-Zip 的 `__CxxFrameHandler` 是否首版必须。
+- x86-64 TSO 保证级别：保守全屏障、分级同步还是首版只保证单线程/显式同步。
+- `native` 对自绘 list/tree/进度/终端的容忍边界；不能宣称全部原生。
 - 动态代码、异常/SEH、TLS、多线程的 P1 优先级。
 
 ## 明确未验证的风险（不得在 P0 报告中写成已解决）
