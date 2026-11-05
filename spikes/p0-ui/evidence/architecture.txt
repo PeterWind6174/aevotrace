@@ -1,0 +1,41 @@
+== uname/sw_vers ==
+Darwin Winds-MacBook-Pro.local 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:05:42 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T6031 arm64
+ProductName:		macOS
+ProductVersion:		27.0.1
+BuildVersion:		26A434
+
+== guest input (PE x64) ==
+artifacts/p0_gui_test.dll: PE32+ executable (DLL) (GUI) x86-64, for MS Windows
+
+== python (harness host) ==
+/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/bin/python3.15: Mach-O 64-bit executable arm64
+
+== unicorn extension ==
+.venv/lib/python3.15/site-packages/unicorn/lib/libunicorn.2.dylib: Mach-O 64-bit dynamically linked shared library arm64
+.venv/lib/python3.15/site-packages/unicorn/lib/libunicorn.2.dylib:
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64    ARM64        ALL  0x00       DYLIB    15       1872   NOUNDEFS DYLDLINK TWOLEVEL NO_REEXPORTED_DYLIBS MH_HAS_TLV_DESCRIPTORS
+
+== pyobjc core extension ==
+.venv/lib/python3.15/site-packages/objc/_objc.cpython-315-darwin.so: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit bundle x86_64] [arm64:Mach-O 64-bit bundle arm64]
+.venv/lib/python3.15/site-packages/objc/_objc.cpython-315-darwin.so (for architecture x86_64):	Mach-O 64-bit bundle x86_64
+.venv/lib/python3.15/site-packages/objc/_objc.cpython-315-darwin.so (for architecture arm64):	Mach-O 64-bit bundle arm64
+.venv/lib/python3.15/site-packages/objc/_objc.cpython-315-darwin.so (architecture x86_64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64   X86_64        ALL  0x00      BUNDLE    17       3144   NOUNDEFS DYLDLINK TWOLEVEL WEAK_DEFINES BINDS_TO_WEAK
+.venv/lib/python3.15/site-packages/objc/_objc.cpython-315-darwin.so (architecture arm64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64    ARM64        ALL  0x00      BUNDLE    18       3320   NOUNDEFS DYLDLINK TWOLEVEL WEAK_DEFINES BINDS_TO_WEAK
+
+== screenshots ==
+evidence/native/01-initial-native.png:       PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced
+evidence/native/02-after-actions-native.png: PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced
+evidence/native/03-modal-native.png:         PNG image data, 520 x 438, 8-bit/color RGBA, non-interlaced
+evidence/native/04-final-native.png:         PNG image data, 1040 x 444, 8-bit/color RGBA, non-interlaced
+evidence/compat/01-initial-compat.png:       PNG image data, 1040 x 380, 8-bit/color RGBA, non-interlaced
+evidence/compat/02-after-actions-compat.png: PNG image data, 1040 x 380, 8-bit/color RGBA, non-interlaced
+evidence/compat/03-modal-compat.png:         PNG image data, 880 x 380, 8-bit/color RGBA, non-interlaced
+evidence/compat/04-final-compat.png:         PNG image data, 1040 x 380, 8-bit/color RGBA, non-interlaced

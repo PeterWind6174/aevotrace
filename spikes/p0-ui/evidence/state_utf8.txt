@@ -1,0 +1,15 @@
+clicks=1
+editChanges=2
+textLen=12
+textHash=3175B48FE300F0E4
+modalCount=1
+modalResult=1
+workerCreated=1
+workerPostsSent=1
+workerPostsReceived=1
+workerExits=1
+syncEcho=23130
+wndProcCalls=42
+resets=1
+lastText=Windows 参考文本
+status=点击=1  文本长度=12  模态=1  线程发/收/退=1/1/1

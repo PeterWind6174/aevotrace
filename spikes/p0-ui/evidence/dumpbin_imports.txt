@@ -1,0 +1,56 @@
+Microsoft (R) COFF/PE Dumper Version 14.51.36260.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file p0_gui_test.dll
+
+File Type: DLL
+
+  Section contains the following imports:
+
+    KERNEL32.dll
+             180003000 Import Address Table
+             180003698 Import Name Table
+                     0 time date stamp
+                     0 Index of first forwarder reference
+
+                         5CD Sleep
+                         114 CreateThread
+                         24B GetCurrentThreadId
+                         18C ExitThread
+                         2AA GetModuleHandleW
+                         292 GetLastError
+
+    USER32.dll
+             180003038 Import Address Table
+             1800036D0 Import Name Table
+                     0 time date stamp
+                     0 Index of first forwarder reference
+
+                         197 GetMessageW
+                         3DA TranslateMessage
+                          C2 DispatchMessageW
+                         333 SendMessageW
+                         2C1 PostMessageW
+                          AC DefWindowProcW
+                         2C2 PostQuitMessage
+                         2F3 RegisterClassExW
+                          7B CreateWindowExW
+                          BA DestroyWindow
+                         3B9 ShowWindow
+                         365 SetMenu
+                          75 CreateMenu
+                          76 CreatePopupMenu
+                           C AppendMenuW
+                         3F4 UpdateWindow
+                         3A5 SetWindowTextW
+                         209 GetWindowTextW
+                         29E MessageBoxW
+                         296 MessageBeep
+
+  Summary
+
+        1000 .data
+        1000 .pdata
+        1000 .rdata
+        2000 .text

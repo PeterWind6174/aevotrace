@@ -1,0 +1,4 @@
+CHECK mode: no window creation
+CHECK version=Aevotrace P0-UI-01 guest v1
+CHECK resets=1 clicks=0 wndProcCalls=0
+CHECK OK: exports resolved and ABI state readable

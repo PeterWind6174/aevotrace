@@ -1,0 +1,5 @@
+# P0-UI-01 Spike deps (P0-only; not product dependencies)
+unicorn==2.1.4
+pefile==2024.8.26
+pyobjc-core==13.0
+pyobjc-framework-Cocoa==13.0

@@ -1,0 +1,241 @@
+    0.036 guest.pe_loaded              [MainThread] path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/artifacts/p0_gui_test.dll sha256=c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14 image_base=0x180000000 image_size=24576 imports=['KERNEL32.dll!Sleep@0x60000000', 'KERNEL32.dll!CreateThread@0x60000010', 'KERNEL32.dll!GetCurrentThreadId@0x60000020', 'KERNEL32.dll!ExitThread@0x60000030', 'KERNEL32.dll!GetModuleHandleW@0x60000040', 'KERNEL32.dll!GetLastError@0x60000050', 'USER32.dll!GetMessageW@0x60000060', 'USER32.dll!TranslateMessage@0x60000070', 'USER32.dll!DispatchMessageW@0x60000080', 'USER32.dll!SendMessageW@0x60000090', 'USER32.dll!PostMessageW@0x600000a0', 'USER32.dll!DefWindowProcW@0x600000b0', 'USER32.dll!PostQuitMessage@0x600000c0', 'USER32.dll!RegisterClassExW@0x600000d0', 'USER32.dll!CreateWindowExW@0x600000e0', 'USER32.dll!DestroyWindow@0x600000f0', 'USER32.dll!ShowWindow@0x60000100', 'USER32.dll!SetMenu@0x60000110', 'USER32.dll!CreateMenu@0x60000120', 'USER32.dll!CreatePopupMenu@0x60000130', 'USER32.dll!AppendMenuW@0x60000140', 'USER32.dll!UpdateWindow@0x60000150', 'USER32.dll!SetWindowTextW@0x60000160', 'USER32.dll!GetWindowTextW@0x60000170', 'USER32.dll!MessageBoxW@0x60000180', 'USER32.dll!MessageBeep@0x60000190']
+    0.038 guest.return                 [MainThread] thread=main purpose=DllMain address=0x180001000 ret=0x1 instructions=5 elapsed_ms=0.111
+    0.038 guest.return                 [MainThread] thread=main purpose=P0Reset address=0x180001270 ret=0x180004200 instructions=68 elapsed_ms=0.156
+    0.038 api.call                     [MainThread] dll=USER32.dll api=RegisterClassExW args=['0x6201efa0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.038 host.register_class          [MainThread] class_name=AevotraceP0Window wndproc=0x1800013a0
+    0.039 api.return                   [MainThread] api=RegisterClassExW ret=0x1 thread=main
+    0.039 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003308', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.073 native.window_created        [MainThread] handle=0x1000 objc_class=NSWindow title=Aevotrace P0-UI-01 中文界面 thread=MainThread main_thread=True
+    0.073 host.create_window           [MainThread] handle=0x1000 title=Aevotrace P0-UI-01 中文界面 width=520 height=190 visible=True
+    0.073 api.return                   [MainThread] api=CreateWindowExW ret=0x1000 thread=main
+    0.073 api.call                     [MainThread] dll=USER32.dll api=ShowWindow args=['0x1000', '0x5', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.073 host.show_window             [MainThread] handle=0x1000
+    0.073 api.return                   [MainThread] api=ShowWindow ret=0x1 thread=main
+    0.073 api.call                     [MainThread] dll=USER32.dll api=UpdateWindow args=['0x1000', '0x5', '0x180003330', '0x10cf0000', '0x80000000', '0x80000000', '0x208', '0xbe'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    0.073 api.return                   [MainThread] api=UpdateWindow ret=0x1 thread=main
+    0.073 guest.return                 [MainThread] thread=main purpose=P0CreateMainWindow address=0x180001020 ret=0x1000 instructions=54 elapsed_ms=35.243
+    0.073 guest.window_created         [MainThread] handle=0x1000 title=Aevotrace P0-UI-01 中文界面
+    0.073 host.guest_enter             [MainThread] msg=WM_CREATE msg_id=1 wparam=0x0 lparam=0x0 handle=0x1000 depth=1 reason=host WM_CREATE after manual load
+    0.074 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003138', '0x180003128', '0x50000000', '0x10', '0xe', '0x1d4', '0x16'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.075 native.control_created       [MainThread] handle=0x1010 control_kind=static objc_class=NSTextField control_id=1004 text=初始化中… thread=MainThread main_thread=True
+    0.075 host.create_control          [MainThread] handle=0x1010 control_kind=static control_id=1004 text=初始化中… x=16 y=14 width=468 height=22
+    0.075 api.return                   [MainThread] api=CreateWindowExW ret=0x1010 thread=main
+    0.075 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003138', '0x180003148', '0x50000000', '0x10', '0x2c', '0x1d4', '0x16'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.076 native.control_created       [MainThread] handle=0x1020 control_kind=static objc_class=NSTextField control_id=1003 text=业务状态：等待操作 thread=MainThread main_thread=True
+    0.077 host.create_control          [MainThread] handle=0x1020 control_kind=static control_id=1003 text=业务状态：等待操作 x=16 y=44 width=468 height=22
+    0.077 api.return                   [MainThread] api=CreateWindowExW ret=0x1020 thread=main
+    0.077 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x200', '0x180003170', '0x180003160', '0x50000080', '0x10', '0x4e', '0x12c', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.077 native.control_created       [MainThread] handle=0x1030 control_kind=edit objc_class=NSTextField control_id=1002 text=初始文本 thread=MainThread main_thread=True
+    0.077 host.create_control          [MainThread] handle=0x1030 control_kind=edit control_id=1002 text=初始文本 x=16 y=78 width=300 height=28
+    0.077 api.return                   [MainThread] api=CreateWindowExW ret=0x1030 thread=main
+    0.077 api.call                     [MainThread] dll=USER32.dll api=CreateWindowExW args=['0x0', '0x180003190', '0x180003180', '0x50000000', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.078 native.control_created       [MainThread] handle=0x1040 control_kind=button objc_class=NSButton control_id=1001 text=增加计数 thread=MainThread main_thread=True
+    0.078 host.create_control          [MainThread] handle=0x1040 control_kind=button control_id=1001 text=增加计数 x=332 y=78 width=152 height=28
+    0.078 api.return                   [MainThread] api=CreateWindowExW ret=0x1040 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=CreatePopupMenu args=['0x0', '0x180003190', '0x180003180', '0x50000000', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 api.return                   [MainThread] api=CreatePopupMenu ret=0x3000 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d1', '0x1800031a0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2001 text=关于(&A)…
+    0.079 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d2', '0x1800031b0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2002 text=启动工作线程(&W)
+    0.079 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x800', '0x0', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 host.append_menu             [MainThread] menu=0x3000 flags=0x800 value=0 text=
+    0.079 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3000', '0x0', '0x7d3', '0x1800031c8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 host.append_menu             [MainThread] menu=0x3000 flags=0x0 value=2003 text=退出(&X)
+    0.079 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=CreateMenu args=['0x3000', '0x0', '0x7d3', '0x1800031c8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 api.return                   [MainThread] api=CreateMenu ret=0x3010 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=AppendMenuW args=['0x3010', '0x10', '0x3000', '0x1800031d8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.079 host.append_menu             [MainThread] menu=0x3010 flags=0x10 value=12288 text=文件(&F)
+    0.079 api.return                   [MainThread] api=AppendMenuW ret=0x1 thread=main
+    0.079 api.call                     [MainThread] dll=USER32.dll api=SetMenu args=['0x1000', '0x3010', '0x3000', '0x1800031d8', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.083 native.menu_set              [MainThread] items=[2001, 2002, 2003]
+    0.083 host.set_menu                [MainThread] handle=0x1000 items=['文件(&F)']
+    0.083 api.return                   [MainThread] api=SetMenu ret=0x1 thread=main
+    0.083 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x180004078', '0x80', '0x0', '0x3000', '0x18000166d', '0x3010', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.083 host.get_text                [MainThread] handle=0x1030 text=初始文本 copied=4
+    0.083 api.return                   [MainThread] api=GetWindowTextW ret=0x4 thread=main
+    0.085 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x21', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.085 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=0  文本长度=4  模态=0  线程发/收/退=0/0/0 notify=False
+    0.085 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.085 guest.return                 [MainThread] thread=main purpose=WndProc WM_CREATE address=0x1800013a0 ret=0x0 instructions=1632 elapsed_ms=11.43
+    0.085 host.guest_exit              [MainThread] msg=WM_CREATE msg_id=1 ret=0x0 depth=1 reason=host WM_CREATE after manual load
+    0.106 native.show_window           [MainThread] handle=0x1000 window_number=19953 thread=MainThread main_thread=True
+    0.106 scenario.begin               [MainThread] backend=native dll_sha256=c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14
+    0.604 screenshot                   [MainThread] name=01-initial-native.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/01-initial-native.png rc=0 exists=True size=47988 stderr= window_number=19953
+    0.604 host.guest_state_read        [MainThread] thread=main
+    0.605 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.426
+    0.605 scenario.state               [MainThread] label=initial state={'clicks': 0, 'edit_changes': 0, 'text_len': 4, 'text_hash': 12624396950412896480, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 1, 'last_command': 0, 'last_message': 1, 'resets': 1, 'last_text': '初始文本', 'status_text': '点击=0  文本长度=4  模态=0  线程发/收/退=0/0/0'}
+    0.605 scenario.check               [MainThread] name=initial_reset pass_=True detail=resets=1
+    0.605 scenario.check               [MainThread] name=initial_clicks pass_=True detail=
+    0.605 automation.edit_text         [MainThread] handle=0x1030 text=macOS 验收输入-β-2026-11 path=NSTextField.setStringValue + delegate
+    0.605 native.edit_changed          [MainThread] handle=0x1030 control_id=1002 thread=MainThread main_thread=True
+    0.605 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x30003ea lparam=0x0 handle=0x1000 depth=1 reason=native NSTextField delegate
+    0.606 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x6201eef0', '0x80', '0x0', '0x0', '0x1800017de', '0x0', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.606 host.get_text                [MainThread] handle=0x1030 text=macOS 验收输入-β-2026-11 copied=20
+    0.606 api.return                   [MainThread] api=GetWindowTextW ret=0x14 thread=main
+    0.606 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.606 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=0  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.606 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.606 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1871 elapsed_ms=1.034
+    0.606 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSTextField delegate
+    0.606 host.guest_state_read        [MainThread] thread=main
+    0.607 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.067
+    0.607 scenario.state               [MainThread] label=after_edit_a state={'clicks': 0, 'edit_changes': 1, 'text_len': 20, 'text_hash': 12646387704327668483, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 2, 'last_command': 1002, 'last_message': 273, 'resets': 1, 'last_text': 'macOS 验收输入-β-2026-11', 'status_text': '点击=0  文本长度=20  模态=0  线程发/收/退=0/0/0'}
+    0.607 scenario.check               [MainThread] name=edit_a_guest_saw_text pass_=True detail=macOS 验收输入-β-2026-11
+    0.607 scenario.check               [MainThread] name=edit_a_hash pass_=True detail=0xaf80fe9d18518303 vs 0xaf80fe9d18518303
+    0.607 scenario.check               [MainThread] name=edit_a_len pass_=True detail=
+    0.607 automation.button_click      [MainThread] handle=0x1040 path=NSButton.performClick:
+    0.607 native.button_action         [MainThread] handle=0x1040 control_id=1001 automation=True thread=MainThread main_thread=True
+    0.607 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x3e9 lparam=0x0 handle=0x1000 depth=1 reason=native NSButton action
+    0.607 api.call                     [MainThread] dll=USER32.dll api=SendMessageW args=['0x1030', '0xd', '0x80', '0x6201eef0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.607 host.send_message            [MainThread] handle=0x1030 msg=WM_GETTEXT control_kind=edit
+    0.607 api.return                   [MainThread] api=SendMessageW ret=0x14 thread=main
+    0.608 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.608 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.608 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.608 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x1800031e8', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.608 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=按钮回调已同步更新业务状态 notify=False
+    0.608 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.608 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.608 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0 notify=False
+    0.608 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.608 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1875 elapsed_ms=1.345
+    0.608 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSButton action
+    0.710 host.guest_state_read        [MainThread] thread=main
+    0.711 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.199
+    0.711 scenario.state               [MainThread] label=after_click_1 state={'clicks': 1, 'edit_changes': 1, 'text_len': 20, 'text_hash': 12646387704327668483, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 3, 'last_command': 1001, 'last_message': 273, 'resets': 1, 'last_text': 'macOS 验收输入-β-2026-11', 'status_text': '点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0'}
+    0.711 scenario.check               [MainThread] name=click_1_count pass_=True detail=
+    0.711 scenario.check               [MainThread] name=click_1_label_updated_by_guest pass_=True detail=点击=1  文本长度=20  模态=0  线程发/收/退=0/0/0
+    0.711 automation.edit_text         [MainThread] handle=0x1030 text=第二次输入-λ-47 path=NSTextField.setStringValue + delegate
+    0.711 native.edit_changed          [MainThread] handle=0x1030 control_id=1002 thread=MainThread main_thread=True
+    0.711 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x30003ea lparam=0x0 handle=0x1000 depth=1 reason=native NSTextField delegate
+    0.711 api.call                     [MainThread] dll=USER32.dll api=GetWindowTextW args=['0x1030', '0x6201eef0', '0x80', '0x0', '0x0', '0x1800017de', '0x0', '0x0'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.712 host.get_text                [MainThread] handle=0x1030 text=第二次输入-λ-47 copied=10
+    0.712 api.return                   [MainThread] api=GetWindowTextW ret=0xa thread=main
+    0.712 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.712 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=1  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.713 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.713 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1718 elapsed_ms=1.258
+    0.713 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSTextField delegate
+    0.713 automation.button_click      [MainThread] handle=0x1040 path=NSButton.performClick:
+    0.713 native.button_action         [MainThread] handle=0x1040 control_id=1001 automation=True thread=MainThread main_thread=True
+    0.713 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x3e9 lparam=0x0 handle=0x1000 depth=1 reason=native NSButton action
+    0.713 api.call                     [MainThread] dll=USER32.dll api=SendMessageW args=['0x1030', '0xd', '0x80', '0x6201eef0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.713 host.send_message            [MainThread] handle=0x1030 msg=WM_GETTEXT control_kind=edit
+    0.713 api.return                   [MainThread] api=SendMessageW ret=0xa thread=main
+    0.714 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.714 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.714 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.714 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x1800031e8', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.714 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=按钮回调已同步更新业务状态 notify=False
+    0.714 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.714 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    0.714 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    0.714 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    0.714 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1705 elapsed_ms=1.243
+    0.714 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSButton action
+    0.816 host.guest_state_read        [MainThread] thread=main
+    0.817 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.196
+    0.817 scenario.state               [MainThread] label=after_click_2 state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 0, 'wndproc_calls': 5, 'last_command': 1001, 'last_message': 273, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0'}
+    0.817 scenario.check               [MainThread] name=click_2_count pass_=True detail=
+    0.817 scenario.check               [MainThread] name=text_b_guest_saw pass_=True detail=第二次输入-λ-47
+    0.817 scenario.check               [MainThread] name=text_b_hash pass_=True detail=0xb9a4d62339e0c2a8 vs 0xb9a4d62339e0c2a8
+    1.194 screenshot                   [MainThread] name=02-after-actions-native.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/02-after-actions-native.png rc=0 exists=True size=57646 stderr= window_number=19953
+    1.194 host.guest_enter             [MainThread] msg=WM_P0_ECHO msg_id=32770 wparam=0x5a5a lparam=0x0 handle=0x1000 depth=1 reason=scenario synchronous echo
+    1.195 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.195 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0 notify=False
+    1.195 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    1.195 guest.return                 [MainThread] thread=main purpose=WndProc WM_P0_ECHO address=0x1800013a0 ret=0x5a5a instructions=1488 elapsed_ms=1.02
+    1.195 host.guest_exit              [MainThread] msg=WM_P0_ECHO msg_id=32770 ret=0x5a5a depth=1 reason=scenario synchronous echo
+    1.195 scenario.check               [MainThread] name=sync_echo_return pass_=True detail=ret=0x5a5a
+    1.195 host.guest_state_read        [MainThread] thread=main
+    1.196 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.077
+    1.196 scenario.state               [MainThread] label=after_echo state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 0, 'modal_result': 0, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 23130, 'wndproc_calls': 6, 'last_command': 1001, 'last_message': 32770, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=0  线程发/收/退=0/0/0'}
+    1.196 scenario.check               [MainThread] name=sync_echo_state pass_=True detail=
+    1.196 automation.menu_click        [MainThread] item_id=2001 label=关于(&A)… path=NSApp.sendAction:to:from:
+    1.196 native.menu_action           [MainThread] item_id=2001 automation=True thread=MainThread main_thread=True
+    1.196 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x7d1 lparam=0x0 handle=0x1000 depth=1 reason=native NSMenu action
+    1.196 api.call                     [MainThread] dll=USER32.dll api=MessageBoxW args=['0x1000', '0x180003228', '0x180003208', '0x41', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    1.196 host.modal_enter             [MainThread] handle=0x1000 caption=Aevotrace 中文模态 text=这是同步模态测试。
+返回后业务模态计数加一。 style=0x41
+    1.208 native.modal_run             [MainThread] caption=Aevotrace 中文模态 style=0x41 thread=MainThread main_thread=True
+    1.908 native.modal_shown           [MainThread] window_number=19958 caption=Aevotrace 中文模态
+    2.018 screenshot                   [MainThread] name=03-modal-native.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/03-modal-native.png rc=0 exists=True size=52597 stderr= window_number=19958
+    2.021 host.modal_exit              [MainThread] result=1
+    2.021 api.return                   [MainThread] api=MessageBoxW ret=0x1 thread=main
+    2.022 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x14c', '0x4e', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.022 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0 notify=False
+    2.022 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    2.022 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1527 elapsed_ms=826.12
+    2.022 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSMenu action
+    2.022 host.guest_state_read        [MainThread] thread=main
+    2.022 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.075
+    2.022 scenario.state               [MainThread] label=after_modal state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 0, 'worker_posts_sent': 0, 'worker_posts_received': 0, 'worker_exits': 0, 'sync_echo': 23130, 'wndproc_calls': 7, 'last_command': 2001, 'last_message': 273, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0'}
+    2.022 scenario.check               [MainThread] name=modal_count pass_=True detail=modal=1
+    2.022 scenario.check               [MainThread] name=modal_result pass_=True detail=result=1
+    2.022 automation.menu_click        [MainThread] item_id=2002 label=启动工作线程(&W) path=NSApp.sendAction:to:from:
+    2.022 native.menu_action           [MainThread] item_id=2002 automation=True thread=MainThread main_thread=True
+    2.023 host.guest_enter             [MainThread] msg=WM_COMMAND msg_id=273 wparam=0x7d2 lparam=0x0 handle=0x1000 depth=1 reason=native NSMenu action
+    2.023 api.call                     [MainThread] dll=KERNEL32.dll api=CreateThread args=['0x0', '0x0', '0x180002100', '0x1000', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.023 guest.thread_create          [MainThread] handle=0x2001 guest_start=0x180002100 param=0x1000 tid=0xb001 requested_by=main
+    2.023 api.return                   [MainThread] api=CreateThread ret=0x2001 thread=main
+    2.023 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=Sleep args=['0x28', '0x0', '0x0', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=1 tid=0xb001 during_guest_call=True direction=guest->host
+    2.024 guest.sleep                  [guest-worker-0xb001] thread=worker-0xb001 ms=40
+    2.024 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.024 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=0/0/0 notify=False
+    2.024 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    2.024 guest.return                 [MainThread] thread=main purpose=WndProc WM_COMMAND address=0x1800013a0 ret=0x0 instructions=1536 elapsed_ms=1.55
+    2.024 host.guest_exit              [MainThread] msg=WM_COMMAND msg_id=273 ret=0x0 depth=1 reason=native NSMenu action
+    2.066 api.return                   [guest-worker-0xb001] api=Sleep ret=0x0 thread=worker-0xb001
+    2.066 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=GetCurrentThreadId args=['0x28', '0x0', '0x0', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    2.066 api.return                   [guest-worker-0xb001] api=GetCurrentThreadId ret=0xb001 thread=worker-0xb001
+    2.066 api.call                     [guest-worker-0xb001] dll=USER32.dll api=PostMessageW args=['0x1000', '0x8001', '0xb001', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    2.067 host.post_message            [guest-worker-0xb001] handle=0x1000 msg=WM_P0_WORKER_DONE wparam=0xb001 from_thread=worker-0xb001
+    2.067 api.return                   [guest-worker-0xb001] api=PostMessageW ret=0x1 thread=worker-0xb001
+    2.067 api.call                     [guest-worker-0xb001] dll=KERNEL32.dll api=ExitThread args=['0x0', '0x8001', '0xb001', '0x0', '0x0', '0x63000000', '0x0', '0x0'] thread=worker-0xb001 depth=0 tid=0xb001 during_guest_call=False direction=thread->host
+    2.067 guest.exit_thread            [guest-worker-0xb001] thread=worker-0xb001 code=0
+    2.067 guest.thread_exit            [guest-worker-0xb001] thread=worker-0xb001 instructions=15
+    2.067 worker.finished              [guest-worker-0xb001] tid=0xb001 instructions=15 api_counts={'Sleep': 1, 'GetCurrentThreadId': 1, 'PostMessageW': 1, 'ExitThread': 1}
+    2.087 host.drain_post              [MainThread] msg=WM_P0_WORKER_DONE handle=0x1000 wparam=0xb001
+    2.088 host.guest_enter             [MainThread] msg=WM_P0_WORKER_DONE msg_id=32769 wparam=0xb001 lparam=0x0 handle=0x1000 depth=1 reason=posted message drain
+    2.088 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1020', '0x180003258', '0xb001', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.088 host.control_set_text        [MainThread] handle=0x1020 control_kind=static text=工作线程 PostMessage 已送达 notify=False
+    2.088 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    2.088 api.call                     [MainThread] dll=USER32.dll api=SetWindowTextW args=['0x1010', '0x180004178', '0x22', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.089 host.control_set_text        [MainThread] handle=0x1010 control_kind=static text=点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1 notify=False
+    2.089 api.return                   [MainThread] api=SetWindowTextW ret=0x1 thread=main
+    2.089 guest.return                 [MainThread] thread=main purpose=WndProc WM_P0_WORKER_DONE address=0x1800013a0 ret=0x0 instructions=1563 elapsed_ms=1.006
+    2.089 host.guest_exit              [MainThread] msg=WM_P0_WORKER_DONE msg_id=32769 ret=0x0 depth=1 reason=posted message drain
+    2.089 host.guest_state_read        [MainThread] thread=main
+    2.089 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.075
+    2.089 scenario.wait_ok             [MainThread] label=worker post/exit state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 1, 'worker_posts_sent': 1, 'worker_posts_received': 1, 'worker_exits': 1, 'sync_echo': 23130, 'wndproc_calls': 9, 'last_command': 2002, 'last_message': 32769, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1'}
+    2.089 scenario.check               [MainThread] name=worker_created pass_=True detail=
+    2.089 scenario.check               [MainThread] name=worker_posts pass_=True detail=
+    2.089 scenario.check               [MainThread] name=worker_exits pass_=True detail=
+    2.218 screenshot                   [MainThread] name=04-final-native.png path=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/04-final-native.png rc=0 exists=True size=50971 stderr= window_number=19953
+    2.218 scenario.check               [MainThread] name=modal_screenshot_saved pass_=True detail=/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/03-modal-native.png
+    2.218 host.guest_state_read        [MainThread] thread=main
+    2.218 guest.return                 [MainThread] thread=main purpose=0x180001170 address=0x180001170 ret=0x0 instructions=108 elapsed_ms=0.235
+    2.218 scenario.state               [MainThread] label=final_before_close state={'clicks': 2, 'edit_changes': 2, 'text_len': 10, 'text_hash': 13377052239980446376, 'modal_count': 1, 'modal_result': 1, 'worker_created': 1, 'worker_posts_sent': 1, 'worker_posts_received': 1, 'worker_exits': 1, 'sync_echo': 23130, 'wndproc_calls': 9, 'last_command': 2002, 'last_message': 32769, 'resets': 1, 'last_text': '第二次输入-λ-47', 'status_text': '点击=2  文本长度=10  模态=1  线程发/收/退=1/1/1'}
+    2.218 scenario.check               [MainThread] name=final_clicks pass_=True detail=
+    2.218 scenario.check               [MainThread] name=final_edit_changes pass_=True detail=editChanges=2
+    2.218 scenario.check               [MainThread] name=final_text pass_=True detail=
+    2.218 scenario.check               [MainThread] name=final_wndproc pass_=True detail=wndproc=9
+    2.218 host.guest_enter             [MainThread] msg=WM_CLOSE msg_id=16 wparam=0x0 lparam=0x0 handle=0x1000 depth=1 reason=scenario close
+    2.218 api.call                     [MainThread] dll=USER32.dll api=DestroyWindow args=['0x1000', '0x10', '0x0', '0x0', '0x0', '0x6201f008', '0x98', '0x1c'] thread=main depth=1 tid=0xa001 during_guest_call=True direction=guest->host
+    2.219 native.close_window          [MainThread] handle=0x1000
+    2.219 host.destroy_window          [MainThread] handle=0x1000 control_kind=main
+    2.219 api.return                   [MainThread] api=DestroyWindow ret=0x1 thread=main
+    2.219 guest.return                 [MainThread] thread=main purpose=WndProc WM_CLOSE address=0x1800013a0 ret=0x0 instructions=25 elapsed_ms=1.016
+    2.219 host.guest_exit              [MainThread] msg=WM_CLOSE msg_id=16 ret=0x0 depth=1 reason=scenario close
+    2.432 scenario.check               [MainThread] name=window_closed pass_=True detail=
+    2.433 api.call                     [MainThread] dll=USER32.dll api=MessageBeep args=['0xffffffff', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0', '0x0'] thread=main depth=0 tid=0xa001 during_guest_call=False direction=thread->host
+    2.433 api.unsupported              [MainThread] dll=USER32.dll api=MessageBeep
+    2.433 scenario.negative_pass       [MainThread] expected=unsupported_api observed=unimplemented API USER32.dll!MessageBeep guest_instructions_before_abort=2 host_unsupported=unimplemented API USER32.dll!MessageBeep backend=native
+    2.433 scenario.check               [MainThread] name=negative_unsupported_api pass_=True detail=
+    2.433 scenario.check               [MainThread] name=native_no_compat_events pass_=True detail=compat_events=0
+    2.433 scenario.end                 [MainThread] checks={'initial_reset': True, 'initial_clicks': True, 'edit_a_guest_saw_text': True, 'edit_a_hash': True, 'edit_a_len': True, 'click_1_count': True, 'click_1_label_updated_by_guest': True, 'click_2_count': True, 'text_b_guest_saw': True, 'text_b_hash': True, 'sync_echo_return': True, 'sync_echo_state': True, 'modal_count': True, 'modal_result': True, 'worker_created': True, 'worker_posts': True, 'worker_exits': True, 'modal_screenshot_saved': True, 'final_clicks': True, 'final_edit_changes': True, 'final_text': True, 'final_wndproc': True, 'window_closed': True, 'negative_unsupported_api': True, 'native_no_compat_events': True} screenshots=['/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/01-initial-native.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/02-after-actions-native.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/04-final-native.png', '/Users/peterwind/Script/Systems/Aevotrace/.worktrees/p0-ui/spikes/p0-ui/evidence/native/03-modal-native.png']

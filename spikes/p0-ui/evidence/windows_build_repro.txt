@@ -1,0 +1,29 @@
+W-1 / W-2 verification on Windows reference host
+================================================
+
+Environment: Windows 10.0.26340.9843, VS 18 Community, MSVC 14.51.36260, x64.
+
+Command (exact QA form; cmd.exe /c launches Windows PowerShell 5.1):
+  ssh win 'cmd.exe /c "cd /d C:\Users\PeterWind\AevotraceP0\P0-UI-01\guest && powershell -NoProfile -ExecutionPolicy Bypass -File .\build_msvc.ps1"; exit $LASTEXITCODE'
+
+Result: rc=0, BUILD OK.
+The script no longer calls Get-FileHash; hashes use
+[System.Security.Cryptography.SHA256]::Create(), so inherited PSModulePath does
+not matter. /Brepro was added to both cl link commands.
+
+Build 1:
+  SHA256 p0_gui_test.dll   c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14
+  SHA256 p0_gui_driver.exe ad6007d0b8f35a7361a3ad175769e57812244b0e5fa75d16f069f40e840742af
+  SIZE p0_gui_test.dll 8704; SIZE p0_gui_driver.exe 157184
+
+Build 2 (same source, same command):
+  SHA256 p0_gui_test.dll   c5b89e83eae77db4b40710d991baaeb2d797cdf49310687492698c277bf55b14
+  SHA256 p0_gui_driver.exe ad6007d0b8f35a7361a3ad175769e57812244b0e5fa75d16f069f40e840742af
+
+Reference runs after rebuild:
+  p0_gui_driver.exe /check  rc=0
+  p0_gui_driver.exe /auto   rc=0
+  state_utf8.txt: clicks=1 editChanges=2 textLen=12 textHash=3175B48FE300F0E4
+  modal=1 modalResult=1 workerCreated=1 postsSent=1 postsReceived=1 exits=1
+  syncEcho=23130 wndProcCalls=42 lastText=Windows 参考文本
+  status=点击=1  文本长度=12  模态=1  线程发/收/退=1/1/1
