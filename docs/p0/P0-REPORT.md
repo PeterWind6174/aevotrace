@@ -26,8 +26,8 @@
 | P0-ENGINE-01 | 完成（QA 功能 PASS） | commit `a4ef11c`；AOT dylib/ASLR/JIT ORC/负例证据；5 用例匹配 Windows 参考；QA 三方输出一致 | V-1 代码失效未实现；P-1 `.app` 未满足 |
 | P0-UI-01 | 完成（QA 功能 + W-1/W-2 PASS） | commit `847dad7`；native/compat 各 25 checks、真实 AppKit/自绘、截图、负例；新固定 DLL `c5b89e83...` 可复现；QA 复核通过 | Unicorn 临时桥接；与 ENGINE 未集成；人工 GUI 待验 |
 | P0-QA-01 | 完成（功能 + W-1/W-2 PASS；P0 不通过） | 独立复跑 ENGINE/UI/Windows；三方输出一致；W-1/W-2 关闭；V-1/P-1 记录 | 性能/人工/`.app` 未测 |
-| P0-ADR-01 | 进行中 | ADR 草案与 proposed 决策 | 待 QA/REVIEW |
-| P0-REVIEW-01 | 未开始 | 预审已完成任务分解审查 | 未审最终证据 |
+| P0-ADR-01 | 待审查（草案） | `docs/adr/ADR-0001-p0-selection.md` proposed D1–D7 | 待 reviewer 终审 |
+| P0-REVIEW-01 | 进行中 | 预审 + 最终审查 bundle | 待结论 |
 
 ## 3. Windows 参考机与双机流程（P0-ENV-01）
 
