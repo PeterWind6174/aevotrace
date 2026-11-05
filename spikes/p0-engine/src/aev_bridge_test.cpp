@@ -496,11 +496,12 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    uint32_t abi = 0, guest_size = 0, result_size = 0;
-    aev_bridge_abi_info(&abi, &guest_size, &result_size);
+    uint32_t abi = 0, guest_size = 0, result_size = 0, config_size = 0;
+    aev_bridge_abi_info(&abi, &guest_size, &result_size, &config_size);
     check("abi_version", abi == AEV_CALLBACK_ABI_VERSION);
     check("guest_state_size", guest_size == 256);
     check("result_struct_size", result_size == 160);
+    check("config_struct_size", config_size == sizeof(AevBridgeConfig));
 
     try {
         Fixture f = make_fixture(coff, aot, true);

@@ -42,7 +42,7 @@ import threading
 import time
 
 from . import guest_abi as abi
-from .guest_pe import UnsupportedApi
+from .errors import UnsupportedApi
 
 
 class FlippedView(NSView):

@@ -129,3 +129,45 @@ cd spikes/p0-ui
 - PyObjC 13.0 / pyobjc-framework-Cocoa 13.0（MIT）
 - Apple AppKit/Cocoa、MSVC/Windows SDK（系统/工具链）
 - 记录见 `REPORT.md`；未把 Unicorn 写入产品依赖或能力声明。
+
+## ENGINE 回调集成模式（P0-UI-INT-01）
+
+新增的 engine 模式不使用 Unicorn：它加载 `libaev_bridge.dylib`、固定 COFF fixture 和
+AOT dylib，经同一 `compat`/`native` 后端驱动窗口、输入框、按钮和结果区。旧 Unicorn
+模式仍保留为本 README 上文描述的历史对照，必须以原 `harness.run` 入口显式运行。
+
+构建 ENGINE：
+
+```sh
+cmake -S spikes/p0-engine -B .local/build-callback-b -G Ninja
+cmake --build .local/build-callback-b
+```
+
+运行两个后端（使用已安装 pyobjc 的 Python；可参考根 `.local/venv-callback`）：
+
+```sh
+PYTHONPATH=spikes/p0-ui /path/to/python -m harness.run_engine \
+  --backend compat \
+  --lib .local/build-callback-b/libaev_bridge.dylib \
+  --coff spikes/p0-engine/testdata/callback/aev_callback_fixture.obj \
+  --aot .local/build-callback-b/generated/libcallback_aot.dylib \
+  --out .local/results/P0-CALLBACK-INTEGRATION-01/gui-compat
+```
+
+或一次运行两个后端和 native 强制失败负例：
+
+```sh
+PYTHON=.local/venv-callback/bin/python \
+  bash spikes/p0-ui/scripts/run_engine_gui.sh \
+  .local/build-callback-b .local/results/P0-CALLBACK-INTEGRATION-01/gui-all
+```
+
+自动场景：三组文本/点击序列（含独立/未准备输入）、同一 bridge 实例 100 次按钮回调、
+未知导入、非法 Guest 内存、未支持重入、helper 成功但后续 Guest 故障；正常链显示
+Guest 计算的 FNV hash/len/op，`guest_rax` 与 Windows `reference_stdout.txt` 对同一
+fixture/op 一致。`summary.json` 记录 COFF/AOT/bridge 哈希、backend proof、AOT/JIT
+计数和截图；stderr 记录 AOT/JIT 实际执行轨迹。`native` 强制失败负例必须非零退出、
+compat 事件为 0、不创建 Compat 控件。
+
+边界：这是单层、主线程、最小回调链；`compat` 仍是 P0 语义 harness，不是最终兼容运行库；
+物理键盘/焦点/输入法/窗口外观和真实应用仍未验收。

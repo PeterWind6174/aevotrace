@@ -28,3 +28,15 @@
 ## 完成报告
 
 - 提交/diff、命令/退出码、哈希、日志、未测项、接口变更。
+
+## 完成报告（2026-11-05，C 阶段）
+
+- 基线/工作树：main `c91a3f7`；A `96ff890`；B code `f023d78`；C 在本 worktree `p0/callback-integration-01` 顺序实现。
+- 共用链：`harness/engine_bridge.py`（ctypes → `libaev_bridge.dylib`）→ `harness/engine_host.py`（窗口/输入框/按钮/结果区 + UTF-16 Guest 缓冲 + HostImport pending）→ `harness/engine_scenario.py`；`compat`/`native` 只负责控件后端。同一 COFF `4f6929f7...`、同一 AOT `1c1f2319...`、同一 bridge `3ab6d951...`、同一入口 `0x140001000`。
+- 无 Unicorn：`run_engine.py` 不导入 `guest_pe`/`unicorn`/`pefile`；运行时 `sys.modules` 均为 false，`otool -L libaev_bridge.dylib` 无 Unicorn/pefile。旧 `harness.run` 仍保留为显式历史路径，后端 `UnsupportedApi` 已抽到 `errors.py`，legacy import 回归通过。
+- 自动场景：三组序列（alpha `Aevoβ中` / beta `macOS-47` / 独立 `独立-Ω-93`），点击 op 分别 7/9/0x5A5A；两后端 `guest_rax` 分别为 `3828036654`/`614625053`/`651115151`，与 Windows `reference_stdout.txt` 同 fixture/op 一致。结果控件显示 Guest 计算的 FNV hash/len/op（Host 不计算最终 XOR）。
+- 100 次连续回调：同一 bridge/实例 `loop_100_counter` PASS（+100），每击 `jit_compiles=0`、`jit_execs>0`；`total_jit_compiles=1`，`total_jit_execs=896`（含前面序列/负例；两后端相同）。AOT 每击 4 块；stderr 各有 452 条 `AOT rip=`、JIT compile/exec `0x140001020` 和 16 条 `JITCODE`。
+- 负例：未知导入 `UNKNOWN_IMPORT`、非法内存 `MEMORY`、未支持重入 `REENTRY`（外层仍 OK）、helper 成功后 Guest 故障 `MEMORY` 且结果控件不更新；故障后正常序列恢复；强制 native 失败退出 1，`compat_events=0`、`native_events=5`、`compat_classes_used=False`。
+- 证据：`gui-all/compat/summary.json` `ab307341...`，`native/summary.json` `24a84c43...`，`native-failure/summary.json` `ffc03c49...`；stderr `f73af958...`/`b238316c...`/`c5c7db38...`；两后端各 4 张 PNG（compat 1120x420，native 1120x484），`backend_proof` 均 `main_thread=True` 且无跨后端类/事件。截图自动证据不等于物理键鼠/焦点/输入法/人工观感验收。
+- 自动检查：compat 40/40、native 40/40；`run_engine_gui.sh` 两后端 + 跨后端一致性 + forced native failure 全部通过。
+- 未完成/边界：无通用 PE/Win32、TLS/SEH、线程/模态/任意重入、真实应用、Trace/失效、`.app`、性能；`compat` 仍是 P0 语义 harness；Windows 可见窗口/物理输入待人工。旧 Unicorn 对照路径未重新运行真实 DLL，只做 import 回归。

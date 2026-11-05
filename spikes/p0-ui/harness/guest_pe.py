@@ -50,6 +50,8 @@ from unicorn.x86_const import (
     UC_X86_REG_R15,
 )
 
+from .errors import GuestExitThread, GuestFault, UnsupportedApi
+
 __version__ = unicorn.__version__
 
 STUB_BASE = 0x60000000
@@ -71,18 +73,6 @@ SENTINEL_BASE = 0x63000000
 SENTINEL_SIZE = 0x1000
 SENTINEL = SENTINEL_BASE
 SENTINEL_POINTER = SENTINEL_BASE + 0x800
-
-
-class GuestExitThread(Exception):
-    """Guest called ExitThread(); this unwinds the spike's guest runner."""
-
-
-class UnsupportedApi(RuntimeError):
-    """An API/message outside the declared P0-UI-01 subset was reached."""
-
-
-class GuestFault(RuntimeError):
-    """Unicorn stopped for a reason that is not a normal guest return."""
 
 
 class ImportSymbol:

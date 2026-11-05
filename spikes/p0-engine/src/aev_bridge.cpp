@@ -226,12 +226,13 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
 extern "C" {
 
 int aev_bridge_abi_info(uint32_t *abi_version, uint32_t *guest_state_size,
-                        uint32_t *call_result_size) {
-    if (!abi_version || !guest_state_size || !call_result_size)
+                        uint32_t *call_result_size, uint32_t *config_size) {
+    if (!abi_version || !guest_state_size || !call_result_size || !config_size)
         return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
     *abi_version = AEV_CALLBACK_ABI_VERSION;
     *guest_state_size = (uint32_t)sizeof(GuestState);
     *call_result_size = (uint32_t)sizeof(AevCallResult);
+    *config_size = (uint32_t)sizeof(AevBridgeConfig);
     return AEV_BRIDGE_OK;
 }
 

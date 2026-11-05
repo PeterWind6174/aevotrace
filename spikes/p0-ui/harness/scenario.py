@@ -11,7 +11,7 @@ import os
 import traceback
 
 from . import guest_abi as abi
-from .guest_pe import UnsupportedApi
+from .errors import UnsupportedApi
 
 FNV_OFFSET = 1469598103934665603
 FNV_PRIME = 1099511628211

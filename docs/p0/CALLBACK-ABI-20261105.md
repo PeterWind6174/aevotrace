@@ -149,7 +149,7 @@ typedef struct AevCallResult {
 
 ```c
 int aev_bridge_abi_info(uint32_t *abi_version, uint32_t *guest_state_size,
-                        uint32_t *call_result_size);
+                        uint32_t *call_result_size, uint32_t *config_size);
 AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg, AevBridge **out_bridge,
                                   char *err, size_t err_cap);
 AevBridgeStatus aev_bridge_destroy(AevBridge *b);

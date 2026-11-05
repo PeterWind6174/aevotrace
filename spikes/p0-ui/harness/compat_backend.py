@@ -37,7 +37,7 @@ from AppKit import (
 from Foundation import NSDate, NSString, NSObject
 
 from . import guest_abi as abi
-from .guest_pe import UnsupportedApi
+from .errors import UnsupportedApi
 
 
 def _color(r, g, b, a=1.0):
