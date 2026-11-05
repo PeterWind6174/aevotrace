@@ -1,6 +1,6 @@
 # P1 任务草案（待 P0 证据确认，尚未派发）
 
-状态：草案。P0-ADR-01 完成后由 coordinator 修订；不得把本表当成已承诺排期。
+状态：草案。P0-ADR-01 完成后由 coordinator 修订；不得把本表当成已承诺排期。2026-11-05 的下一轮限定为 [共同回调 ABI 与双 GUI 最小集成](../plans/P0-CALLBACK-INTEGRATION-01.md)，尚未派发；下文 P1 全量契约不作为该最小实验的前置循环依赖。
 
 ## 进入 P1 的门槛
 
@@ -14,7 +14,9 @@
 
 | 任务 | owner | 依赖 | 交付 |
 | --- | --- | --- | --- |
-| P0-UI-INT-01 | platform + compiler | ENGINE `a4ef11c`、UI `847dad7`、P1-CONTRACT 草案 | 用 ENGINE 核心替换 Unicorn 桥，跑通一条 Host→Guest→Host + compat/native |
+| P0-CALLBACK-ABI-01 | coordinator + compiler/platform | main 已合并的 ENGINE/UI | 仅本轮所需的回调/内存/HostImport/退出契约与 fixture 范围 |
+| P0-CORE-BRIDGE-01 | compiler + platform | P0-CALLBACK-ABI-01 | 可复用 ENGINE 薄接口，无 GUI 共同调用链 |
+| P0-UI-INT-01 | platform + compiler | P0-CORE-BRIDGE-01 | 同 Guest 输入/同核心驱动 compat/native；集成路径不使用 Unicorn |
 | P0-TRACE-SPIKE-01 | compiler + binary | ENGINE runner、TRACE 方案 | 实际 Guest PC/基本块/间接目标记录 + 独立输入重组；关闭 D6/P0-05 |
 | P0-APP-RUN-01 | qa | SCOPE 7-Zip 候选、Windows 交互桌面 | Windows 参考 7-Zip 固定工作流/截图/进程树/输出哈希；不要求已转换 |
 | P0-PKG-01 | platform + qa | ENGINE/UI spike | 最小 ARM64 `.app`/随包 dylib/`@rpath`/本地签名/JIT entitlement 探针；关闭 R05 的 P0 部分 |
