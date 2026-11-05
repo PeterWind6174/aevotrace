@@ -4,7 +4,7 @@
 
 ## 输入与责任
 
-- 阶段、需求 ID、前置任务：P0；R01–R09；依赖上述五个任务的实际证据。
+- 阶段、需求 ID、前置任务：P0；R01–R09；依赖 P0-ENV-01、P0-SCOPE-01、P0-ABI-01、P0-TRACE-01、P0-ENGINE-01、P0-UI-01 的实际证据，以及 P0-QA-01 的独立复跑与 P0-REVIEW-01 的审查输入。
 - owner / reviewer / QA：coordinator / reviewer / qa（复核指定产物）。
 - 基线 commit 或源码包哈希：`586662a4ff09465d7d3aa453fb44e5aa6e880c79` 起；各 spike 的实际提交单独记录。
 - 分支 / worktree / Windows 工作目录：coordinator 在 `main` 文档目录汇总；不直接合并 spike 代码。
@@ -19,7 +19,7 @@
   4. P1 任务分配与需要冻结的 v0 契约草案（GuestState、内存/线程/退出、AOT/JIT 调度、helper ABI、模块身份/失效、manifest、测试结果格式）。
   5. 对未成立路线提交失败证据、替代方案和范围影响，不用改名或占位实现宣布完成。
 - 允许修改的文件或组件：`docs/adr/`、`docs/tasks/`、`docs/p0/`、`docs/tasks/P0-INDEX.md`；不合并 spike 代码到 `main`。
-- 明确不包含的内容：不宣称首版完成、不把 P0 手写适配当产品能力、不冻结未经证据支持的 ABI。
+- 明确不包含的内容：不宣称首版完成、不把 P0 手写适配当产品能力、不冻结未经证据支持的 ABI。TRACE 方案若只有调查没有实际记录验证，D6 必须标“未决”，不得据此关闭 P0-05。
 - 需要的依赖及许可记录：汇总各任务记录的固定版本、许可证、目标架构和组合风险。
 
 ## 验收

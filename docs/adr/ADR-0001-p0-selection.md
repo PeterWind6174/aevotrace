@@ -15,6 +15,19 @@
 - arm64 Mach-O dylib 移除签名后 `dlopen` 失败；链接器 ad-hoc 签名或 `codesign --sign -` 后可加载。AOT artifact 必须包含签名步骤。
 - Apple 官方支持页：Rosetta 在 macOS 27 及更早可用，从 macOS 28 起仅对特定旧游戏保留有限功能。产品 Host 组件不能依赖 Rosetta。
 
+### 来源与核查边界
+
+| 事实 | 来源 | 状态 |
+| --- | --- | --- |
+| Rosetta 生命周期 | https://support.apple.com/en-us/102527（2026-09-21 发布） | 官方页面已读；未在 macOS 28 实机验证 |
+| JIT/MAP_JIT 与 entitlement | Apple 官方 JIT 文档（REFERENCES R3）+ 本机探针 | 本机探针实测；分发签名未验证 |
+| AOT dylib 签名 | 本机 `codesign`/`dlopen` 探针 | 本机实测；公证/分发未验证 |
+| FEX/Box64 | https://github.com/FEX-Emu/FEX、https://github.com/ptitSeb/box64 | README 已读；未构建 |
+| QEMU TCG | https://www.qemu.org/docs/master/devel/tcg.html | 文档已读；未构建 |
+| Remill | https://github.com/lifting-bits/remill | README/许可已读；未构建 |
+| LLVM 23.1.4 | 本机 `/opt/homebrew/opt/llvm` | 本机版本已核对；未做许可文件全文审查 |
+| Capstone 5.0.9 | 本机 `/opt/homebrew/opt/capstone` | 本机版本已核对；许可证待 P0-ABI 清单确认 |
+
 ## 决策驱动
 
 1. 正确性：x64 语义、内存序、异常、回调、DLL/PE 装载和失效。
@@ -93,3 +106,12 @@
 - 兼容层是自建还是基于 Wine 代码的可许可复用。
 - 真实应用的最终选择与工作流。
 - 动态代码、异常/SEH、TLS、多线程的 P1 优先级。
+
+## 明确未验证的风险（不得在 P0 报告中写成已解决）
+
+- 独立 `.app` 的 ARM64 入口、包内动态依赖、无开发工具路径、可写缓存目录、签名/公证未在 P0 验证。
+- `native` 与最终执行核心的集成未验证；P0-UI-01 的临时桥接只证明 GUI 语义。
+- `compat` 最终兼容实现未选定；P0-UI-01 的语义 harness 不是产品运行库。
+- x86-64 内存序、原子、未对齐/跨页访问、异常/SEH、TLS、多线程未在 P0 完整验证。
+- AOT 重定位/ASLR/动态加载与代码版本失效仅在 spike 范围内验证，未达到产品 artifact 契约。
+- 许可组合（尤其 GPL/QEMU/Wine/Unicorn）未做法律结论；只记录工程风险。

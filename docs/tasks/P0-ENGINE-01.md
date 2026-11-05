@@ -6,7 +6,7 @@
 
 - 阶段、需求 ID、前置任务：P0；R01/R06/R07；依赖 SCOPE 的初步指令范围。
 - owner / reviewer / QA：compiler / reviewer / qa。
-- 基线 commit 或源码包哈希：以 worktree 创建时的 `main`（`373becb` 或 coordinator 指定的更新基线）为准；开始实现前记录 `git rev-parse HEAD`。
+- 基线 commit 或源码包哈希：任务记录基线 `586662a4ff09465d7d3aa453fb44e5aa6e880c79`；开始实现前记录实际 `git rev-parse HEAD`，完成报告同时记录输入/产物哈希。
 - 分支 / worktree / Windows 工作目录：`p0/engine-spike` / `.worktrees/p0-engine`；Windows 任务目录 `C:\Users\PeterWind\AevotraceP0\P0-ENGINE-01`。
 - 公共 ABI / artifact / 平台接口版本：spike 内部接口；不得宣称为已冻结 v0 契约。
 
@@ -17,18 +17,20 @@
   2. 最小真实闭环：输入一个由 Windows 编译产生、具有固定 SHA-256 的 x64 函数/PE 片段；读取其实际机器码，含分支、访存和间接调用；生成 ARM64 Mach-O 目标文件；由新进程加载并执行；结果与 Windows 参考输出或独立参考实现一致。
   3. 强制一个 AOT 未覆盖目标进入 JIT，JIT 编译成功后返回 AOT 代码继续；日志能证明 JIT 实际执行，而不是假返回。
   4. 未实现指令必须显式失败/回退，禁止用返回 0 等占位行为让测试通过。
+  5. 反伪证证据：输入 Guest PC/基本块到生成符号的映射；生成代码的反汇编/`otool -tv`；输入参数/分支变异后结果随之变化；在不同加载地址或 ASLR 下加载（至少证明不依赖单一固定地址）；若静态链接，必须明确“重定位/动态加载未验证”。
+  6. 内存模型最小项：至少一个未对齐访问、一个跨页访问和一个原子/内存序场景（可实现为诊断或明确未覆盖，但不能静默当作正确）；记录 x86 TSO 与 ARM64 的差异处理方式。
 - 允许修改的文件或组件：仅 `.worktrees/p0-engine/` 下的 `spikes/p0-engine/` 与任务报告；不修改 `main` 或其他 worktree。
 - 明确不包含的内容：完整 PE 装载器、完整 Win32 API、GUI、真实应用、性能结论、最终 artifact 格式。
 - 需要的依赖及许可记录：Capstone 5.0.9（BSD-3-Clause）、LLVM 23.1.4（Apache-2.0 with LLVM exceptions）等；固定版本和许可证文件/链接写入报告。不得引入 GPL 组件到产品路径而不记录组合风险。
 
 ## 验收
 
-- 测试程序、输入、准备集和独立验证集：Windows 侧编译 `p0_engine_input.c`（或等价）生成 x64 函数，记录源码/二进制 SHA-256 和反汇编；Mac 侧使用同一字节，不重写业务函数。至少一个未参与 AOT 准备的输入分支/参数。
+- 测试程序、输入、准备集和独立验证集：Windows 侧编译 `p0_engine_input.c`（或等价）生成 x64 函数，记录源码/二进制 SHA-256 和反汇编；Mac 侧使用同一字节，不重写业务函数。至少一个未参与 AOT 准备的输入分支/参数；另加一个变异参数验证结果不是固定回放。
 - Windows 参考执行步骤：用 MSVC 编译并运行，输出结果、退出码、输入/二进制哈希。
-- macOS 目标执行步骤：CMake/Ninja 构建 translator、AOT runner、JIT 路径；`file`/`otool` 检查 ARM64 Mach-O；运行并比较结果；强制 JIT 场景记录计数和返回路径。
-- 预期业务输出、状态或副作用：固定输入得到固定结果；AOT 与 JIT 的结果一致；未覆盖指令产生明确诊断或真实 JIT 执行。
+- macOS 目标执行步骤：CMake/Ninja 构建 translator、AOT runner、JIT 路径；`file`/`otool` 检查 ARM64 Mach-O；运行并比较结果；强制 JIT 场景记录计数和返回路径；检查 Guest PC→生成符号映射和反汇编。
+- 预期业务输出、状态或副作用：固定输入得到固定结果；AOT 与 JIT 的结果一致；变异输入改变结果；未覆盖指令产生明确诊断或真实 JIT 执行；未对齐/跨页/原子项有结果或明确“未覆盖”。
 - GUI 自动/人工部分：无 GUI。
-- 必须证明真实生效的路径：AOT 产物在独立进程加载执行；JIT 回退真实编译并返回；不允许只跑 JIT 或只生成文件。
+- 必须证明真实生效的路径：AOT 产物在独立进程加载执行；JIT 回退真实编译并返回；不允许只跑 JIT 或只生成文件；不允许 Host 手写业务函数替代输入机器码。
 
 ## 完成报告
 
