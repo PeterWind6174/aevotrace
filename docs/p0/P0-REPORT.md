@@ -65,7 +65,12 @@
 
 ## 7. ABI、依赖与许可（待 P0-ABI-01）
 
-## 8. 准备执行与记录（待 P0-TRACE-01）
+## 8. 准备执行与记录（P0-TRACE-01）
+
+- 结论：Windows 原生执行只能作行为 oracle；SSH 不是 Trace 通道；ETW/Intel PT/DynamoRIO/Frida/Pin/QEMU TCG 均不能直接产出 Aevotrace Guest 级记录；权威采集应由目标端自建执行核心日志完成。
+- 报告给出记录字段草案：输入/模块哈希、Guest PC/基本块/间接目标/代码版本、`guest_va_preferred`/`guest_va_runtime`/`rva` 区分、映射代次、字节依赖、失效规则；明确不持久化 Host 裸指针、不固化回放、不支持输入给诊断。
+- 准备集/独立验证集按输入哈希、场景 ID、参数、构建版本、目录/manifest 五维隔离；验证集覆盖新输入重组、DLL/回调、代码版本、重定位/ASLR、失效、去符号、错误路径。
+- 状态：仅调查/方案；**未实现、未运行 Trace**，无样例运行结果。报告 SHA-256 `7f840aab400e8f14878dffe8eae978bb13a6bc21eae13aab011ff1967a1b484e`。P0-05 的实际记录验证未完成，D6 未决。
 
 ## 9. macOS 平台约束（coordinator 自查）
 
