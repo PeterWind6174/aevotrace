@@ -50,7 +50,8 @@
 
 ## P0-ADR-01 / P0-QA-01 / P0-REVIEW-01
 
-- ADR：`docs/adr/ADR-0001-p0-selection.md`（待 reviewer 终审）
+- ADR：`docs/adr/ADR-0001-p0-selection.md`（reviewer 已审；P0 不通过）
+- 支持矩阵：`docs/p0/SUPPORT-MATRIX.md`
 - QA 报告：`.local/results/P0-QA-01/REPORT.md`；聚焦复核 `.local/results/P0-QA-01/RECHECK.md`
 - 审查 bundle：`.local/results/P0-REVIEW-01/`（engine.patch、ui.patch、EVIDENCE.md、REVIEW-TASK.md）
 - P0 整体：未通过（P0-03/P0-05、V-1/P-1、真实应用/性能/人工项未闭合）
