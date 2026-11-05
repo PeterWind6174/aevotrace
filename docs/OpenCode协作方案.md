@@ -122,6 +122,7 @@ cd /Users/peterwind/Script/Systems/Aevotrace
   `ssh win 'cmd.exe /c <script>; exit $LASTEXITCODE'`，或读取脚本写出的 `*.exit.txt`。超时用本地包装器强制终止并记录退出码。
 - Windows 交互桌面在 `console` 会话 1（`PeterWind`）；SSH 落在 services/session 0。GUI 参考运行需要用户在会话 1 执行，或由后续会话内启动工具完成；纯 SSH 看不到窗口不等于程序失败。
 - Mac 当前进程已验证 `screencapture` 与 System Events 窗口读取可用；仍需在报告中区分自动截图/日志与人工观感验收。
+- P0 结果：功能路径经独立 QA 复跑（ENGINE AOT/JIT、UI compat/native、Windows 参考），W-1/W-2 已关闭；但 P0 整体未通过（P0-03/P0-05、V-1/P-1、真实应用/性能/人工未闭合）。见 `docs/p0/P0-REPORT.md`、`docs/adr/ADR-0001-p0-selection.md`。
 
 ## 9. 后续自动调度
 
