@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01 阶段报告：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-日期：2026-11-06（Asia/Shanghai）。状态：**实现、reviewer/QA 阻断修复与自动验证通过；独立 QA 尚未复核最终代码 HEAD `603a246`；P0 整体与首版仍未通过。**
+日期：2026-11-06（Asia/Shanghai）。状态：**实现、reviewer/QA 阻断修复与自动验证通过；独立 QA 尚未复核最终代码 HEAD `9c2aafe`；P0 整体与首版仍未通过。**
 
 本轮是从已接受的 callback 集成分支继续的有界实验，不是通用转换器、完整 PE/Win32 支持、完整运行中代码失效或性能结论。
 
@@ -12,8 +12,8 @@
 | 已接受 callback 基线 | `4bb69abee6239416956204c80da1e93ef95489d0`（文档 HEAD；源码 `afff569be1c3399241b3bc1edb609d8a5a584f3d`） |
 | 本轮分支 / worktree | `p0/trace-aot-01` / `.worktrees/p0-trace-aot` |
 | 契约提交 | `1f1fe0043503b740a645ed7c3fe1f5ea760b37a2`（trace/artifact/coverage v1，compiler/binary/platform/reviewer 会签） |
-| 实现提交 | `8325b64c4c182da6e6c9400bf97118e1b31219b2`；reviewer/QA 阻断修复 `823ede4`、`603a246` |
-| 最终干净构建 | `.local/build-trace-aot-final2`（Ninja，46/46 targets） |
+| 实现提交 | `8325b64c4c182da6e6c9400bf97118e1b31219b2`；reviewer/QA 阻断修复 `823ede4`、`603a246`、`9c2aafe` |
+| 最终干净构建 | `.local/build-trace-aot-final3`（Ninja，46/46 targets） |
 | 最终自动测试 | CTest 5/5 PASS；独立 trace/AOT 脚本 PASS |
 
 ## 2. 本轮实现
@@ -32,25 +32,25 @@
 ### 3.1 构建与 ctest
 
 ```text
-cmake -S spikes/p0-engine -B .local/build-trace-aot-final2 -G Ninja  exit 0
-cmake --build .local/build-trace-aot-final2                         exit 0 (46/46)
-ctest --test-dir .local/build-trace-aot-final2 --output-on-failure  exit 0
-  1/5 p0_engine_closed_loop   Passed  1.09s
-  2/5 p0_core_fix_semantics   Passed 14.03s
-  3/5 p0_engine_empty_aot     Passed  0.60s
-  4/5 p0_callback_bridge      Passed  5.37s
-  5/5 p0_trace_aot            Passed  6.32s
-  100% tests passed out of 5; Total 27.42s
+cmake -S spikes/p0-engine -B .local/build-trace-aot-final3 -G Ninja  exit 0
+cmake --build .local/build-trace-aot-final3                         exit 0 (46/46)
+ctest --test-dir .local/build-trace-aot-final3 --output-on-failure  exit 0
+  1/5 p0_engine_closed_loop   Passed  1.10s
+  2/5 p0_core_fix_semantics   Passed 14.01s
+  3/5 p0_engine_empty_aot     Passed  0.63s
+  4/5 p0_callback_bridge      Passed  5.12s
+  5/5 p0_trace_aot            Passed  8.51s
+  100% tests passed out of 5; Total 29.38s
 ```
 
-独立运行 `bash spikes/p0-engine/scripts/run_trace_aot_test.sh .local/build-trace-aot-final2 "$PWD/spikes/p0-engine"` 退出码 **0**，输出 `ALL TRACE/AOT CHECKS PASSED`。
+独立运行 `bash spikes/p0-engine/scripts/run_trace_aot_test.sh .local/build-trace-aot-final3 "$PWD/spikes/p0-engine"` 退出码 **0**，输出 `ALL TRACE/AOT CHECKS PASSED`。该脚本还覆盖 B-only trace 的精确执行并集、no-JIT 同 coverage 补充、publisher 拒绝坏 dylib。
 
 ### 3.2 A：callback fixture
 
 - 输入 SHA-256：`4f6929f7c71c82169295b6675517a839ae9533a85941e2632115bf0ef47328dc`。
 - base：业务结果 `guest_rax=3828036654`；`jit_compiles=1`（`0x140001020`）；AOT 表 4。
-- 补充：AOT 表 5；`guest_rax=3828036654`；`jit_compiles=0`、`jit_execs=0`；trace 中 `0x140001020` 出现 `aot` 事件且没有 `jit_compile`；实际 selected 表包含 `0x140001020`。补充 dylib SHA-256 `86ed05a5786abf5ad6dd03ccd5629d61246465d251ceaa9023987f0c9faa8f1a`。
-- 旧 base artifact SHA-256 `37c2632bbeafb64d4058779281b2a882e2a2dea7e2c47c2b9c4ba767f1184983`，补充后重跑仍可执行且哈希未变；不同构建的 Mach-O UUID 可能使 AOT dylib SHA 不同，GUI 运行时以 manifest 中的本次 SHA 绑定。
+- 补充：AOT 表 5；`guest_rax=3828036654`；`jit_compiles=0`、`jit_execs=0`；trace 中 `0x140001020` 出现 `aot` 事件且没有 `jit_compile`；实际 selected 表包含 `0x140001020`。补充 dylib SHA-256 `e4661369ab3b6e95ee22800f2c4316c81b96e635e53237a6f896116139c8fefc`。
+- 旧 base artifact SHA-256 `a608aa9dec2635d2095de7fbc7522b38b860dc147b170bb6044ee85d7fd016a8`，补充后重跑仍可执行且哈希未变；不同构建的 Mach-O UUID 可能使 AOT dylib SHA 不同，GUI 运行时以 manifest 中的本次 SHA 绑定。
 
 ### 3.3 B：新增 trace fixture（准备集外分支）
 
@@ -58,7 +58,9 @@ ctest --test-dir .local/build-trace-aot-final2 --output-on-failure  exit 0
 - 块布局：`0x140001000` size 21、B-only IMUL `0x140001015` size 17、A body `0x140001026` size 9、helper `0x14000102f` size 9、counter/return `0x140001038` size 20。
 - base A：`guest_rax=3922`，`jit_compiles=0`；A 执行事件中不含 `0x140001015`。
 - base B：`guest_rax=45320`，真实 JIT `0x140001015`（`jit_compiles=1`），证明新分支首次被动态发现。
-- 补充 A/B 新进程：A `3922`、B `45320`；两者 `jit_compiles=0`、`jit_execs=0`；AOT 表 5；B trace 中 `0x140001015` 为 `aot` 且没有对应 `jit_compile`；实际 selected 表包含 `0x140001015`。补充 dylib SHA-256 `4d03d8638d71f67457b80694f161d655570a3bd58c13f48876bc5981552381f6`。
+- 补充 A/B 新进程：A `3922`、B `45320`；两者 `jit_compiles=0`、`jit_execs=0`；AOT 表 5；B trace 中 `0x140001015` 为 `aot` 且没有对应 `jit_compile`；实际 selected 表包含 `0x140001015`。补充 dylib SHA-256 `463ac0671780921bd37c98ed1745402e22dc589578ef082729ec9b84ad16b512`。
+- B-only 补充：只用 B trace 时生成 selected 4（entry、B、helper、counter/return，排除未执行的 `0x14000101c`），新进程 B 结果 45320、零 JIT；证明 selected 是实际执行并集，不是默认 coverage 的并集。dylib SHA-256 `d28ee0f7535c4462455562d6944e0205562efc8f31ca76b8d10058a130f20b04`。
+- no-JIT 输入：只用 A trace（本来就是同 coverage、无 JIT）生成的 artifact selected 4、promoted 为空，新进程 A 结果 3922、零 JIT；dylib SHA-256 `1014d3270f13cfc0b8ad6d0ec89aa1867dd1b1941ef3accbf06885bee99147da`。
 - 说明：trace header 的 `all_blocks` 按契约包含全部可翻译块，因此 A 的 header 也会列出 B 块；验收以执行事件集合判断“B 未在 A 出现”。
 
 ### 3.4 负例
@@ -76,8 +78,8 @@ ctest --test-dir .local/build-trace-aot-final2 --output-on-failure  exit 0
 
 ### 3.6 GUI（最终构建）
 
-- base profile：compat/native 各 **44/44**；`aot_table_count=4`；`total_jit_compiles=1`；`jit_execs=920`；AOT SHA `37c2632b…`；实际 selected 表不含 `0x140001020`。
-- supplemented profile：compat/native 各 **44/44**；`aot_table_count=5`；`total_jit_compiles=0`；`jit_execs=0`；AOT SHA `86ed05a5…`，与 manifest 绑定；实际 selected 表包含 `0x140001020`。
+- base profile：compat/native 各 **44/44**；`aot_table_count=4`；`total_jit_compiles=1`；`jit_execs=920`；AOT SHA `a608aa9d…`；实际 selected 表不含 `0x140001020`。
+- supplemented profile：compat/native 各 **44/44**；`aot_table_count=5`；`total_jit_compiles=0`；`jit_execs=0`；AOT SHA `e4661369…`，与 manifest 绑定；实际 selected 表包含 `0x140001020`。
 - 真实按钮 → helper 成功 → Guest counter 故障 → `backend.get_text` 实际控件文本不变 → 恢复：4 项检查通过。
 - supplemented 下 base artifact 负例：退出 1，`success=false`，错误 `supplemented profile expects 5 AOT blocks, got 4`，无 Guest 提交、compat 事件 0。
 - forced native failure：退出 1，compat 事件 0、native 事件 5。
@@ -104,18 +106,18 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 | --- | --- |
 | callback 输入 COFF | `4f6929f7c71c82169295b6675517a839ae9533a85941e2632115bf0ef47328dc` |
 | trace fixture 输入 COFF | `145800f4a4729c201aab2c94a74937d349e01f6ec7871658b6becd3773bd1205` |
-| base callback AOT dylib | `37c2632bbeafb64d4058779281b2a882e2a2dea7e2c47c2b9c4ba767f1184983` |
-| supplemented callback AOT dylib | `86ed05a5786abf5ad6dd03ccd5629d61246465d251ceaa9023987f0c9faa8f1a` |
-| base trace AOT dylib | `64e0c97179f7c17575f13cd8728ddef54cb3e8684f42c3402ebdc310ab7af2cd` |
-| supplemented trace AOT dylib | `4d03d8638d71f67457b80694f161d655570a3bd58c13f48876bc5981552381f6` |
-| `libaev_bridge.dylib` | `125bac9f3adff266d73bd45ce551a58e1b46cbdbb7a30f97229fa49d580d7043` |
+| base callback AOT dylib | `a608aa9dec2635d2095de7fbc7522b38b860dc147b170bb6044ee85d7fd016a8` |
+| supplemented callback AOT dylib | `e4661369ab3b6e95ee22800f2c4316c81b96e635e53237a6f896116139c8fefc` |
+| base trace AOT dylib | `e8484435de3cebc07bdf8876a13ed0c73391593da0f7cd292b5521ef824997b7` |
+| supplemented trace AOT dylib | `463ac0671780921bd37c98ed1745402e22dc589578ef082729ec9b84ad16b512` |
+| `libaev_bridge.dylib` | `1a4f3555c9e224f96d2efd703f3d6d232bfc46cd2dc194f57cab1d995352b397` |
 
 原始证据（根 `.local/results/P0-TRACE-AOT-01/`）：
 
-- `ctest-fix-final.log`、`build-fix-final.log`、`final2-trace-test.log`；
-- `final2-gui-base.log`、`final2-gui-supp.log`、`final2-gui-summary.json`、`final2-hashes.txt`；
+- `ctest-final3.log`、`build-final3.log`、`final3-trace-test.log`；
+- `final3-gui-base.log`、`final3-gui-supp.log`、`final3-hashes.txt`；
 - `windows-trace-fixture-final.log`；
-- 供 QA/reviewer 读取的实现侧结果：`.local/build-trace-aot-final2/results-trace-aot/`。
+- 供 QA/reviewer 读取的实现侧结果：`.local/build-trace-aot-final3/results-trace-aot/`。
 
 ## 5. 未测项与已知限制
 
@@ -130,7 +132,7 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 
 ## 6. 独立验证状态
 
-- reviewer 在 `74fc21e` 返回 `CHANGES REQUIRED`：trace 字段名、call 单调性、块事件身份/source 一致性、发布原子性、GUI promoted RIP 实际表绑定、负例/lifecycle 覆盖。上述项已在 `823ede4`/`603a246` 中处理，并新增对应负例；需 reviewer 对新 HEAD 复核。
+- reviewer 在 `74fc21e` 返回 `CHANGES REQUIRED`：trace 字段名、call 单调性、块事件身份/source 一致性、发布原子性、GUI promoted RIP 实际表绑定、负例/lifecycle 覆盖。上述项已在 `823ede4`/`603a246` 中处理；复核又发现 selected 未精确按执行并集、bool/float 类型、publisher 全表/fn/符号校验、`aev_block_count` 越界，已在 `9c2aafe` 修复，并新增对应负例；需 reviewer 对新 HEAD 复核。
 - QA 在 `74fc21e` 返回 FAIL（核心功能通过）：`aot_supplement.py` 仍接受非单调 call、缺失/全 0 `aot_sha256`、缺失 `call_end.error_pc/guest_error`、字符串 status，以及 malformed/non-object JSON 抛未捕获异常。修复后新增 `--base-aot` 绑定、header/`call_end` 字段/类型校验、显式 JSON 错误和回归负例；需 QA 对新 HEAD 重跑。
 - 新 HEAD 的独立 QA/reviewer 结论出来前，本报告不能视为最终通过。
 
@@ -142,4 +144,4 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 
 ## 7. 分支状态
 
-停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`）。实现源码头为 `603a246`；文档 HEAD 为本报告所在提交。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
+停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`）。实现源码头为 `9c2aafe`；文档 HEAD 为本报告所在提交。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
