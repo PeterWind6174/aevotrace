@@ -159,14 +159,14 @@ bridge 在执行前必须：
 新增离线入口 `aev-aot-supplement`（实现可用 Python 编排共享 `aev-translate`/emitter；也可用 C++，但必须复用共享 translator/emitter，不复制 ORC/JIT、不重编业务 C）：
 
 ```text
-aev-aot-supplement --input <coff> --function <name> --entry <name> --entry-addr <hex>
+aev-aot-supplement --input <coff> --function <name> --entry <name> --entry-addr <hex> --base-aot <dylib>
   --trace <jsonl> [--trace <jsonl> ...]
   --out-ll <file> --out-header <file> --out-manifest <json>
 ```
 
 行为：
 
-1. 读取并校验所有 trace 的 header：相同的 input SHA-256/FNV、entry、function、callback/guest/trace/artifact ABI/translator 数值版本/target triple；拒绝截断/损坏/未知 record/不一致 header。header 的 `all_blocks` 必须与由输入 COFF/`build_program` 重建的全部块逐项相等（排序、去重），`aot_selected` 只作诊断/子集校验，不能作为 selection 的唯一依据。
+1. 读取并校验所有 trace 的 header：相同的 input SHA-256/FNV、entry、function、callback/guest/trace/artifact ABI/translator 数值版本/target triple；拒绝截断/损坏/未知 record/不一致 header。header 的 `all_blocks` 必须与由输入 COFF/`build_program` 重建的全部块逐项相等（排序、去重）。**P0-PROMOTION-FIX-01 起 `aot_selected` 不再只是诊断/子集：它必须与实际 `--base-aot` selected 表逐项相等；`--base-aot` 为必需参数。**
 2. 用 `build_program` 读取输入 COFF；每个 trace 的 block event 必须能在 Program 中找到，offset/size/block_sha256 必须与实际块字节一致。每个 trace 的所有 `call_end` 必须 `status==0`，且至少有一个最终 `call_end`；call 编号单调，失败/部分 trace（包括“先失败后成功”）不得生成 artifact。
 3. selected = 所有 trace 中实际执行的 `aot`/`jit_compile`/`jit_exec` 块 RIP 的并集；至少应包含一个 JIT 发现块（若输入本来无 JIT，工具可生成同 coverage 的 artifact，但本轮验收 A/B 都要求有提升块）。
 4. 使用共享 `emit_aot_module`（显式传入 selected 集合，或等价的临时 forced-AOT flags；不要复制 block 身份/jit_only 逻辑）生成新的 IR/header/manifest：`all_blocks` 全部，`selected` 为上述并集；不覆写 base artifact；IR/manifest 先写临时文件，全部成功后再 rename。工具只链接共享 translator/emitter，不链接 ORC/JIT。dylib 由构建脚本写入临时文件，校验 ARM64/otool/输入 SHA/selected 后再 rename；失败保留旧 artifact。
