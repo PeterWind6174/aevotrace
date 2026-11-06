@@ -72,7 +72,7 @@
 
 ## P0-PE-DLL-01（本轮有界任务 PASS；P0 整体未通过）
 
-- 分支/工作树：`p0/pe-dll-01` / `.worktrees/p0-pe-dll`；HEAD `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`；基线 `aed3b46`。
+- 分支/工作树：`p0/pe-dll-01` / `.worktrees/p0-pe-dll`；代码 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`；集成分支 `p0/pe-dll-integration`/文档 `c93c165e982c504df2f39ec6beceeb54a13652ad`；基线 `aed3b46`。
 - 契约：`docs/p0/PE-DLL-CONTRACT-20261106.md` v3（`7d55333`）。
 - 报告：`docs/p0/P0-PE-DLL-01-REPORT-20261106.md`。
 - fixture：`spikes/p0-engine/testdata/pe/`；`aevguest.dll` `1f82b679…52b0`、`aevhost.dll` `0eabd013…57d1`、`ref` `0b30d8ea…7b6f`；`SHA256SUMS`。
