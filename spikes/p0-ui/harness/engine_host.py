@@ -185,7 +185,7 @@ class EngineGuiHost:
         info = self.artifact_info
         if info["target_triple"] != "arm64-apple-macosx14.0.0":
             raise UnsupportedApi(f"unexpected AOT target: {info['target_triple']}")
-        if info["artifact_abi_version"] != 1 or info["translator_abi_version"] != 1:
+        if info["artifact_abi_version"] != 2 or info["translator_abi_version"] != 2:
             raise UnsupportedApi("unexpected AOT artifact/translator ABI")
         selected = [int(x) for x in self.bridge.selected_blocks()]
         if len(selected) != info["aot_table_count"]:

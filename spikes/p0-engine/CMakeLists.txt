@@ -346,3 +346,12 @@ add_test(NAME p0_trace_aot
 )
 set_tests_properties(p0_trace_aot PROPERTIES
   ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}")
+
+add_test(NAME p0_pe_dll
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_pe_dll_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(p0_pe_dll PROPERTIES
+  ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+  TIMEOUT 900)
