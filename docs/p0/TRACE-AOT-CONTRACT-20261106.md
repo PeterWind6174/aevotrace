@@ -168,7 +168,7 @@ aev-aot-supplement --input <coff> --function <name> --entry <name> --entry-addr 
 
 1. 读取并校验所有 trace 的 header：相同的 input SHA-256/FNV、entry、function、callback/guest/trace/artifact ABI/translator 数值版本/target triple；拒绝截断/损坏/未知 record/不一致 header。header 的 `all_blocks` 必须与由输入 COFF/`build_program` 重建的全部块逐项相等（排序、去重）。**P0-PROMOTION-FIX-01 起 `aot_selected` 不再只是诊断/子集：它必须与实际 `--base-aot` selected 表逐项相等；`--base-aot` 为必需参数。**
 2. 用 `build_program` 读取输入 COFF；每个 trace 的 block event 必须能在 Program 中找到，offset/size/block_sha256 必须与实际块字节一致。每个 trace 的所有 `call_end` 必须 `status==0`，且至少有一个最终 `call_end`；call 编号单调，失败/部分 trace（包括“先失败后成功”）不得生成 artifact。
-3. selected = 所有 trace 中实际执行的 `aot`/`jit_compile`/`jit_exec` 块 RIP 的并集；至少应包含一个 JIT 发现块（若输入本来无 JIT，工具可生成同 coverage 的 artifact，但本轮验收 A/B 都要求有提升块）。
+3. selected = 所有 trace 中实际执行的 `aot`/`jit_compile`/`jit_exec` 块 RIP 的并集。默认首次发现 A/B 验收要求至少一个 JIT 提升块；全 AOT 再补充允许 `promoted_blocks=[]`（此时 selected 仍为执行并集）。输入本来无 JIT 时可生成同 coverage 的 artifact，不得伪造提升。
 4. 使用共享 `emit_aot_module`（显式传入 selected 集合，或等价的临时 forced-AOT flags；不要复制 block 身份/jit_only 逻辑）生成新的 IR/header/manifest：`all_blocks` 全部，`selected` 为上述并集；不覆写 base artifact；IR/manifest 先写临时文件，全部成功后再 rename。工具只链接共享 translator/emitter，不链接 ORC/JIT。dylib 由构建脚本写入临时文件，校验 ARM64/otool/输入 SHA/selected 后再 rename；失败保留旧 artifact。
 5. 任何校验失败不得生成“完整”artifact；旧 artifact 保持可复跑。header 表伪造/乱序/重复、失败 call_end、block 事件缺失均为负例。
 6. 编译/链接由脚本调用 clang + 现有 `aot_runtime.o`/`aev_mem_aot.o`，不重编业务 C 源码。
@@ -196,7 +196,7 @@ aev-aot-supplement --input <coff> --function <name> --entry <name> --entry-addr 
   - base：`aot_table_count=4`、`total_jit_compiles=1`、`jit_execs>0`、loop `jit_cached=true`；证明原始 JIT 发现路径仍可跑。
   - supplemented：`aot_table_count=5`、`total_jit_compiles=0`、`jit_execs=0`、`jit_compiles=0`、loop `jit_cached=true`；证明 promoted 块不再 JIT。
   - 两 profile 都保持结果控件/hash/counter/错误路径断言；精确 44 项 = 42 个原有检查名称（其中 helper-after-fault 的 4 个名称保留，仅在同名检查内升级为事件驱动/`backend.get_text` 实际控件断言）+ 1 个同名位置替换（`loop_100_jit_executed` → `loop_100_jit_policy`）+ 1 个新增 `aot_table_count` = 44。 compat/native 各跑两 profile。
-- supplemented GUI 必须绑定 supplement manifest、AOT 文件 SHA-256 和 selected 表中的 promoted RIP（callback `0x140001020`）；传入 base artifact 或 SHA 不匹配必须失败，不得 JIT 回退。
+- supplemented GUI 必须绑定 supplement manifest、实际 base artifact、AOT 文件 SHA-256 和 selected 表；当 manifest 的 `promoted_blocks` 非空时，指定的 promoted RIP 必须同时属于 manifest promoted 和实际 selected 表。`promoted_blocks=[]` 合法，此时不得伪造 promoted RIP，仍须校验 base/selected/AOT SHA。传入错误 base artifact、AOT SHA 或 selected 表不匹配必须失败，不得 JIT 回退。
 - 增加真实按钮 → helper 成功 → Guest counter 故障 → 使用 `backend.get_text(result_handle)` 读取实际控件文本不变 → 恢复的事件驱动测试；替换原直接 `_call_guest` 的 helper-after-fault 检查以保持 44 项，不使用 Host 业务重写。
 - 增加 GUI artifact 拒绝负例：mutated/truncated AOT 或错误 selected table → 进程非零退出、`success=false`、`ABI_MISMATCH`/`LOAD`、无 Guest 结果提交、无 compat 回退。
 - GUI 脚本使用 `set -euo pipefail`；supplement 构建失败不得留下 base artifact 被当作 supplemented 使用。
