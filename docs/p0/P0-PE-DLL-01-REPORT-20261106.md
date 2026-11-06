@@ -1,6 +1,6 @@
 # P0-PE-DLL-01 报告：最小 PE32+ DLL 装载与共享 AOT/JIT 执行
 
-日期：2026-11-06。状态：**本轮有界任务 PASS，P0 整体未完成**。分支 `p0/pe-dll-01`，HEAD `45ef93efe0c3241dc6edc9fb54de0d831d6582b6`。基线 `aed3b46`；main 仍 `c91a3f7`，未合入、未 push、未删除工作树。
+日期：2026-11-06。状态：**本轮有界任务 PASS，P0 整体未完成**。分支 `p0/pe-dll-01`，HEAD `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`。基线 `aed3b46`；main 仍 `c91a3f7`，未合入、未 push、未删除工作树。
 
 本报告只证明：一个固定自编 Windows x64 PE32+ DLL（含全局数据、DIR64 指针、一个声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的有界装载、重定位、导入绑定、执行、Trace→离线补充→新进程 AOT，以及原有 COFF/GUI 回归。不证明通用 EXE、完整 Win32、真实应用、TLS/CRT/SEH/COM、打包或性能。
 
@@ -94,12 +94,12 @@ Full AOT（不排除块）在首选/非首选 base 下分别 22 个 AOT selected
 | --- | --- | --- |
 | 全新 configure/build | rc 0 | `qa-behavior/logs/build-exit.txt`、实施 `.local/build-stage1` |
 | ctest | **6/6**（原 5 + `p0_pe_dll`） | `qa-behavior/logs/ctest.log`、`.local/results/P0-PE-DLL-01/ctest/ctest-all.log` |
-| `p0_pe_dll` | **107/107** | `.local/build-stage1/results-pe-dll/checks.json`、QA recheck |
+| `p0_pe_dll` | **110/110** | `.local/build-stage1/results-pe-dll/checks.json`、QA final2 |
 | Trace/AOT | **78 PASS / 0 FAIL** | `.local/results/P0-PE-DLL-01/trace-aot/trace-aot.log` |
 | GUI base/首次补充/空新增再补充 × compat/native | 六组各 **44/44**、4 张截图 | `.local/results/P0-PE-DLL-01/gui-summary.json`；`gui/{base,supp,empty}/{compat,native}/summary.json` |
 | Windows 同 DLL reference | 8 次 rc 0；业务字段与 committed reference 一致 | `qa-behavior/windows/`；ASLR 高位变化、低 16 位 0x300C 稳定 |
-| 独立 QA artifact/负例 | PASS；上轮唯一阻断 `--expect-error` 已修复；107/107 | `.local/results/P0-PE-DLL-01/qa-artifact-recheck/REPORT.md` |
-| 独立 QA behavior/Windows/GUI | PASS；274/274 独立行为检查；六组 GUI | `.local/results/P0-PE-DLL-01/qa-behavior/REPORT.md` |
+| 独立 QA artifact/负例 | PASS；`--expect-error`、relocation 回绕、COFF `jmp [IAT]`、64 位 shift 均复测；110/110 | `.local/results/P0-PE-DLL-01/qa-final2/REPORT.md` |
+| 独立 QA behavior/Windows/GUI | PASS；274/274 独立行为检查；六组 GUI；AOT shift/回归 | `.local/results/P0-PE-DLL-01/qa-behavior/REPORT.md`、`qa-final2/REPORT.md` |
 | 依赖/反替代 | runner/bridge 链接同一 LLVM 23.1.4/Capstone 5.0.9；AOT 仅 libSystem；无 Unicorn/pefile/guest_pe/Rosetta 进入 engine 路径 | QA `otool -L`/`nm`/源码扫描 |
 
 GUI 的自动截图与事件/结果已核；物理键鼠、焦点、IME、人工观感仍待用户，不作为本轮已通过项。
@@ -130,10 +130,22 @@ clang --target=arm64-apple-macos14.0 -O2 -c … -o … && clang -arch arm64 -dyn
 
 完整命令/输出/退出码在 `.local/results/P0-PE-DLL-01/` 与 QA 报告目录；`.local` 不作为提交内容。
 
-## 8. 未测/限制
+## 8. 最终修复与复核（f864d97）
+
+在首轮 QA 后修复了三项独立发现并复跑：
+
+- **relocation 解析 32 位回绕/越界**：`parse_relocations` 全部改为 64 位位置/剩余量检查，entry 二次边界检查，`total_entries`/site 上限；新增 `neg-bad-reloc-size`（第二个 block `SizeOfBlock=0xFFFFFFF8`）。QA `qa-final2` 用 5 种巨值 × 普通/`--expect-error`/ASAN 共 15 组验证，均在约 0.02s 内 `invalid relocation block`，无越界/挂起/ASAN 报告。
+- **COFF bridge `pending_transfer` 门禁/清零**：`aev_bridge.cpp` import 分支在读栈/调用 Host 前要求 `pending_transfer==CALL`，成功后清零；QA 自建 COFF `jmp [IAT]` 负例为 `NO_BLOCK`、Host calls=0、counter=0；正常 `call` 仍通过。
+- **64 位 shift mask 回归**：`ir_emitter.cpp`/`aev_mem.c` 使用 64 位 mask 63、8/16/32 位 mask 31；新增 `shift64_cl/shift32_cl/shift8_cl` JIT 语义回归（`p0_core_fix_semantics` **501 PASS / 0 FAIL**）；QA 独立 AOT/JIT 复测 `shlq` 32=`0x100000000`、63=`0x8000000000000000`、32 位 32=`0x1`、8 位 8=`0x0`。
+
+最终独立 QA：`.local/results/P0-PE-DLL-01/qa-final2/REPORT.md`（PASS，0 阻断；ctest 6/6、`p0_pe_dll` 110/110、六组 GUI 44/44）。最终 reviewer：ACCEPT WITH NON-BLOCKING NOTES（无阻断；见 §9）。
+
+## 9. 未测/限制与后续非阻断项
 
 - 未实现/未验证：通用 EXE/进程启动、完整 Win32/消息泵、真实第三方应用、TLS callbacks、DllMain/CRT、SEH/unwind、COM、线程、delay import/API set/forwarder/ordinal import、运行中重装/并发失效、间接目标按需建函数、持久化 JIT 缓存产品化、打包/签名/公证、性能结论。
 - Windows 参考只提供业务行为，不提供指令级 Trace；helper 寄存器级抓取未能 attach，参数/返回值通过输出状态与 100 次调用间接验证。
 - GUI 自动截图/事件通过；人工键鼠/焦点/IME/观感未验收。
 - PE 驱动 GUI 留后续任务；现有双 GUI 链保持。
 - 本轮未合并 main、未 push、未删除工作树；停在 `p0/pe-dll-01` 供外部复核。P0 整体仍不通过。
+
+最终 reviewer 的非阻断项（不影响本轮有界验收，建议下一轮处理）：runner 把所有装载前失败统一为 `LOAD=3`，未细分契约中的 4/5；`--entry-export` 在无 AOT 的 `--call`/`--trace` 场景未强制；COFF bridge 未校验全部零 hash/thunk/relocs 字段；AOT required-symbol 列表未显式要求全部新符号；publisher 未重算 `entry_exports` 列表 SHA；ILT 恰好 4096 项时未检测零终止；`--call + --dump-image` 写出的是调用后 image；compat 半初始化 region 字段可能降级；`num_names > num_funcs` 对别名导出过严；Host `args` 声明未执行；B2/shift AOT 只在 QA 工具而非 ctest 中回归。

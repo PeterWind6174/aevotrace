@@ -72,11 +72,11 @@
 
 ## P0-PE-DLL-01（本轮有界任务 PASS；P0 整体未通过）
 
-- 分支/工作树：`p0/pe-dll-01` / `.worktrees/p0-pe-dll`；HEAD `45ef93efe0c3241dc6edc9fb54de0d831d6582b6`；基线 `aed3b46`。
+- 分支/工作树：`p0/pe-dll-01` / `.worktrees/p0-pe-dll`；HEAD `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`；基线 `aed3b46`。
 - 契约：`docs/p0/PE-DLL-CONTRACT-20261106.md` v3（`7d55333`）。
 - 报告：`docs/p0/P0-PE-DLL-01-REPORT-20261106.md`。
 - fixture：`spikes/p0-engine/testdata/pe/`；`aevguest.dll` `1f82b679…52b0`、`aevhost.dll` `0eabd013…57d1`、`ref` `0b30d8ea…7b6f`；`SHA256SUMS`。
 - 原始证据：`.local/results/P0-PE-DLL-01/`（artifacts、windows、ctest、trace-aot、gui-summary、checks）。
-- 独立 QA：`qa-artifact-recheck/REPORT.md`（PASS，107/107，662/662 独立检查）、`qa-behavior/REPORT.md`（PASS，274/274，六组 GUI 44/44）。
+- 独立 QA：`qa-final2/REPORT.md`（PASS，0 阻断；ctest 6/6、`p0_pe_dll` 110/110、`p0_core_fix_semantics` 501/0、六组 GUI 44/44、relocation/COFF jmp/shift 复测）、`qa-behavior/REPORT.md`（PASS，274/274）。
 - 关键：首选/非首选 Guest base、DIR64/IAT、真实 JIT→Trace→supplement→新进程 AOT 零 JIT、100 次调用、reload 隔离、显式负例；原 6/6 ctest、78 Trace/AOT、六组 GUI 通过。
 - 未测：PE 驱动 GUI、人工键鼠/焦点/IME、Windows 指令 Trace、打包/签名/性能；不得据此宣布 P0 或产品完成。
