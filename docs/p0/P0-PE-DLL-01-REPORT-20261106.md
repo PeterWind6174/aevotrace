@@ -60,7 +60,7 @@ PE 盘点原始证据：`testdata/pe/aevguest.headers.txt`、`.imports.txt`、`.
 - 同一 DLL/同一导出/同一输入的业务结果与首选 base 一致；cursor 指针随 base 平移。
 - 每 base 生成独立 AOT；`0x190` artifact 在 `0x180` 运行、`0x180` artifact 在 `0x190` 运行均 `status=3 LOAD`，错误 `AOT module identity does not match loaded PE module`。
 
-故障证据（`p0_pe_dll` 107/107）：
+故障证据（`p0_pe_dll` 110/110）：
 
 | 场景 | 结果 |
 | --- | --- |
@@ -80,9 +80,9 @@ PE 盘点原始证据：`testdata/pe/aevguest.headers.txt`、`.imports.txt`、`.
 固定 DLL、base `0x180000000`，全部 25 个已发现块：
 
 1. JIT-only/empty AOT 运行 prep，真实 `jit_compile`/`jit_exec`；trace 由实际 dispatcher/JIT 产生。
-2. `aot_supplement.py --input-kind pe` 用实际 empty base + prep trace 生成 base artifact：selected 16/25，`base` SHA `19d8645d…`，实际 dylib 表与 manifest 一致。
+2. `aot_supplement.py --input-kind pe` 用实际 empty base + prep trace 生成 base artifact：selected 16/25，QA final2 构建的 `libpe_base.dylib` SHA `ec7fe535…`，实际 dylib 表与 manifest 一致。
 3. hidden 输入 `AevDllCompute(-9,2,17)` 在 base artifact 下：1 个未覆盖合法块 `0x180001165` 真实 JIT（`jit_compiles=1`，`jit_execs=1`），业务 `861539472`。
-4. prep(base 下) + hidden trace 离线补充：selected 17/25，promoted `[0x180001165]`，demoted `[]`；supp artifact SHA `9e8a9bca…`。
+4. prep(base 下) + hidden trace 离线补充：selected 17/25，promoted `[0x180001165]`，demoted `[]`；supp artifact（QA final2 构建）SHA `e2537c6f…`。
 5. 新进程加载 supp artifact 跑 hidden：`jit_compiles=0`、`jit_execs=0`，trace 中 `0x180001165` 有 `aot` 事件、无 JIT 事件，业务仍 `861539472`。
 6. `publish_aot.py` 用实际 base/new dylib + manifest 校验并发布；错误 base SHA/base selected/fake promoted/missing base 均拒绝；发布后的 artifact 新进程 hidden 零 JIT。
 
@@ -128,7 +128,14 @@ clang --target=arm64-apple-macos14.0 -O2 -c … -o … && clang -arch arm64 -dyn
   --call AevDllReset:0x1234 --call AevDllCompute:-9,2,17 --call AevDllState
 ```
 
-完整命令/输出/退出码在 `.local/results/P0-PE-DLL-01/` 与 QA 报告目录；`.local` 不作为提交内容。
+完整命令/输出/退出码在 `.local/results/P0-PE-DLL-01/` 与 QA 报告目录；`.local` 不作为提交内容。AOT dylib 的 SHA-256 会随输出路径/install name 改变；持久身份以 artifact 的 module/file/load/image/import/host/entry/thunk/ABI/all/selected 字段为准。上列 SHA 来自 QA final2 的 `p0_pe_dll-standalone/artifacts`：
+
+```text
+ec7fe5352115aba90659aa01966f718f5b43ec427f7c735258f79eb13014cac5  libpe_base.dylib
+e2537c6f8701765cbcd3d7e900ceae94e753b2783ec5170c40f8299f60b605a3  libpe_supp.dylib / libpe_published.dylib
+ea5bf98859899c769aac43ea8d7fa0dd8588c75af4ebbee6e5430406f189cc4c  libpe_all190.dylib
+ecce6a41ab9618ca9920e78a2ce322f70bfb1d8f7af1cfe1b636eb3917c0a272  libpe_empty.dylib
+```
 
 ## 8. 最终修复与复核（f864d97）
 
