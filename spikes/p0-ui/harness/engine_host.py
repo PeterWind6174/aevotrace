@@ -10,9 +10,23 @@ from __future__ import annotations
 import os
 import struct
 import subprocess
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from AppKit import NSThread
+
+_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_ROOT / "spikes" / "p0-engine" / "scripts"))
+from aot_artifact import (  # noqa: E402
+    Artifact,
+    ArtifactError,
+    load_artifact,
+    manifest_all_blocks,
+    manifest_identity,
+    require_identity,
+    sha256_file,
+)
 
 from .engine_bridge import (
     AEV_BRIDGE_IMPORT_BASE,
@@ -58,7 +72,8 @@ class EngineGuiHost:
                  coff: str, aot: str, coverage_profile: str = "base",
                  expected_aot_sha256: str | None = None,
                  promoted_rip: int | None = None,
-                 promoted_selected: bool | None = None):
+                 base_aot: str | None = None,
+                 supplement_manifest: dict | None = None):
         self.backend = backend
         self.logger = logger
         self.evidence_dir = evidence_dir
@@ -68,7 +83,11 @@ class EngineGuiHost:
         self.coverage_profile = coverage_profile
         self.expected_aot_sha256 = expected_aot_sha256
         self.promoted_rip = promoted_rip
-        self.promoted_selected = promoted_selected
+        self.base_aot = base_aot
+        self.supplement_manifest = supplement_manifest
+        self.base_artifact: Artifact | None = None
+        self.promoted_blocks: list[int] = []
+        self.demoted_blocks: list[int] = []
         self.artifact_info: dict | None = None
         self.windows: dict[int, WindowInfo] = {}
         self.main_hwnd = 0
@@ -162,35 +181,116 @@ class EngineGuiHost:
 
     def _validate_artifact_profile(self) -> None:
         assert self.artifact_info is not None
+        assert self.bridge is not None
         info = self.artifact_info
         if info["target_triple"] != "arm64-apple-macosx14.0.0":
             raise UnsupportedApi(f"unexpected AOT target: {info['target_triple']}")
         if info["artifact_abi_version"] != 1 or info["translator_abi_version"] != 1:
             raise UnsupportedApi("unexpected AOT artifact/translator ABI")
+        selected = [int(x) for x in self.bridge.selected_blocks()]
+        if len(selected) != info["aot_table_count"]:
+            raise UnsupportedApi("selected table length does not match aot_table_count")
         if self.coverage_profile == "base":
             if info["aot_table_count"] != 4:
                 raise UnsupportedApi(f"base profile expects 4 AOT blocks, got {info['aot_table_count']}")
-            if self.bridge.selected_block_contains(self.promoted_rip):
+            if self.promoted_rip is not None and self.bridge.selected_block_contains(self.promoted_rip):
                 raise UnsupportedApi("base profile unexpectedly selects the promoted RIP")
+            self.promoted_blocks = []
+            self.demoted_blocks = []
         elif self.coverage_profile == "supplemented":
             if info["aot_table_count"] != 5:
                 raise UnsupportedApi(f"supplemented profile expects 5 AOT blocks, got {info['aot_table_count']}")
-            if not self.expected_aot_sha256:
-                raise UnsupportedApi("supplemented profile requires expected AOT SHA-256")
-            if info["aot_sha256"] != self.expected_aot_sha256:
+            manifest = self.supplement_manifest
+            if not isinstance(manifest, dict):
+                raise UnsupportedApi("supplemented profile requires supplement manifest")
+            required = (
+                "input_sha256", "input_hash", "entry_address",
+                "entry_function_sha256", "target", "artifact_abi",
+                "translator_abi", "all_block_count", "aot_sha256",
+                "base_aot_sha256", "base_selected_blocks", "selected_blocks",
+                "promoted_blocks", "demoted_blocks",
+            )
+            missing = [key for key in required if key not in manifest]
+            if missing:
+                raise UnsupportedApi(f"supplement manifest missing: {', '.join(missing)}")
+            if not self.base_aot:
+                raise UnsupportedApi("supplemented profile requires actual --base-aot")
+            try:
+                base = load_artifact(self.base_aot)
+            except ArtifactError as exc:
+                raise UnsupportedApi(f"invalid base AOT: {exc}") from exc
+            self.base_artifact = base
+            if base.sha256 != manifest["base_aot_sha256"]:
+                raise UnsupportedApi("base AOT SHA does not match supplement manifest")
+            if info["aot_sha256"] != manifest["aot_sha256"]:
                 raise UnsupportedApi("AOT SHA does not match supplement manifest")
-            if self.promoted_rip is None or self.promoted_selected is not True:
-                raise UnsupportedApi("promoted RIP is not selected in supplement manifest")
-            if not self.bridge.selected_block_contains(self.promoted_rip):
-                raise UnsupportedApi("promoted RIP is not in the actual AOT selected table")
+            if self.expected_aot_sha256 is not None and \
+                    info["aot_sha256"] != self.expected_aot_sha256:
+                raise UnsupportedApi("AOT SHA does not match expected AOT SHA")
+            if info["input_sha256"] != sha256_file(self.coff) or \
+                    info["input_sha256"] != manifest["input_sha256"]:
+                raise UnsupportedApi("artifact input SHA does not match COFF/manifest")
+            if info["entry_addr"] != int(manifest["entry_address"]):
+                raise UnsupportedApi("artifact entry address does not match manifest")
+            if info["target_triple"] != manifest["target"]:
+                raise UnsupportedApi("artifact target does not match manifest")
+            if info["artifact_abi_version"] != int(manifest["artifact_abi"]) or \
+                    info["translator_abi_version"] != int(manifest["translator_abi"]):
+                raise UnsupportedApi("artifact ABI does not match manifest")
+            manifest_all = list(manifest_all_blocks(manifest))
+            if len(manifest_all) != int(manifest["all_block_count"]) or \
+                    manifest_all != sorted(set(manifest_all)):
+                raise UnsupportedApi("manifest all-block table/count is inconsistent")
+            if info["all_block_count"] != len(manifest_all):
+                raise UnsupportedApi("artifact all_block_count does not match manifest")
+            base_selected = _manifest_ints(manifest, "base_selected_blocks", True)
+            new_selected = _manifest_ints(manifest, "selected_blocks", False)
+            promoted = _manifest_ints(manifest, "promoted_blocks", True)
+            demoted = _manifest_ints(manifest, "demoted_blocks", True)
+            if new_selected != selected:
+                raise UnsupportedApi("manifest selected_blocks does not match actual table")
+            if list(base.selected_blocks) != base_selected:
+                raise UnsupportedApi("manifest base_selected_blocks does not match actual base")
+            if list(base.all_blocks) != manifest_all:
+                raise UnsupportedApi("actual base all-block table does not match manifest")
+            try:
+                expected = manifest_identity(manifest)
+                expected["guest_state_size"] = 256
+                expected["all_blocks"] = manifest_all
+                expected["selected_blocks"] = base_selected
+                require_identity(base, expected)
+            except (ArtifactError, KeyError, TypeError, ValueError) as exc:
+                raise UnsupportedApi(f"base AOT identity mismatch: {exc}") from exc
+            selected_set = set(new_selected)
+            base_set = set(base_selected)
+            if promoted != sorted(selected_set - base_set):
+                raise UnsupportedApi("manifest promoted_blocks is not selected-base")
+            if demoted != sorted(base_set - selected_set):
+                raise UnsupportedApi("manifest demoted_blocks is not base-selected")
+            if not set(promoted).issubset(selected_set):
+                raise UnsupportedApi("manifest promoted block is not selected")
+            if self.promoted_rip is not None:
+                if self.promoted_rip not in set(promoted) or \
+                        self.promoted_rip not in selected_set:
+                    raise UnsupportedApi(
+                        "explicit promoted RIP is not an actual promoted and selected block")
+            self.promoted_blocks = promoted
+            self.demoted_blocks = demoted
         else:
             raise UnsupportedApi(f"unknown coverage profile {self.coverage_profile}")
-        self.logger.event("engine.artifact_profile", profile=self.coverage_profile,
-                          aot_table_count=info["aot_table_count"],
-                          all_block_count=info["all_block_count"],
-                          aot_sha256=info["aot_sha256"],
-                          promoted_rip=None if self.promoted_rip is None else hex(self.promoted_rip),
-                          promoted_selected_actual=self.bridge.selected_block_contains(self.promoted_rip))
+        self.logger.event(
+            "engine.artifact_profile", profile=self.coverage_profile,
+            aot_table_count=info["aot_table_count"],
+            all_block_count=info["all_block_count"],
+            aot_sha256=info["aot_sha256"],
+            base_aot_sha256=(self.base_artifact.sha256
+                             if self.base_artifact is not None else None),
+            promoted_blocks=[hex(x) for x in self.promoted_blocks],
+            demoted_blocks=[hex(x) for x in self.demoted_blocks],
+            promoted_rip=None if self.promoted_rip is None else hex(self.promoted_rip),
+            promoted_selected_actual=(
+                self.bridge.selected_block_contains(self.promoted_rip)
+                if self.promoted_rip is not None else None))
 
     # ------------------------------------------------------------------
     def _write_ctx(self, update_addr: int, counter_addr: int) -> None:
@@ -381,6 +481,10 @@ class EngineGuiHost:
             "coverage_profile": self.coverage_profile,
             "aot_table_count": (self.artifact_info or {}).get("aot_table_count"),
             "all_block_count": (self.artifact_info or {}).get("all_block_count"),
+            "base_aot_sha256": (self.base_artifact.sha256
+                                if self.base_artifact is not None else None),
+            "promoted_blocks": list(self.promoted_blocks),
+            "demoted_blocks": list(self.demoted_blocks),
             "artifact_info": self.artifact_info,
             "closed": self.closed,
             "bridge": None if self.last_result is None else {
@@ -440,11 +544,32 @@ class EngineGuiHost:
             "stack_base": f"0x{self.stack_base:x}",
             "stack_top": f"0x{self.stack_top:x}",
             "coverage_profile": self.coverage_profile,
+            "base_aot": self.base_aot,
+            "base_aot_sha256": (self.base_artifact.sha256
+                                if self.base_artifact is not None else None),
+            "promoted_blocks": list(self.promoted_blocks),
+            "demoted_blocks": list(self.demoted_blocks),
             "artifact_info": self.artifact_info,
             "helper_calls": self.helper_calls,
             "unicorn_loaded": "unicorn" in __import__("sys").modules,
             "guest_pe_loaded": "harness.guest_pe" in __import__("sys").modules,
         }
+
+
+def _manifest_ints(manifest: dict, key: str, allow_empty: bool) -> list[int]:
+    value = manifest.get(key)
+    if not isinstance(value, list):
+        raise UnsupportedApi(f"manifest {key} must be a list")
+    result = []
+    for item in value:
+        if type(item) is not int or item < 0:
+            raise UnsupportedApi(f"manifest {key} must contain non-negative integers")
+        result.append(item)
+    if result != sorted(set(result)):
+        raise UnsupportedApi(f"manifest {key} must be sorted and unique")
+    if not allow_empty and not result:
+        raise UnsupportedApi(f"manifest {key} must not be empty")
+    return result
 
 
 def _sha256(path: str) -> str:

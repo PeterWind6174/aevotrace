@@ -12,8 +12,18 @@ COFF="$ROOT/spikes/p0-engine/testdata/callback/aev_callback_fixture.obj"
 AOT="${AEV_AOT_OVERRIDE:-$BUILD_DIR/generated/libcallback_aot.dylib}"
 PROFILE="${AEV_COVERAGE_PROFILE:-base}"
 MANIFEST="${AEV_SUPPLEMENT_MANIFEST:-}"
+BASE_AOT="${AEV_BASE_AOT:-}"
 FAILURES=0
 mkdir -p "$OUT_ROOT"
+
+promoted_rip_for_manifest() {
+    "$PYTHON" - "$1" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+promoted = m.get("promoted_blocks") or []
+print(hex(promoted[0]) if promoted else "")
+PY
+}
 
 run_backend() {
     local backend=$1
@@ -21,20 +31,26 @@ run_backend() {
     rm -rf "$out"
     echo "== engine GUI backend=$backend =="
     if [ "$PROFILE" = "supplemented" ]; then
-        if [ -z "$MANIFEST" ]; then
-            echo "FAIL: supplemented profile requires AEV_SUPPLEMENT_MANIFEST"
+        if [ -z "$MANIFEST" ] || [ -z "$BASE_AOT" ]; then
+            echo "FAIL: supplemented profile requires AEV_SUPPLEMENT_MANIFEST and AEV_BASE_AOT"
             FAILURES=$((FAILURES + 1))
             return 0
         fi
+        local promoted
+        promoted=$(promoted_rip_for_manifest "$MANIFEST")
+        local promoted_opt=()
+        if [ -n "$promoted" ]; then promoted_opt=(--promoted-rip "$promoted"); fi
         PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
             --backend "$backend" --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+            --base-aot "$BASE_AOT" \
             --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
+            "${promoted_opt[@]+"${promoted_opt[@]}"}" \
             --out "$out" >"$out.stdout" 2>"$out.stderr" || local rc=$?
         local rc=${rc:-0}
     else
         PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
             --backend "$backend" --lib "$LIB" --coff "$COFF" --aot "$AOT" \
-            --coverage-profile base \
+            --coverage-profile base --promoted-rip 0x140001020 \
             --out "$out" >"$out.stdout" 2>"$out.stderr" || local rc=$?
         local rc=${rc:-0}
     fi
@@ -93,6 +109,7 @@ if [ "$PROFILE" = "supplemented" ]; then
     PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
         --backend native --lib "$LIB" --coff "$COFF" \
         --aot "$BUILD_DIR/generated/libcallback_aot.dylib" \
+        --base-aot "$BASE_AOT" \
         --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
         --out "$NEG_OUT" >"$NEG_OUT.stdout" 2>"$NEG_OUT.stderr"
     NEG_RC=$?
@@ -115,20 +132,67 @@ else
     echo "skip (base profile)"
 fi
 
+echo "== supplemented profile rejects fake promoted provenance =="
+if [ "$PROFILE" = "supplemented" ]; then
+    FAKE_MAN="$OUT_ROOT/fake-promoted-manifest.json"
+    "$PYTHON" - "$MANIFEST" "$FAKE_MAN" <<'PY'
+import json, sys
+m=json.load(open(sys.argv[1]))
+base=m.get("base_selected_blocks") or []
+if not base:
+    raise SystemExit("fake-promoted fixture needs a non-empty base selected table")
+m["promoted_blocks"]=[base[0]]
+m["demoted_blocks"]=sorted(set(base)-{base[0]})
+open(sys.argv[2],"w").write(json.dumps(m, indent=2)+"\n")
+PY
+    FAKE_OUT="$OUT_ROOT/fake-promoted-rejection"
+    rm -rf "$FAKE_OUT"
+    set +e
+    PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+        --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+        --base-aot "$BASE_AOT" \
+        --coverage-profile supplemented --supplement-manifest "$FAKE_MAN" \
+        --out "$FAKE_OUT" >"$FAKE_OUT.stdout" 2>"$FAKE_OUT.stderr"
+    FAKE_RC=$?
+    set -e
+    echo "fake-promoted rejection rc=$FAKE_RC"
+    if [ "$FAKE_RC" -eq 0 ]; then
+        echo "FAIL: supplemented profile accepted fake promoted provenance"
+        FAILURES=$((FAILURES + 1))
+    fi
+    "$PYTHON" - "$FAKE_OUT/summary.json" <<'PY'
+import json, sys
+s=json.load(open(sys.argv[1]))
+if s.get("success") is not False or s.get("checks"):
+    raise SystemExit("fake promoted did not fail before Guest")
+if (s.get("backend_event_counts") or {}).get("compat", 0) != 0:
+    raise SystemExit("compat fallback observed")
+print("fake-promoted-negative", s.get("error"))
+PY
+else
+    echo "skip (base profile)"
+fi
+
 echo "== forced native failure =="
 FAIL_OUT="$OUT_ROOT/native-failure"
 rm -rf "$FAIL_OUT"
 set +e
 if [ "$PROFILE" = "supplemented" ]; then
+    PROMOTED=$(promoted_rip_for_manifest "$MANIFEST")
+    PROMOTED_OPT=()
+    if [ -n "$PROMOTED" ]; then PROMOTED_OPT=(--promoted-rip "$PROMOTED"); fi
     PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
         --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+        --base-aot "$BASE_AOT" \
         --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
+        "${PROMOTED_OPT[@]+"${PROMOTED_OPT[@]}"}" \
         --out "$FAIL_OUT" --force-native-failure \
         >"$FAIL_OUT.stdout" 2>"$FAIL_OUT.stderr"
 else
     PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
         --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
-        --coverage-profile base --out "$FAIL_OUT" --force-native-failure \
+        --coverage-profile base --promoted-rip 0x140001020 \
+        --out "$FAIL_OUT" --force-native-failure \
         >"$FAIL_OUT.stdout" 2>"$FAIL_OUT.stderr"
 fi
 FAIL_RC=$?

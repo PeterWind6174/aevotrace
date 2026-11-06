@@ -94,7 +94,8 @@ def main(argv=None) -> int:
     parser.add_argument("--coverage-profile", choices=["base", "supplemented"],
                         default="base")
     parser.add_argument("--supplement-manifest", default="")
-    parser.add_argument("--promoted-rip", default="0x140001020")
+    parser.add_argument("--base-aot", default=os.environ.get("AEV_BASE_AOT", ""))
+    parser.add_argument("--promoted-rip", default="")
     parser.add_argument("--force-native-failure", action="store_true")
     args = parser.parse_args(argv)
 
@@ -107,18 +108,16 @@ def main(argv=None) -> int:
     coverage_profile = args.coverage_profile
     supplement_manifest = None
     expected_aot_sha256 = None
-    promoted_rip = int(args.promoted_rip, 0)
-    promoted_selected = None
+    promoted_rip = int(args.promoted_rip, 0) if args.promoted_rip else None
+    base_aot = os.path.abspath(args.base_aot) if args.base_aot else None
     if coverage_profile == "supplemented":
         if not args.supplement_manifest:
             raise SystemExit("supplemented profile requires --supplement-manifest")
+        if not base_aot:
+            raise SystemExit("supplemented profile requires --base-aot or AEV_BASE_AOT")
         with open(args.supplement_manifest, "r", encoding="utf-8") as f:
             supplement_manifest = json.load(f)
         expected_aot_sha256 = supplement_manifest.get("aot_sha256")
-        selected = supplement_manifest.get("selected_blocks") or []
-        promoted_selected = promoted_rip in selected
-        if not promoted_selected:
-            raise SystemExit(f"promoted RIP 0x{promoted_rip:x} not selected in manifest")
         if supplement_manifest.get("input_sha256") != sha256_file(coff):
             raise SystemExit("supplement manifest input SHA does not match COFF")
 
@@ -133,7 +132,11 @@ def main(argv=None) -> int:
         "backend": args.backend,
         "coverage_profile": coverage_profile,
         "supplement_manifest": args.supplement_manifest or None,
-        "promoted_rip": f"0x{promoted_rip:x}",
+        "base_aot": base_aot,
+        "base_aot_sha256": sha256_file(base_aot) if base_aot else None,
+        "promoted_rip": f"0x{promoted_rip:x}" if promoted_rip is not None else None,
+        "promoted_blocks": (supplement_manifest or {}).get("promoted_blocks"),
+        "demoted_blocks": (supplement_manifest or {}).get("demoted_blocks"),
         "library": lib,
         "library_sha256": sha256_file(lib),
         "coff": coff,
@@ -163,7 +166,8 @@ def main(argv=None) -> int:
                              coverage_profile=coverage_profile,
                              expected_aot_sha256=expected_aot_sha256,
                              promoted_rip=promoted_rip,
-                             promoted_selected=promoted_selected)
+                             base_aot=base_aot,
+                             supplement_manifest=supplement_manifest)
         backend.host = host
         scenario = EngineScenario(host, backend, logger, out_dir, lib, coff, aot,
                                   coverage_profile=coverage_profile)
