@@ -6,7 +6,7 @@
 
 - 用户交接：[P0-PE-DLL-01 提示词](../prompts/P0-PE-DLL-01.md)（本分支首个提交 `f3e8320`）。
 - 外部复核：[CODEX-PROMOTION-REVIEW-20261106](../../.local/results/CODEX-PROMOTION-REVIEW-20261106/REPORT.md)，F1 已关闭。
-- 契约：[PE-DLL-CONTRACT-20261106](../p0/PE-DLL-CONTRACT-20261106.md)（v2；callback ABI 3、GuestState 296/Guest ABI 2）。
+- 契约：[PE-DLL-CONTRACT-20261106](../p0/PE-DLL-CONTRACT-20261106.md)（v3；callback ABI 3、GuestState 296/Guest ABI 2、trace file COFF 3/PE 4）。
 - Windows：`ssh win`，VS 18 Community，vcvars64 位于 `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat`；构建脚本显式调用。
 - Mac：arm64 macOS，LLVM 23.1.4（Homebrew），CMake 4.4.4，Ninja 1.13.2。
 
@@ -50,4 +50,4 @@
 
 ## 未测/边界
 
-见契约第 9 节。PE 驱动 GUI 不在本轮；Windows 参考执行无指令 Trace；人工 GUI 观感仍需用户确认。
+见契约第 11 节。PE 驱动 GUI 不在本轮；Windows 参考执行无指令 Trace；人工 GUI 观感仍需用户确认。

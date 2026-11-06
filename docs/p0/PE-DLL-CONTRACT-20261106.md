@@ -136,7 +136,7 @@ AEV_FIELD(pending_transfer)
 ### 4.2 解析与映射
 
 1. 读文件，计算 SHA-256/FNV。解析 DOS/PE/optional/section headers；要求 `Machine=0x8664`、`Magic=0x20B`、DLL 标志、非 32 位；拒绝非 PE/非 DLL。
-2. 校验 `SizeOfImage/SizeOfHeaders/SectionAlignment>=4KiB 且 %4KiB==0/FileAlignment`；headers 结束 <= 首个 section VA；section 表在文件内；每节 `VirtualAddress % SectionAlignment == 0`、`VirtualAddress >= SizeOfHeaders`、`VirtualAddress+align_up(effective_VirtualSize, SectionAlignment) <= SizeOfImage`、raw 范围在文件内；虚拟范围不重叠；拒绝 W+X、越界、重叠。
+2. 校验：`SizeOfImage % SectionAlignment == 0`；`SectionAlignment >= 4KiB` 且 `SectionAlignment % 4KiB == 0`；`SizeOfHeaders <= 1 MiB` 且 `SizeOfHeaders % FileAlignment == 0`；`FileAlignment` 为 2 的幂且在 0x200..0x10000；headers 结束 <= 首个 section VA；section 表在文件内；每节 `VirtualAddress % SectionAlignment == 0`、`VirtualAddress >= SizeOfHeaders`、`VirtualAddress+align_up(effective_VirtualSize, SectionAlignment) <= SizeOfImage`、raw 范围在文件内；虚拟范围不重叠；拒绝 W+X、越界、重叠。
 3. 拒绝：非空 TLS 目录、delay import、bound import、CFG（`GUARD_CF` 或 load config GuardFlags）、`AddressOfEntryPoint != 0`（DllMain 不执行）、ordinal import、API set（`api-ms-*`/`ext-ms-*`）、forwarder export、非 executable section 的 export root、跨 section 的 `.pdata`。
 4. export：数组/字符串边界、ordinal 范围、重复名、forwarder 明确拒绝；至少一个 named export；ordinal-only 列表记录不翻译。
 5. `.pdata`：12 字节整除、Begin<End、范围在 image 内、Begin/End 在同一 executable section、不重叠；翻译根/直接调用目标必须由 `.pdata` 覆盖且等于 BeginAddress。
@@ -247,7 +247,7 @@ typedef int (*AevPeHostImportFn)(void *ctx, uint64_t a0, uint64_t a1,
 ### 6.1 CLI
 
 ```text
-aev-pe-runner --dll <path> --registry <path> --load-base <hex>
+aev-pe-runner --dll <path> --registry <path> [--load-base <hex>]
               [--aot <dylib>] [--entry-export <name>]
               [--call <export>[:a0,a1,a2,a3]]...
               [--reload N] [--expect-error] [--trace <path>] [--scenario <name>]
@@ -255,14 +255,20 @@ aev-pe-runner --dll <path> --registry <path> --load-base <hex>
               [--dump-relocations <path>]
 ```
 
-- `--aot` 缺省为 JIT-only；存在时必须校验 artifact 全部身份。`--load-base` 与 artifact 的 `load_base` 必须一致；只给一个时以 artifact 为准并打印。`--entry-export` 必填（用于 trace/`aev_function_name_sha256`），且必须是 named export。
+参数 requiredness：
+
+- `--dll`、`--registry` 始终必填。
+- `--load-base`：JIT-only 时必填；有 `--aot` 时可省略（以 artifact 的 `load_base` 为准）；两者都给时必须一致，否则在装载前失败。
+- `--entry-export`：有 `--call`、`--trace` 或 `--aot` 时必填；仅 `--info` 时可省略（此时只列出导出）。
+- `--call`：至少一个，除非仅 `--info`；`--reload N` 要求至少一个 `--call`；`--expect-error` 要求至少一个 `--call`。
+- `--aot` 缺省为 JIT-only；存在时必须校验 artifact 全部身份。
 - `--call` 可重复；参数缺省 0。`--reload N` 对每次迭代重新 load→call list→destroy；每次使用新 handle generation。`--expect-error` 仅用于负例：任一 call 失败时进程仍返回 0，但 JSON `expected_error=true` 且必须包含失败细节；没有失败则返回非 0。
 - 输出 JSON 到 stdout；stderr 只放诊断。JSON 包含：`status`/`status_name`/`error`、`module`（kind/file sha/size/preferred/load/image size/image sha/import/host/entry sha/thunk base/import count/relocs stripped）、`sections`、`exports`、`ordinal_only_exports`、`imports`、`regions`（只含 Guest base/size/prot）、`relocations`（count/delta/first/last）、`blocks`（rip/rva/size/sha256/aot_selected）、`aot`（sha/table count/all count）、`calls[]`（export/args/status/status_name/rax/guest_error/error_pc/mem_fault_kind/addr/size/access/aot_blocks/jit_blocks/jit_compiles/jit_execs/steps）、`host_imports`（id/thunk index/count）、`reload_iterations`、`stale_handle`。
 - 输出只含 Guest VA/模块身份；不得输出 Host backing 或 Host AOT/JIT 函数地址。`--dump-image` 写 `SizeOfImage` 字节（QA 核对 relocation）；`--dump-blocks`/`--dump-relocations` 写 JSON。
 
 ### 6.2 handle 与状态码
 
-- opaque handle 为 64 位 token：`slot+1 | (generation << 32)`；slot 0..7，generation 从 1 开始，回绕跳过 0。`slot=0` 永不分配，token 0 为无效。
+- opaque handle 为 64 位 token：`(slot+1) | (generation << 32)`；slot 0..7（8 个槽），generation 从 1 开始，回绕跳过 0。token 0 为无效；slot+1 保证 1..8 不与 0 冲突。
 - destroy 释放模块资源、清空 slot 数据并递增 generation；旧 token 的 `call`/`info` 返回 `STALE_HANDLE`，不解引用已释放内存。stale destroy 返回 `STALE_HANDLE`；slot 满/非法 slot 返回 `INVALID_ARGUMENT`。
 - runner 状态码：0 OK、2 INVALID_ARGUMENT、3 LOAD、4 ABI_MISMATCH、5 UNKNOWN_IMPORT、6 MEMORY、7 JIT、8 STEP_LIMIT、9 STALE_HANDLE、10 REENTRY、11 HOST、12 INTERNAL。
 - 生命周期：`load → resolve registry/imports → resolve export → call N 次 → destroy`。活动调用中 load/destroy/再次 call 返回 `REENTRY`；HostImport 回调中再次 call 同样 `REENTRY`。失败装载释放本次全部区域/dylib/JIT/registry。
@@ -321,7 +327,7 @@ const uint64_t aev_relocs_stripped;
 
 - 共享 `aot_supplement.py` 增加 `--input-kind {coff,pe} --input <file> [--load-base --export ... --entry-export --registry]`；不新增第三套补充器。
 - PE 模式必须重新调用 translator 重建 post-relocation/IAT image，核对 header 的 module/file/preferred/load/image/import/host/entry exports identity、`all_blocks`、`aot_selected`、每块 `(rip,rva,size,sha256)`；不能直接信任 trace 哈希。`--base-aot` 必选；实际 base 的 `aot_sha256`/`selected` 逐项相等。
-- promoted/demoted 由实际 base selected 与实际执行并集计算；发布用共享 `publish_aot.py`。PE manifest 必须包含 `module_kind/module_file_sha256/module_file_size/preferred_base/load_base/image_size/image_sha256/import_binding_sha256/host_binding_sha256/entry_exports_sha256/entry_exports/entry_export/thunk_base/import_count/imports/relocs_stripped`；publisher 校验 actual base/new artifact 的这些字段和 selected/all 表。
+- promoted/demoted 由实际 base selected 与实际执行并集计算；发布用共享 `publish_aot.py`。PE manifest 必须包含模块身份字段（`module_kind/module_file_sha256/module_file_size/preferred_base/load_base/image_size/image_sha256/import_binding_sha256/host_binding_sha256/entry_exports_sha256/entry_exports/entry_export/thunk_base/import_count/imports/relocs_stripped`）、既有 provenance 字段（`input_sha256/input_hash/entry_address/entry_function_sha256/target/artifact_abi/translator_abi/all_block_count/base_aot_sha256/base_selected_blocks/selected_blocks/promoted_blocks/demoted_blocks`）和每函数/块表。publisher 校验 actual base/new artifact 的这些字段、`all_blocks`、`selected` 表，并重新计算 promoted/demoted 与 manifest 比较；缺 base、伪 base SHA、伪 base selected、错误差集均拒绝。
 - COFF trace ABI 3 继续由同一工具处理；PE/COFF 混用拒绝。
 
 ## 9. 兼容迁移清单
