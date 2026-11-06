@@ -1,6 +1,6 @@
 # P0-PE-DLL-01 报告：最小 PE32+ DLL 装载与共享 AOT/JIT 执行
 
-日期：2026-11-06。状态：**本轮有界任务 PASS，P0 整体未完成**。分支 `p0/pe-dll-01`；代码提交 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`，集成分支 `p0/pe-dll-integration`/最终文档 `c93c165e982c504df2f39ec6beceeb54a13652ad`。基线 `aed3b46`；main 仍 `c91a3f7`，未合入、未 push、未删除工作树。
+日期：2026-11-06。状态：**本轮有界任务 PASS，P0 整体未完成**。分支 `p0/pe-dll-01`；代码提交 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`，集成分支 `p0/pe-dll-integration`（最终 HEAD 以 `git rev-parse p0/pe-dll-integration` 为准）。基线 `aed3b46`；main 仍 `c91a3f7`，未合入、未 push、未删除工作树。
 
 本报告只证明：一个固定自编 Windows x64 PE32+ DLL（含全局数据、DIR64 指针、一个声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的有界装载、重定位、导入绑定、执行、Trace→离线补充→新进程 AOT，以及原有 COFF/GUI 回归。不证明通用 EXE、完整 Win32、真实应用、TLS/CRT/SEH/COM、打包或性能。
 
