@@ -217,6 +217,78 @@ assert not any(e.get('record')=='jit_compile' and e.get('rip')=='0x140001015' fo
 print('TRACE_B_ONLY_OK', r)
 PY
 
+echo "== promotion provenance F1 regressions =="
+# The full-AOT artifact is authoritative.  A fresh trace must be taken on it;
+# reusing the four-block trace would be rejected by the exact-selected check.
+"$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$TR_COFF" \
+    --aot "$OUT/libtrace_aot_supplemented.dylib" --entry 0x140001000 \
+    --function aev_trace_guest --fixture trace --mode supplemented --case AB \
+    --trace "$OUT/trace_full5_fresh.jsonl" --scenario AB \
+    --expected-aot-table 5 --promoted-rip 0x140001015 --expect-promoted-selected \
+    >"$OUT/trace_full5_fresh.json" 2>"$OUT/trace_full5_fresh.stderr"
+"$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
+    --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
+    --base-aot "$OUT/libtrace_aot_supplemented.dylib" \
+    --trace "$OUT/trace_full5_fresh.jsonl" \
+    --out-ll "$OUT/trace_full5_resupp.ll" --out-header "$OUT/trace_full5_resupp.h" \
+    --out-manifest "$OUT/trace_full5_resupp.json" >"$OUT/trace_full5_resupp.stdout"
+if "$PY" - "$OUT/trace_full5_resupp.json" "$OUT/libtrace_aot_supplemented.dylib" <<'PY'
+import hashlib, json, sys
+m=json.load(open(sys.argv[1]))
+base=[0x140001000,0x140001015,0x140001026,0x14000102f,0x140001038]
+actual_base=m.get("base_selected_blocks")
+actual_new=m.get("selected_blocks")
+actual_promoted=m.get("promoted_blocks")
+actual_demoted=m.get("demoted_blocks")
+print("FULL5 base/new/promoted/demoted", actual_base, actual_new,
+      actual_promoted, actual_demoted)
+assert m.get("base_aot_sha256")==hashlib.sha256(open(sys.argv[2],"rb").read()).hexdigest(), m.get("base_aot_sha256")
+assert actual_base==base, actual_base
+assert actual_new==base, actual_new
+assert actual_promoted==[], actual_promoted
+assert actual_demoted==[], actual_demoted
+PY
+then
+    pass "full-AOT re-supplement empty promotion"
+else
+    fail "full-AOT re-supplement promoted/demoted provenance"
+fi
+
+"$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$TR_COFF" \
+    --aot "$OUT/libtrace_aot_B_only.dylib" --entry 0x140001000 \
+    --function aev_trace_guest --fixture trace --mode supplemented --case AB \
+    --trace "$OUT/trace_B_only_AB.jsonl" --scenario AB \
+    --expected-aot-table 4 --promoted-rip 0x140001026 \
+    >"$OUT/trace_B_only_AB.json" 2>"$OUT/trace_B_only_AB.stderr"
+"$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
+    --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
+    --base-aot "$OUT/libtrace_aot_B_only.dylib" \
+    --trace "$OUT/trace_B_only_AB.jsonl" \
+    --out-ll "$OUT/trace_B_only_AB_supp.ll" --out-header "$OUT/trace_B_only_AB_supp.h" \
+    --out-manifest "$OUT/trace_B_only_AB_supp.json" >"$OUT/trace_B_only_AB_supp.stdout"
+if "$PY" - "$OUT/trace_B_only_AB_supp.json" "$OUT/libtrace_aot_B_only.dylib" <<'PY'
+import hashlib, json, sys
+m=json.load(open(sys.argv[1]))
+base=[0x140001000,0x140001015,0x14000102f,0x140001038]
+new=[0x140001000,0x140001015,0x140001026,0x14000102f,0x140001038]
+actual_base=m.get("base_selected_blocks")
+actual_new=m.get("selected_blocks")
+actual_promoted=m.get("promoted_blocks")
+actual_demoted=m.get("demoted_blocks")
+print("B-ONLY base/new/promoted/demoted", actual_base, actual_new,
+      actual_promoted, actual_demoted)
+assert m.get("base_aot_sha256")==hashlib.sha256(open(sys.argv[2],"rb").read()).hexdigest(), m.get("base_aot_sha256")
+assert actual_base==base, actual_base
+assert actual_new==new, actual_new
+assert actual_promoted==[0x140001026], actual_promoted
+assert actual_demoted==[], actual_demoted
+PY
+then
+    pass "B-only A+B promotes only A body"
+else
+    fail "B-only A+B promotion provenance"
+fi
+
 echo "== no-JIT supplement (same coverage) =="
 "$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
     --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
