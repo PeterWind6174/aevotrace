@@ -2,6 +2,8 @@
 
 日期：2026-11-05。状态：compiler/platform/reviewer 已会签（最终代码 HEAD `afff569`；后续仅文档提交）。本文件只冻结本轮 P0-CALLBACK-INTEGRATION-01 所需的最小边界，不是 P1 的完整 ABI、PE、TSO 或异常契约。
 
+> **2026-11-06 取代说明（P0-PE-DLL-01）**：为引入受检查 PE 区域内存模型，`GuestState` 从 32 字段/256 字节升为 37 字段/296 字节，Guest ABI 升为 2，callback ABI 升为 3。本文第 2 节及下文的 256/ABI 1/ABI 2 数值仅代表历史版本；当前边界以 [PE-DLL-CONTRACT-20261106](PE-DLL-CONTRACT-20261106.md) 第 1、3 节为准。现有 COFF 回调语义（单线程、最多 4 参数、显式 HostImport、AOT 优先/JIT 回退）继续保留，但产物必须按新 ABI 重建，旧产物明确拒绝。
+
 ## 1. 范围与不承诺
 
 本轮只支持：

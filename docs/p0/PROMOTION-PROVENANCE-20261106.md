@@ -2,6 +2,8 @@
 
 日期：2026-11-06。状态：compiler/binary/platform/reviewer 已复签（v1.1）。只修订 P0-TRACE-AOT-01 的 baseline/`promoted_blocks` 语义，不改变 trace/artifact ABI 1 的字段布局、执行并集规则或产品范围。
 
+> **2026-11-06 取代说明（P0-PE-DLL-01）**：GuestState 升为 296 字节/Guest ABI 2，callback ABI 升为 3，artifact/translator ABI 升为 2，COFF trace file ABI 升为 3。本文第 2 节及下文的 256/ABI 1 是 v1.1 历史值；当前 publisher/supplement 必须按 [PE-DLL-CONTRACT-20261106](PE-DLL-CONTRACT-20261106.md) 第 1、8、9 节校验。provenance 的“实际 base artifact 是权威基线、差集来自实际 selected”语义保持不变，所有 base/new artifact 按新 ABI 重建，旧 ABI1 产物明确拒绝。
+
 ## 1. 问题与范围
 
 P0-TRACE-AOT-01 的 `aot_supplement.py` 从新 translator 的默认 coverage 推导 `base_selected`，未使用实际 `--base-aot` 的 selected 表。因此在“已全 AOT 再补充”时错误报告 `0x140001015` 为新增，在 B-only baseline 时也错误报告 B 块，而不是实际新增的 A body `0x140001026`。

@@ -2,6 +2,8 @@
 
 日期：2026-11-06。状态：compiler/binary/platform/reviewer 已会签（v1）；P0-PROMOTION-FIX-01 以 [promotion provenance v1.1](PROMOTION-PROVENANCE-20261106.md) 修订 base artifact/`promoted_blocks` 语义，trace/artifact ABI 1 字段布局不变。只冻结本轮 P0-TRACE-AOT-01 所需的有界实验边界，不是 P1 的完整 Trace/artifact/失效契约。
 
+> **2026-11-06 取代说明（P0-PE-DLL-01）**：GuestState 升为 296 字节/Guest ABI 2，artifact/translator ABI 升为 2，callback ABI 升为 3；新增 PE trace file ABI 2，进程内 trace sink ABI 仍为 1。COFF trace file ABI 1 继续由同一 supplement 工具处理。本文中的 ABI 1/256/trace ABI 单一宏描述为历史版本；当前版本、PE header 字段和 supplement 规则以 [PE-DLL-CONTRACT-20261106](PE-DLL-CONTRACT-20261106.md) 第 1、8、9 节为准。旧 ABI 产物明确拒绝，所有 base/supplemented artifact 重建。
+
 ## 1. 范围与不承诺
 
 本轮只做：
