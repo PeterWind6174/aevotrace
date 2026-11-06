@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-状态：进行中（契约 v1 已获 compiler/binary/platform/reviewer 会签；实现进行中）。
+状态：待审查（实现与自动验证在最终代码 HEAD `8325b64` 通过；独立 QA/reviewer 复核待做）。
 
 ## 输入与责任
 
@@ -40,5 +40,19 @@
 
 ## 完成报告
 
-- 提交或 diff、命令/退出码、哈希/日志、A/B 两轮 AOT/JIT 证据、Windows/双 GUI、QA/reviewer、未覆盖项、分支状态。
+- 提交或 diff：契约 `1f1fe00`；实现 `8325b64`（37 files, +1959/−46）。阶段报告 `docs/p0/TRACE-AOT-REPORT-20261106.md`。
+- 命令、退出码、环境及配置：
+  - `cmake -S spikes/p0-engine -B .local/build-trace-aot-final -G Ninja` exit 0；`cmake --build` exit 0（46/46）。
+  - `ctest --test-dir .local/build-trace-aot-final --output-on-failure` exit 0，5/5 PASS（原 4 组 + `p0_trace_aot`）。
+  - `bash spikes/p0-engine/scripts/run_trace_aot_test.sh ...` exit 0，`ALL TRACE/AOT CHECKS PASSED`。
+  - 最终 GUI base：compat/native 各 44/44，`aot_table_count=4`、`total_jit_compiles=1`、`jit_execs=920`。
+  - 最终 GUI supplemented：compat/native 各 44/44，`aot_table_count=5`、`total_jit_compiles=0`、`jit_execs=0`；base artifact 负例 exit 1、compat 事件 0。
+  - Windows `ssh win` 同一对象构建运行 exit 0，A=3922、B=45320、`BUILD_RUN_OK`。
+- 二进制哈希、日志和报告位置：
+  - callback `4f6929f7…`；trace fixture `145800f4…`；supplemented callback `50efd83c…`；supplemented trace `7dfdac40…`。
+  - `.local/results/P0-TRACE-AOT-01/{ctest-final.log,final-trace-test.log,final-gui-base.log,final-gui-supp.log,final-gui-summary.json,windows-trace-fixture.log}`。
+- 正确性/性能结果：A、B 两轮均从真实 JIT 发现进入新进程 AOT；负例全部明确拒绝；未做性能测量。
+- 审查问题及修复：契约经 compiler/binary/platform 三轮会签与 reviewer 复核，已修复块 offset/size、target/translator 标识、HostImport 仅 id、失败 trace 拒绝、GUI 44/44 profile 与真实控件断言等阻断项。
+- 未测项、已知限制、需要用户操作的具体步骤：见阶段报告 §5；GUI 物理键鼠/焦点/IME 仍需人工验收；未做通用 PE、真实应用、`.app`、运行中失效或性能结论。
+- 后续任务与接口变更：trace/artifact ABI v1、translator ABI 1；callback ABI v2 不变。独立 QA/reviewer 通过前不合并 main、不 push、不删除 worktree。
 - 不宣称 P0/首版完成；不自动合入 main/push/删除 worktree。
