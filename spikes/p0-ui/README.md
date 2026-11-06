@@ -176,9 +176,12 @@ compat 事件为 0、不创建 Compat 控件。
 
 - `base`：AOT 表 4、总 JIT compile 1、JIT exec > 0；promoted RIP 不得在实际 selected 表。
 - `supplemented`：AOT 表 5、总 JIT compile 0、JIT exec 0；必须提供 supplement manifest
-  （`AEV_SUPPLEMENT_MANIFEST`）、对应 AOT（`AEV_AOT_OVERRIDE`），并绑定 manifest 中的
-  AOT SHA-256 与 promoted RIP（callback `0x140001020`）；实际 dylib 的 selected 表必须包含
-  该 RIP，否则在进入 Guest 前失败，不回退 base AOT/JIT/compat。
+  （`AEV_SUPPLEMENT_MANIFEST`）、对应 AOT（`AEV_AOT_OVERRIDE`）和实际 base artifact
+  （`AEV_BASE_AOT`）。加载/校验实际 base 与 new dylib，要求 manifest `base_aot_sha256`、
+  `base_selected_blocks`、`selected_blocks`、`promoted_blocks`、`demoted_blocks` 与实际表一致。
+  空 promoted 合法，不得伪造 promoted RIP；`--promoted-rip` 默认未设置，仅显式提供时要求
+  它同时属于 manifest promoted 和实际 selected。错误 base/AOT SHA/selected 在进入 Guest 前失败，
+  不回退 base AOT/JIT/compat。
 
 离线补充入口（Python 编排共享 `aev-translate`，不重编业务 C、不复制 ORC）：
 
@@ -186,12 +189,13 @@ compat 事件为 0、不创建 Compat 控件。
 python3 spikes/p0-engine/scripts/aot_supplement.py \
   --translator <build>/aev-translate --input <coff> \
   --function <name> --entry <name> --entry-addr 0x140001000 \
-  --trace <trace.jsonl> --out-ll <supp.ll> --out-header <supp.h> \
-  --out-manifest <supp.json>
+  --base-aot <base.dylib> --trace <trace.jsonl> \
+  --out-ll <supp.ll> --out-header <supp.h> --out-manifest <supp.json>
 # 链接临时 dylib 后用实际导出符号校验并原子发布：
 python3 spikes/p0-engine/scripts/publish_aot.py --dylib-tmp <tmp.dylib> \
-  --dylib-out <supp.dylib> --manifest-in <supp.json> --manifest-out <supp.json> \
-  --promoted-rip 0x140001020 --expected-table 5
+  --dylib-out <supp.dylib> --base-aot <base.dylib> \
+  --manifest-in <supp.json> --manifest-out <supp.json> --expected-table 5 \
+  [--promoted-rip 0x140001020]  # 仅当 manifest promoted 非空时
 ```
 
 trace 为块级 JSONL；块事件字段为 `offset`/`size`/`block_sha256`，`host_import` 只记录 id。

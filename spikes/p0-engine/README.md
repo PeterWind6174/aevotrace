@@ -96,13 +96,23 @@ python3 spikes/p0-engine/scripts/aot_supplement.py \
   --base-aot <base.dylib> --trace <trace.jsonl> \
   --out-ll <supp.ll> --out-header <supp.h> --out-manifest <supp.json>
 python3 spikes/p0-engine/scripts/publish_aot.py --dylib-tmp <tmp.dylib> \
-  --dylib-out <supp.dylib> --manifest-in <supp.json> --manifest-out <supp.json> \
-  --promoted-rip <hex> --expected-table <N>
+  --dylib-out <supp.dylib> --base-aot <base.dylib> \
+  --manifest-in <supp.json> --manifest-out <supp.json> --expected-table <N> \
+  [--promoted-rip <hex>]   # optional assertion; omit for empty promotion
 ```
 
+`--base-aot` is required for both tools.  `aot_artifact.py` loads the actual
+base/new dylibs and validates input SHA/FNV, entry/function, target/ABI,
+guest-state size, `aev_aot_run`, all/selected tables and selected `fn` symbols.
+The manifest records actual `base_aot_sha256`, `base_selected_blocks`,
+`selected_blocks`, `promoted_blocks` and `demoted_blocks`.  Empty promotion is
+legal; selected membership alone is not promotion evidence.  The publisher
+trusts the supplement manifest for COFF identity but verifies both actual
+dylibs and the base provenance.
+
 `run_trace_aot_test.sh` covers callback JIT→supplement→new process, trace
-fixture A/B and B-only/no-JIT supplement, publisher rejection, trace lifecycle,
-and the negative matrix.
+fixture A/B, full-AOT empty promotion, B-only→A-body promotion, demoted blocks,
+publisher rejection, trace lifecycle, and the negative matrix.
 
 The semantics script exercises the ORC JIT path (`aev-jit-probe`), a separately
 loaded ARM64 AOT dylib (`aev-aot-probe`), and the IMUL helper in both the host
