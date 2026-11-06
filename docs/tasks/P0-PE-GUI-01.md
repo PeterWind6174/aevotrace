@@ -12,6 +12,13 @@
 - 既有 ABI：Guest 2/296、callback 3、artifact/translator 2、trace sink 1、PE trace file 4；本轮不改变。
 - owner：coordinator（契约/集成/文档）；compiler（core/ABI/runner/headless）；platform（GUI/双后端）；binary（模块身份会签、Windows stateful reference）；QA（behavior/Windows、artifact/lifecycle）；reviewer（只读最终版本）。
 - 模型：所有实际会话必须核对 OpenCode Go / DeepSeek V4.1 Flash / Max；仅桌面端原生会话，不启动 CLI 模型 worker，worker 不递归派生。
+- 实际会话（`session_v2` 记录，`opencode-go / deepseek-v4.1-flash / variant=max`）：
+  - 主控 `ses_e4ccea16bffeuIPAGBKgge0zXo`（coordinator）。
+  - compiler `ses_e4cbd9888ffeyyULgE88LKIt2W`，已 `session_move` 到 `.worktrees/p0-pe-session`。
+  - platform `ses_e4cbd9887ffesFEdmQBfw75EyM`，已 `session_move` 到 `.worktrees/p0-pe-gui-platform`。
+  - binary `ses_e4cbcb808ffe8FMfTWeJSXx7Hc`，已 `session_move` 到 `.worktrees/p0-pe-gui-binary`。
+  - reviewer（契约只读）`ses_e4cba4b71ffeVeld29oUOOSto8`，目录为集成分支 worktree（只读，不写源码）。
+- 并发说明：契约冻结后，compiler/platform/binary 的文件 owner 不重叠、各自独立 worktree/分支/构建目录；实际并发为 3 个实施会话，低于弹性调度上限 4。任何会话若无法保持 worktree 边界，立即串行化。
 
 ## 并行隔离
 
