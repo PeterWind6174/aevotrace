@@ -88,12 +88,14 @@ class Driver:
         return proc.returncode, data
 
     def translate(self, load_base: int, includes=None, excludes=None,
-                  tag: str = "translate") -> tuple[Path, Path, dict]:
+                  tag: str = "translate", dll: Path | None = None
+                  ) -> tuple[Path, Path, dict]:
         exports = self.exports()
         ll = self.art / f"{tag}.ll"
         header = self.art / f"{tag}.h"
         manifest = self.art / f"{tag}.json"
-        cmd = [str(self.translator), "--pe", str(self.pe_dir / "aevguest.dll"),
+        dll = dll or (self.pe_dir / "aevguest.dll")
+        cmd = [str(self.translator), "--pe", str(dll),
                "--load-base", hex(load_base),
                "--registry", str(self.pe_dir / "aevimports.txt"),
                "--entry", "AevDllCompute",
@@ -156,17 +158,20 @@ class Driver:
         self.require(proc.returncode == 0, f"supplement {tag}: {proc.stderr}")
         return ll, json.loads(manifest.read_text())
 
-    def info(self, load_base: int, tag: str):
+    def info(self, load_base: int, tag: str, dll: Path | None = None):
+        dll = dll or (self.pe_dir / "aevguest.dll")
         _, data = self.runner_json(
-            ["--dll", str(self.pe_dir / "aevguest.dll"),
+            ["--dll", str(dll),
              "--registry", str(self.pe_dir / "aevimports.txt"),
              "--load-base", hex(load_base), "--entry-export", "AevDllCompute",
              "--info"], tag)
         return data["iteration_0"]
 
     def calls(self, load_base: int, calls: list[str], tag: str, aot: Path | None = None,
-              expect_error: bool = False, extra: list[str] | None = None):
-        args = ["--dll", str(self.pe_dir / "aevguest.dll"),
+              expect_error: bool = False, extra: list[str] | None = None,
+              dll: Path | None = None):
+        dll = dll or (self.pe_dir / "aevguest.dll")
+        args = ["--dll", str(dll),
                 "--registry", str(self.pe_dir / "aevimports.txt"),
                 "--load-base", hex(load_base),
                 "--entry-export", "AevDllCompute"]
@@ -253,6 +258,7 @@ def pe_headers(data: bytes):
     opt = pe + 24
     sec_table = opt + opt_size
     sections = {}
+    section_offsets = {}
     for i in range(nsec):
         off = sec_table + i * 40
         name = data[off:off + 8].split(b"\0", 1)[0].decode("latin1")
@@ -261,11 +267,13 @@ def pe_headers(data: bytes):
         raw_size = int.from_bytes(data[off + 16:off + 20], "little")
         raw_ptr = int.from_bytes(data[off + 20:off + 24], "little")
         sections[name] = (va, vsize, raw_ptr, raw_size)
+        section_offsets[name] = off
     data_dir = opt + 112
     return {
         "pe": pe,
         "opt": opt,
         "sections": sections,
+        "section_offsets": section_offsets,
         "export_rva": int.from_bytes(data[data_dir:data_dir + 4], "little"),
         "export_size": int.from_bytes(data[data_dir + 4:data_dir + 8], "little"),
     }
@@ -286,6 +294,196 @@ def make_variant(driver: Driver, name: str, mutate) -> Path:
     path = driver.art / name
     path.write_bytes(data)
     return path
+
+
+def patch_section_chars(driver: Driver, name: str, section: str,
+                        characteristics: int) -> Path:
+    data = bytearray((driver.pe_dir / "aevguest.dll").read_bytes())
+    hdr = pe_headers(bytes(data))
+    off = hdr["section_offsets"][section]
+    data[off + 36:off + 40] = characteristics.to_bytes(4, "little")
+    path = driver.art / name
+    path.write_bytes(data)
+    return path
+
+
+def section_prot(info, name: str) -> int:
+    for section in info["sections"]:
+        if section["name"] == name:
+            return int(section["prot"])
+    raise Failure(f"section not found: {name}")
+
+
+def call_map(data) -> dict:
+    return {c["export"]: c for c in data["iteration_0"]["calls"]}
+
+
+def check_permissions(driver: Driver, info_pref) -> None:
+    base = PREFERRED
+    data_va = base + 0x3000
+    original_sha = hashlib.sha256(
+        (driver.pe_dir / "aevguest.dll").read_bytes()).hexdigest()
+
+    driver.check(section_prot(info_pref, ".text") == 5, "normal .text R|X")
+    driver.check(section_prot(info_pref, ".rdata") == 1, "normal .rdata R")
+    driver.check(section_prot(info_pref, ".data") == 3, "normal .data R|W")
+
+    calls_va = next(int(e["va"], 16) for e in info_pref["exports"]
+                    if e["name"] == "AevDllCalls")
+    rc, normal = driver.calls(base, [f"AevDllCallPtr:{hex(calls_va)}"],
+                              "perm-exec")
+    c = call_map(normal)["AevDllCallPtr"]
+    driver.check(c["status"] == 0 and c["rax"] == 0,
+                 "executable .text indirect call succeeds")
+
+    variants = {
+        "zero": patch_section_chars(driver, "data-zero.dll", ".data", 0x00000040),
+        "r": patch_section_chars(driver, "data-r.dll", ".data", 0x40000040),
+        "w": patch_section_chars(driver, "data-w.dll", ".data", 0x80000040),
+        "x": patch_section_chars(driver, "data-x.dll", ".data", 0x20000040),
+        "rx": patch_section_chars(driver, "data-rx.dll", ".data", 0x60000040),
+        "wx": patch_section_chars(driver, "data-wx.dll", ".data", 0xA0000040),
+        "rwx": patch_section_chars(driver, "data-rwx.dll", ".data", 0xE0000040),
+    }
+
+    # R/W/X empty: PAGE_NOACCESS, no implicit READ.  JIT path.
+    zero = variants["zero"]
+    zinfo = driver.info(base, "perm-zero-info", dll=zero)
+    driver.check(section_prot(zinfo, ".data") == 0, "zero .data prot 0")
+    zero_region = next((r for r in zinfo["regions"]
+                        if r["guest_base"] == hex(data_va)), None)
+    driver.check(zero_region is not None and zero_region["prot"] == 0,
+                 "zero .data region prot 0")
+    zero_calls = [
+        f"AevDllReadAt:{hex(data_va)}",
+        f"AevDllWriteAt:{hex(data_va)},1",
+        f"AevDllCallPtr:{hex(data_va)}",
+    ]
+    rc, zjit = driver.calls(base, zero_calls, "perm-zero-jit",
+                            expect_error=True, dll=zero)
+    zc = call_map(zjit)
+    driver.check(zc["AevDllReadAt"]["status"] == 6 and
+                 zc["AevDllReadAt"]["mem_fault_kind"] == 2,
+                 "zero .data JIT read rejected")
+    driver.check(zc["AevDllWriteAt"]["status"] == 6 and
+                 zc["AevDllWriteAt"]["mem_fault_kind"] == 3,
+                 "zero .data JIT write rejected")
+    driver.check(zc["AevDllCallPtr"]["status"] == 6 and
+                 zc["AevDllCallPtr"]["mem_fault_kind"] == 4,
+                 "zero .data JIT fetch rejected")
+    text = next(s for s in zinfo["sections"] if s["name"] == ".text")
+    text_lo = base + int(text["rva"])
+    text_hi = text_lo + int(text["mapped_size"])
+    for name in ("AevDllReadAt", "AevDllWriteAt"):
+        pc = int(zc[name]["error_pc"], 16)
+        driver.check(text_lo <= pc < text_hi,
+                     f"zero .data JIT {name} first fault inside .text")
+    driver.check(int(zc["AevDllCallPtr"]["error_pc"], 16) == data_va,
+                 "zero .data JIT fetch fault address")
+
+    # Failed write must not change the mapped zero-permission data bytes.
+    base_img = driver.art / "perm-zero-before.img"
+    after_img = driver.art / "perm-zero-after.img"
+    driver.runner_json(["--dll", str(zero),
+                        "--registry", str(driver.pe_dir / "aevimports.txt"),
+                        "--load-base", hex(base),
+                        "--entry-export", "AevDllCompute",
+                        "--info", "--dump-image", str(base_img)],
+                       "perm-zero-image-before")
+    driver.calls(base, [f"AevDllWriteAt:{hex(data_va)},1"],
+                 "perm-zero-write-image", expect_error=True, dll=zero,
+                 extra=["--dump-image", str(after_img)])
+    before = base_img.read_bytes()[0x3000:0x303C]
+    after = after_img.read_bytes()[0x3000:0x303C]
+    driver.check(before == after, "zero-permission write leaves image data unchanged")
+
+    # AOT path for the same zero-permission DLL.
+    zll, _, _ = driver.translate(base, tag="perm-zero-aot", dll=zero)
+    zaot = driver.build_dylib(zll, "perm_zero_aot")
+    rc, zaot_run = driver.calls(base, zero_calls, "perm-zero-aot-run",
+                                aot=zaot, expect_error=True, dll=zero)
+    zac = call_map(zaot_run)
+    for name, kind in (("AevDllReadAt", 2), ("AevDllWriteAt", 3),
+                       ("AevDllCallPtr", 4)):
+        driver.check(zac[name]["status"] == 6 and
+                     zac[name]["mem_fault_kind"] == kind,
+                     f"zero .data AOT {name} rejected")
+        driver.check(zac[name]["aot_blocks"] >= 1 and
+                     zac[name]["jit_compiles"] == 0,
+                     f"zero .data AOT {name} used AOT dispatch")
+    for name in ("AevDllReadAt", "AevDllWriteAt"):
+        driver.check(zac[name]["error_pc"] == zc[name]["error_pc"],
+                     f"zero .data {name} JIT/AOT first fault matches")
+
+    # R-only: read succeeds, write faults.
+    r = variants["r"]
+    rinfo = driver.info(base, "perm-r-info", dll=r)
+    driver.check(section_prot(rinfo, ".data") == 1, "R-only .data prot 1")
+    rc, rrun = driver.calls(base, [f"AevDllReadAt:{hex(data_va)}",
+                                   f"AevDllWriteAt:{hex(data_va)},1"],
+                            "perm-r-jit", expect_error=True, dll=r)
+    rcmap = call_map(rrun)
+    driver.check(rcmap["AevDllReadAt"]["status"] == 0 and
+                 rcmap["AevDllReadAt"]["rax"] == 4660,
+                 "R-only .data read succeeds")
+    driver.check(rcmap["AevDllWriteAt"]["status"] == 6 and
+                 rcmap["AevDllWriteAt"]["mem_fault_kind"] == 3,
+                 "R-only .data write rejected")
+
+    # W-only: Windows maps PAGE_READWRITE; read and write both work.
+    w = variants["w"]
+    winfo = driver.info(base, "perm-w-info", dll=w)
+    driver.check(section_prot(winfo, ".data") == 3, "W-only .data maps R|W")
+    rc, wrun = driver.calls(base, [f"AevDllReadAt:{hex(data_va)}",
+                                   f"AevDllWriteAt:{hex(data_va)},0x99",
+                                   f"AevDllReadAt:{hex(data_va)}"],
+                            "perm-w-jit", dll=w)
+    wc = wrun["iteration_0"]["calls"]
+    driver.check(wc[0]["status"] == 0 and wc[0]["rax"] == 4660,
+                 "W-only .data read succeeds")
+    driver.check(wc[1]["status"] == 0 and wc[1]["rax"] == 0x99,
+                 "W-only .data write succeeds")
+    driver.check(wc[2]["status"] == 0 and wc[2]["rax"] == 0x99,
+                 "W-only .data write is observable")
+
+    # X-only: execute-only, no data read/write.
+    x = variants["x"]
+    xinfo = driver.info(base, "perm-x-info", dll=x)
+    driver.check(section_prot(xinfo, ".data") == 4, "X-only .data prot 4")
+    rc, xrun = driver.calls(base, [f"AevDllReadAt:{hex(data_va)}",
+                                   f"AevDllWriteAt:{hex(data_va)},1"],
+                            "perm-x-jit", expect_error=True, dll=x)
+    xc = call_map(xrun)
+    driver.check(xc["AevDllReadAt"]["status"] == 6 and
+                 xc["AevDllReadAt"]["mem_fault_kind"] == 2,
+                 "X-only .data read rejected")
+    driver.check(xc["AevDllWriteAt"]["status"] == 6 and
+                 xc["AevDllWriteAt"]["mem_fault_kind"] == 3,
+                 "X-only .data write rejected")
+
+    # R+X: read succeeds, write faults.
+    rx = variants["rx"]
+    rxinfo = driver.info(base, "perm-rx-info", dll=rx)
+    driver.check(section_prot(rxinfo, ".data") == 5, "R+X .data prot 5")
+    rc, rxrun = driver.calls(base, [f"AevDllReadAt:{hex(data_va)}",
+                                    f"AevDllWriteAt:{hex(data_va)},1"],
+                             "perm-rx-jit", expect_error=True, dll=rx)
+    rxc = call_map(rxrun)
+    driver.check(rxc["AevDllReadAt"]["status"] == 0 and
+                 rxc["AevDllReadAt"]["rax"] == 4660,
+                 "R+X .data read succeeds")
+    driver.check(rxc["AevDllWriteAt"]["status"] == 6 and
+                 rxc["AevDllWriteAt"]["mem_fault_kind"] == 3,
+                 "R+X .data write rejected")
+
+    # Existing W+X / RWX rejection stays explicit at load time.
+    for name in ("wx", "rwx"):
+        expect_load_error(driver, f"perm-{name}-reject", variants[name],
+                          contains="W+X")
+
+    after_sha = hashlib.sha256(
+        (driver.pe_dir / "aevguest.dll").read_bytes()).hexdigest()
+    driver.check(original_sha == after_sha, "permission variants leave input DLL unchanged")
 
 
 def expect_load_error(driver: Driver, name: str, dll: Path, contains: str | None = None,
@@ -671,6 +869,8 @@ def run(driver: Driver) -> int:
     driver.check(got[-1]["rax"] == 100, "100-call call counter")
     driver.check(hundred["iteration_0"]["host_import_calls"] == 100,
                  "100-call host import count")
+
+    check_permissions(driver, info_pref)
 
     total = len(driver.checks)
     passed = total - driver.failures

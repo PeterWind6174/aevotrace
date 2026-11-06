@@ -186,15 +186,21 @@ bool parse_sections(Module *module, uint32_t section_table_offset,
         s.raw_size = rd32(p + 16);
         s.raw_ptr = rd32(p + 20);
         s.characteristics = rd32(p + 36);
-        s.readable = (s.characteristics & kScnMemRead) != 0 ||
-                     (s.characteristics & kScnMemExecute) != 0 ||
-                     (s.characteristics & kScnMemWrite) == 0;
-        s.writable = (s.characteristics & kScnMemWrite) != 0;
-        s.executable = (s.characteristics & kScnMemExecute) != 0;
-        if (s.writable && s.executable) {
+        /* Match Windows' PE section protection derivation:
+         *   R -> read, W -> read+write, X -> execute-only,
+         *   R|X -> read+execute, no R/W/X -> PAGE_NOACCESS.
+         * W+X is rejected by this bounded loader even though Windows maps
+         * PAGE_EXECUTE_READWRITE.  Never invent READ from !MEM_WRITE. */
+        bool raw_read = (s.characteristics & kScnMemRead) != 0;
+        bool raw_write = (s.characteristics & kScnMemWrite) != 0;
+        bool raw_exec = (s.characteristics & kScnMemExecute) != 0;
+        if (raw_write && raw_exec) {
             if (error) *error = "W+X section is not supported: " + s.name;
             return false;
         }
+        s.readable = raw_read || raw_write;
+        s.writable = raw_write;
+        s.executable = raw_exec;
         if (s.virtual_address % module->section_alignment != 0) {
             if (error) *error = "section VA is not SectionAlignment-aligned: " + s.name;
             return false;
@@ -667,10 +673,9 @@ bool build_regions(Module *module, uint64_t stack_size, std::string *error) {
         if (s.readable) prot |= AEV_MEM_PROT_READ;
         if (s.writable) prot |= AEV_MEM_PROT_WRITE;
         if (s.executable) prot |= AEV_MEM_PROT_EXEC;
-        if (prot == 0) {
-            if (error) *error = "section has no supported protection: " + s.name;
-            return false;
-        }
+        /* prot 0 is a valid PAGE_NOACCESS region for R/W/X-empty sections;
+         * every access is rejected by the region lookup, not by silently
+         * granting READ. */
         if ((uint64_t)s.virtual_address + s.mapped_size > module->size_of_image) {
             if (error) *error = "section region exceeds image: " + s.name;
             return false;

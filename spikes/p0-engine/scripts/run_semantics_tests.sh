@@ -297,6 +297,36 @@ expect_flags() { # label file cf of
     fi
 }
 
+cf_of() {
+    grep '^CF=' "$1" | tail -1 | sed -n 's/^CF=\([0-9]\).*/\1/p'
+}
+
+expect_cf() { # label file cf
+    local got
+    got=$(cf_of "$2")
+    if [ "$got" = "$3" ]; then
+        pass "$1: CF=$got"
+    else
+        fail "$1: CF expected $3 got ${got:-<missing>}"
+    fi
+}
+
+sar_case() { # label object value count expected_result expected_cf
+    local label=$1 obj=$2 value=$3 count=$4 expected=$5 cf=$6
+    jit_run "jit-$label" "$obj" rax="$value" rcx="$count"
+    if jit_ok "jit-$label"; then
+        expect_hex "jit-$label" "$JIT_OUT" rax "$expected"
+        expect_cf "jit-$label" "$JIT_OUT" "$cf"
+    fi
+    aot_run "aot-$label" "$obj" rax="$value" rcx="$count"
+    if [ "$AOT_RC" -eq 0 ]; then
+        expect_hex "aot-$label" "$AOT_OUT" rax "$expected"
+        expect_cf "aot-$label" "$AOT_OUT" "$cf"
+    else
+        fail "aot-$label: AOT probe failed rc=$AOT_RC"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # assemble the committed x86-64 counterexamples
 # ---------------------------------------------------------------------------
@@ -376,6 +406,72 @@ jit_run F2_shift32_32 shift32_cl rax=1 rcx=32
 if jit_ok F2_shift32_32; then expect_hex F2_shift32_32 "$JIT_OUT" rax 0x1; fi
 jit_run F2_shift8_8 shift8_cl rax=1 rcx=8
 if jit_ok F2_shift8_8; then expect_hex F2_shift8_8 "$JIT_OUT" rax 0x0; fi
+
+# SAR 8/16-bit: masked counts 0,1,bits-1,bits,bits+1,31,32(mask 0),33(mask 1).
+# Only defined flags are asserted: CF and result; OF only for count=1.
+echo "== F2b SAR 8/16-bit flags ==" | tee -a "$RESULTS/summary.txt"
+build_aot sar8
+build_aot sar16
+build_aot sar8_cf
+build_aot sar16_cf
+for spec in     "sar8_neg_0 sar8 0x80 0 0x80 0"     "sar8_neg_1 sar8 0x80 1 0xc0 0"     "sar8_neg_7 sar8 0x80 7 0xff 0"     "sar8_neg_8 sar8 0x80 8 0xff 1"     "sar8_neg_9 sar8 0x80 9 0xff 1"     "sar8_neg_31 sar8 0x80 31 0xff 1"     "sar8_neg_32 sar8 0x80 32 0x80 0"     "sar8_neg_33 sar8 0x80 33 0xc0 0"     "sar8_pos_0 sar8 0x7f 0 0x7f 0"     "sar8_pos_1 sar8 0x7f 1 0x3f 1"     "sar8_pos_7 sar8 0x7f 7 0x0 1"     "sar8_pos_8 sar8 0x7f 8 0x0 0"     "sar8_pos_9 sar8 0x7f 9 0x0 0"     "sar8_pos_31 sar8 0x7f 31 0x0 0"     "sar8_pos_32 sar8 0x7f 32 0x7f 0"     "sar8_pos_33 sar8 0x7f 33 0x3f 1"     "sar16_neg_0 sar16 0x8000 0 0x8000 0"     "sar16_neg_1 sar16 0x8000 1 0xc000 0"     "sar16_neg_15 sar16 0x8000 15 0xffff 0"     "sar16_neg_16 sar16 0x8000 16 0xffff 1"     "sar16_neg_17 sar16 0x8000 17 0xffff 1"     "sar16_neg_31 sar16 0x8000 31 0xffff 1"     "sar16_neg_32 sar16 0x8000 32 0x8000 0"     "sar16_neg_33 sar16 0x8000 33 0xc000 0"     "sar16_pos_0 sar16 0x7fff 0 0x7fff 0"     "sar16_pos_1 sar16 0x7fff 1 0x3fff 1"     "sar16_pos_15 sar16 0x7fff 15 0x0 1"     "sar16_pos_16 sar16 0x7fff 16 0x0 0"     "sar16_pos_17 sar16 0x7fff 17 0x0 0"     "sar16_pos_31 sar16 0x7fff 31 0x0 0"     "sar16_pos_32 sar16 0x7fff 32 0x7fff 0"     "sar16_pos_33 sar16 0x7fff 33 0x3fff 1"; do
+    set -- $spec
+    sar_case "$1" "$2" "$3" "$4" "$5" "$6"
+done
+# count=1 OF is architecturally defined as 0; count>1 OF is undefined and
+# must not be asserted.
+jit_run F2_sar8_neg_1_of sar8 rax=0x80 rcx=1
+if jit_ok F2_sar8_neg_1_of; then expect_flags F2_sar8_neg_1_of "$JIT_OUT" 0 0; fi
+aot_run F2_sar8_neg_1_of sar8 rax=0x80 rcx=1
+if [ "$AOT_RC" -eq 0 ]; then expect_flags F2_sar8_neg_1_of "$AOT_OUT" 0 0; fi
+jit_run F2_sar16_pos_1_of sar16 rax=0x7fff rcx=1
+if jit_ok F2_sar16_pos_1_of; then expect_flags F2_sar16_pos_1_of "$JIT_OUT" 1 0; fi
+aot_run F2_sar16_pos_1_of sar16 rax=0x7fff rcx=1
+if [ "$AOT_RC" -eq 0 ]; then expect_flags F2_sar16_pos_1_of "$AOT_OUT" 1 0; fi
+# A real conditional branch consumes CF and changes the returned value.
+# The single-block jit-probe cannot execute the branch target, so build an
+# empty AOT dylib (0 selected blocks) and use the real AOT dispatcher with JIT
+# fallback for the JIT path.
+build_aot_empty() {
+    local name=$1
+    shift
+    local tr="$LOGS/aot-empty-$name.translate.log"
+    local cc="$LOGS/aot-empty-$name.compile.log"
+    local ld="$LOGS/aot-empty-$name.link.log"
+    local args=()
+    local rip
+    for rip in "$@"; do args+=(--aot-exclude-rip "$rip"); done
+    "$TRANSLATE" --input "$OBJ/$name.obj" --function probe --entry probe \
+        "${args[@]}" \
+        --out-ll "$AOT/${name}_jit.ll" --out-header "$AOT/${name}_jit.h" \
+        >"$tr" 2>&1 || { fail "empty AOT translate $name"; return 1; }
+    clang --target=arm64-apple-macos14.0 -O2 -c "$AOT/${name}_jit.ll" \
+        -o "$AOT/${name}_jit.o" >"$cc" 2>&1 || { fail "empty AOT compile $name"; return 1; }
+    clang -arch arm64 -dynamiclib -o "$AOT/${name}_jit.dylib" \
+        "$AOT/${name}_jit.o" "$BUILD_DIR/generated/aot_runtime.o" \
+        "$BUILD_DIR/generated/aev_mem_aot.o" >"$ld" 2>&1 ||
+        { fail "empty AOT link $name"; return 1; }
+    cp "$OBJ/$name.obj" "$OBJ/${name}_jit.obj"
+    pass "empty AOT (JIT fallback) built for $name"
+}
+build_aot_empty sar8_cf 0x140001000 0x140001004 0x14000100a
+build_aot_empty sar16_cf 0x140001000 0x140001005 0x14000100b
+aot_jit_run F2_sar8_cf_neg_jit sar8_cf_jit rax=0x80 rcx=9
+if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_neg_jit "$AOT_JIT_OUT" rax 0x1; else fail "F2_sar8_cf_neg_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
+aot_run F2_sar8_cf_neg sar8_cf rax=0x80 rcx=9
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_neg "$AOT_OUT" rax 0x1; fi
+aot_jit_run F2_sar8_cf_pos_jit sar8_cf_jit rax=0x7f rcx=9
+if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_pos_jit "$AOT_JIT_OUT" rax 0x0; else fail "F2_sar8_cf_pos_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
+aot_run F2_sar8_cf_pos sar8_cf rax=0x7f rcx=9
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_pos "$AOT_OUT" rax 0x0; fi
+aot_jit_run F2_sar16_cf_neg_jit sar16_cf_jit rax=0x8000 rcx=17
+if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_neg_jit "$AOT_JIT_OUT" rax 0x1; else fail "F2_sar16_cf_neg_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
+aot_run F2_sar16_cf_neg sar16_cf rax=0x8000 rcx=17
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_neg "$AOT_OUT" rax 0x1; fi
+aot_jit_run F2_sar16_cf_pos_jit sar16_cf_jit rax=0x7fff rcx=17
+if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_pos_jit "$AOT_JIT_OUT" rax 0x0; else fail "F2_sar16_cf_pos_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
+aot_run F2_sar16_cf_pos sar16_cf rax=0x7fff rcx=17
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_pos "$AOT_OUT" rax 0x0; fi
 # One-operand IMUL is rejected at every width, and the diagnostic must carry
 # the actual width rather than always saying 8-bit.
 translate_fail imul1_8 "one-operand imul" "8-bit IMUL form" "0x140001000"

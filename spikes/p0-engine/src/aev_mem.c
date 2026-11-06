@@ -266,7 +266,11 @@ void aev_flags_shift(GuestState *s, uint32_t width, uint64_t value,
         if (n == 1)
             of = (v >> (bits - 1)) & 1;
     } else { /* sar */
-        cf = n <= bits ? ((v >> (n - 1)) & 1) : 0;
+        /* For SAR the last bit shifted out is architecturally defined even
+         * when the masked count reaches or exceeds the operand width: the
+         * result is then all sign bits, so CF is the original sign bit. */
+        cf = (n >= bits) ? ((v >> (bits - 1)) & 1)
+                         : ((v >> (n - 1)) & 1);
         of = 0;
     }
     set_flag(s, AEV_CF, cf != 0);

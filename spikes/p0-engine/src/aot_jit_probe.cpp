@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -285,6 +286,15 @@ int main(int argc, char **argv) {
         return 2;
     }
     const uint64_t table_count = *table_count_ptr;
+    const AevBlock *aot_blocks =
+        static_cast<const AevBlock *>(dlsym(handle, "aev_blocks"));
+    if (table_count != 0 && !aot_blocks) {
+        std::fprintf(stderr, "dlsym(aev_blocks) failed: %s\n", dlerror());
+        return 2;
+    }
+    std::set<uint64_t> aot_selected;
+    for (uint64_t i = 0; i < table_count; ++i)
+        aot_selected.insert(aot_blocks[i].rip);
 
     std::string error;
     aev::CoffObject object;
@@ -303,6 +313,16 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "no function/block at rip=0x%llx\n",
                      (unsigned long long)rip);
         return 2;
+    }
+    /* The AOT table is the coverage authority: blocks not in it must take
+     * the JIT path even if the generic COFF builder would call them
+     * AOT-coverable.  This makes the empty-table probe exercise real JIT
+     * fallback across all blocks. */
+    for (auto &fn : program.functions) {
+        for (auto &block : fn.blocks) {
+            block.jit_only = !aot_selected.count(block.address);
+            block.jit_reason = block.jit_only ? "not selected in AOT table" : "";
+        }
     }
 
     const long page = sysconf(_SC_PAGESIZE);
