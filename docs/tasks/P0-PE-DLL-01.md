@@ -1,6 +1,6 @@
 # P0-PE-DLL-01 任务记录：最小 PE32+ DLL 装载与共享核心执行
 
-状态：实施中。基线：`p0/promotion-fix-01` / `p0/promotion-fix-integration`，HEAD `aed3b46435bff4347966be03b33cf7013d1aa2d8`。本轮分支 `p0/pe-dll-01`，工作树 `.worktrees/p0-pe-dll`。不改 main（仍 `c91a3f7`）。
+状态：实施完成，独立 QA PASS，待外部复核（报告：[P0-PE-DLL-01-REPORT-20261106](../p0/P0-PE-DLL-01-REPORT-20261106.md)）。基线：`p0/promotion-fix-01` / `p0/promotion-fix-integration`，HEAD `aed3b46435bff4347966be03b33cf7013d1aa2d8`。本轮分支 `p0/pe-dll-01`，工作树 `.worktrees/p0-pe-dll`。不改 main（仍 `c91a3f7`）。
 
 ## 输入与身份
 
@@ -40,14 +40,14 @@
 
 ## 验收
 
-- [ ] 固定 DLL/helper/reference 版本、SHA-256、headers/sections/imports/exports/relocations 盘点；证明 fixture 实际使用全局数据、IAT、需修补指针。
-- [ ] 首选 base 与非首选 base 均成功；核对 relocation 修补值、导出地址、helper 参数、全局状态、结果；每配置新进程加载对应 AOT；基址错配拒绝。
-- [ ] 至少三组输入（含独立/空/溢出适用边界）；同一实例 100 次调用；重复 load/destroy 状态隔离。
-- [ ] 错架构/截断/越界目录、无效 export、未知 import、非法 relocation、基址/模块/ABI 错配、未映射/权限错误明确失败，且无故障后业务副作用，不破坏原 DLL/旧产物。
-- [ ] 实际 AOT→JIT→Trace→supplement→新进程 AOT：promoted/base/new 来自实际 artifact，零 JIT，块事件为 AOT。
-- [ ] 原 5 ctest、provenance 回归、六组 GUI 回归通过（ABI 升级只做等价断言替换）。
-- [ ] Windows 同 DLL 参考结果与 Mac 一致；原始日志/命令/退出码/哈希入证据目录。
-- [ ] 停在 `p0/pe-dll-01` 集成分支；不合 main、不 push、不删除工作树、不开下一轮。
+- [x] 固定 DLL/helper/reference 版本、SHA-256、headers/sections/imports/exports/relocations 盘点；证明 fixture 实际使用全局数据、IAT、需修补指针。
+- [x] 首选 base 与非首选 base 均成功；核对 relocation 修补值、导出地址、helper 参数、全局状态、结果；每配置新进程加载对应 AOT；基址错配拒绝。
+- [x] 至少三组输入（含独立/空/溢出适用边界）；同一实例 100 次调用；重复 load/destroy 状态隔离。
+- [x] 错架构/截断/越界目录、无效 export、未知 import、非法 relocation、基址/模块/ABI 错配、未映射/权限错误明确失败，且无故障后业务副作用，不破坏原 DLL/旧产物。
+- [x] 实际 AOT→JIT→Trace→supplement→新进程 AOT：promoted/base/new 来自实际 artifact，零 JIT，块事件为 AOT。
+- [x] 原 5 ctest、provenance 回归、六组 GUI 回归通过（ABI 升级只做等价断言替换）。
+- [x] Windows 同 DLL 参考结果与 Mac 一致；原始日志/命令/退出码/哈希入证据目录。
+- [x] 停在 `p0/pe-dll-01` 集成分支；不合 main、不 push、不删除工作树、不开下一轮。
 
 ## 未测/边界
 

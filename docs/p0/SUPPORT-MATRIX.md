@@ -40,18 +40,19 @@
 | 需求 | 状态 | 说明 |
 | --- | --- | --- |
 | R01 Win x64→macOS ARM64 | 部分 | Windows 参考 + ARM64 AOT/JIT spike；无完整应用 |
-| R02 EXE/DLL/资源输入 | 部分 | 候选 PE 分析 + COFF/PE fragment；无 PE loader |
+| R02 EXE/DLL/资源输入 | 部分 | 新增有界 PE32+ AMD64 DLL loader（映射/DIR64/普通命名导入导出/.pdata 代码发现）；仍无通用 EXE/资源/完整依赖图 |
 | R03 符号/元数据 | 未验证 | P0 未做带符号/去符号双验证 |
 | R04 桌面 GUI | 部分 | 双后端语义/回调/截图；非产品集成 |
 | R05 独立启动应用 | 未满足 | 无 `.app`/随包依赖/签名/无开发工具运行 |
-| R06 AOT 优先/JIT 回退 | 部分 | AOT 独立进程 + ORC JIT + 负例；无 PE/失效 |
+| R06 AOT 优先/JIT 回退 | 部分 | COFF 与有界 PE DLL 的 AOT 独立进程 + ORC JIT + Trace→supplement→新进程 AOT；无运行中失效/持久缓存 |
 | R07 性能 | 未验证 | 仅原始混合路径；三类对照未测 |
 | R08 compat/native 双输出 | 部分 | 双后端语义验证；D3 未决、未与核心集成 |
 | R09 驱动/内核 | 范围外 | 未做系统级测试 |
 
 ## 5. 明确未覆盖
 
-- PE 装载/重定位/导入/导出/TLS/delay import/API set/forwarder/资源/manifest/`.pdata`/load config/CFG。
+- 通用 EXE/进程启动、资源、完整依赖图；PE 的 TLS/delay import/API set/forwarder/ordinal import/资源/manifest/load config/CFG/异常展开，以及非 fixture 的 PE 变体。
+- 本轮有界 PE DLL 只支持：PE32+ AMD64、DLL、无 DllMain/CRT/TLS、普通命名导入导出、DIR64 relocation、explicit registry；见 [PE-DLL-CONTRACT-20261106](PE-DLL-CONTRACT-20261106.md)。
 - x64 异常/SEH/C++ EH、线程/TLS 回调顺序、信号、longjmp、并发自修改/失效。
 - x86 TSO/原子/未对齐/跨页/权限 fault 的 Guest 语义。
 - 真实 7-Zip 工作流、真实应用双模式验收、`.app`/签名/公证/无开发工具环境。
