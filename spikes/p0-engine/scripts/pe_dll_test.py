@@ -561,6 +561,20 @@ def run(driver: Driver) -> int:
                  "read-only write rejected with write fault")
     driver.check(ro["iteration_0"]["calls"][0]["rax"] == ro["iteration_0"]["calls"][2]["rax"],
                  "read-only write did not change memory")
+    driver.check(ro.get("status") == 6 and ro.get("expected_error") is True and
+                 ro.get("failure_status") == 6,
+                 "expect-error keeps first failure in JSON")
+    raw = driver.run([str(driver.runner),
+                      "--dll", str(pe_dir / "aevguest.dll"),
+                      "--registry", str(pe_dir / "aevimports.txt"),
+                      "--load-base", hex(PREFERRED),
+                      "--entry-export", "AevDllCompute",
+                      "--call", "AevDllWriteAt:0x180002000,1",
+                      "--call", "AevDllReadAt:0x180002000"], "neg-noexpect")
+    raw_json = json.loads(raw.stdout)
+    driver.check(raw.returncode == 6 and raw_json.get("status") == 6 and
+                 raw_json.get("expected_error") is False,
+                 "failure is non-zero without expect-error")
     rc, nx = driver.calls(PREFERRED, ["AevDllCallPtr:0x180002000"],
                           "neg-nonexec", expect_error=True)
     driver.check(nx["iteration_0"]["calls"][0]["mem_fault_kind"] == 4,

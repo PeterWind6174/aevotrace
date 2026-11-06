@@ -1064,18 +1064,23 @@ int main(int argc, char **argv) {
     out << "{";
     bool first_reload = true;
     uint64_t first_token = 0;
-    int final_status = PE_OK;
+    int first_failure = PE_OK;
+    bool any_failure = false;
     for (int iteration = 0; iteration < opt.reload; ++iteration) {
         auto instance = std::make_unique<ModuleInstance>();
         std::string error;
         if (!prepare_instance(opt, instance.get(), &error)) {
-            out << status_json(PE_LOAD) << ",\"error\":\"" << json_escape(error) << "\"";
+            out << status_json(PE_LOAD) << ",\"error\":\"" << json_escape(error) << "\""
+                << ",\"expected_error\":" << (opt.expect_error ? "true" : "false")
+                << ",\"any_failure\":true,\"failure_status\":" << PE_LOAD;
             std::cout << out.str() << "}\n";
             return opt.expect_error ? 0 : PE_LOAD;
         }
         uint64_t token = table.load(std::move(instance));
         if (token == 0) {
-            out << status_json(PE_INVALID_ARGUMENT) << ",\"error\":\"handle table full\"";
+            out << status_json(PE_INVALID_ARGUMENT) << ",\"error\":\"handle table full\""
+                << ",\"expected_error\":" << (opt.expect_error ? "true" : "false")
+                << ",\"any_failure\":true,\"failure_status\":" << PE_INVALID_ARGUMENT;
             std::cout << out.str() << "}\n";
             return opt.expect_error ? 0 : PE_INVALID_ARGUMENT;
         }
@@ -1092,7 +1097,10 @@ int main(int argc, char **argv) {
         for (const auto &spec : calls) {
             CallResult r = run_call(inst, spec);
             results.push_back(r);
-            if (r.status != PE_OK) failed = true;
+            if (r.status != PE_OK) {
+                failed = true;
+                if (first_failure == PE_OK) first_failure = r.status;
+            }
         }
         out << ",\"calls\":[";
         for (size_t i = 0; i < results.size(); ++i) {
@@ -1104,7 +1112,7 @@ int main(int argc, char **argv) {
             << inst->host_state.update_calls;
         out << "}";
         if (first_reload) first_reload = false;
-        if (failed) final_status = results.back().status;
+        if (failed) any_failure = true;
         if (opt.dump_image == "" && opt.dump_blocks == "" &&
             opt.dump_relocations == "" && opt.trace.empty() && opt.info == false) {
             // no side effects
@@ -1154,7 +1162,8 @@ int main(int argc, char **argv) {
             f << "]}\n";
         }
         if (table.destroy(token) != PE_OK) {
-            final_status = PE_STALE_HANDLE;
+            any_failure = true;
+            if (first_failure == PE_OK) first_failure = PE_STALE_HANDLE;
         }
         if (iteration == 0 && opt.reload > 1) {
             // Expose the stale-token check after the first destroy.
@@ -1163,13 +1172,17 @@ int main(int argc, char **argv) {
                 << (stale ? PE_OK : PE_STALE_HANDLE);
         }
     }
+    int final_status = any_failure ? first_failure : PE_OK;
     out << ",\"reload_iterations\":" << opt.reload;
+    out << ",\"expected_error\":" << (opt.expect_error ? "true" : "false");
+    out << ",\"any_failure\":" << (any_failure ? "true" : "false");
+    out << ",\"failure_status\":" << first_failure;
     out << ",\"status\":" << final_status << ",\"status_name\":\""
         << status_name(final_status) << "\"";
     out << "}\n";
     std::cout << out.str();
     if (opt.expect_error) {
-        return final_status == PE_OK ? 1 : 0;
+        return any_failure ? 0 : 1;
     }
     return final_status;
 }
