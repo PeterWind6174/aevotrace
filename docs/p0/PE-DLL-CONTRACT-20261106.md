@@ -358,3 +358,41 @@ const uint64_t aev_relocs_stripped;
 ## 11. 本轮明确未实现
 
 通用 EXE/进程启动、完整 Win32/消息泵、真实第三方应用移植、TLS callbacks、DllMain/CRT、SEH/unwind、COM、线程、delay/API set/forwarder/ordinal import、同一 artifact 跨 base 复用、运行中重装/并发失效、持久 JIT 缓存产品化、打包/分发、性能结论。间接目标按需建函数/动态 `.pdata` 发现也不在本轮。
+
+## 12. P0-PE-CORE-FIX-01 修订（2026-11-06）
+
+本轮不改变 Guest/callback/artifact/translator ABI，只修正以下两处语义。
+
+### 12.1 PE section 权限映射
+
+Windows 系统 loader 对修改后的同一 DLL `.data` 段实测（`VirtualQuery`，本轮 `windows-probe.stdout`）：
+
+| section characteristics 内存位 | Windows Protect | 本院映射 |
+| --- | --- | --- |
+| R/W/X 全空（0x40） | `PAGE_NOACCESS` (0x1) | prot 0；所有访问失败 |
+| R only | `PAGE_READONLY` (0x2) | R |
+| W only | `PAGE_READWRITE` (0x8) | R+W（Windows 可写页可读） |
+| R+W | `PAGE_READWRITE` (0x8) | R+W |
+| X only | `PAGE_EXECUTE` (0x10) | X（数据读/写失败） |
+| R+X | `PAGE_EXECUTE_READ` (0x20) | R+X |
+| W+X | `PAGE_EXECUTE_READWRITE` (0x80) | **明确拒绝**（既有 W+X 边界，不在本轮扩展） |
+| R+W+X | `PAGE_EXECUTE_READWRITE` (0x80) | **明确拒绝** |
+
+规则：
+
+- `readable = MEM_READ || MEM_WRITE`；`writable = MEM_WRITE`；`executable = MEM_EXECUTE`；不得用 `!MEM_WRITE` 推导 READ。
+- R/W/X 全空必须得到 prot 0 区域，不得隐式提升 READ；`aev_load/store` 分别报 READ/WRITE fault，取指报 EXEC fault；`build_regions` 允许 prot 0，不因“无权限”拒绝整个 DLL。
+- W+X/RWX 继续在装载前明确拒绝，并在支持矩阵记录为有界限制。
+- 原始 DLL 不修改；修改输入只用于负例，不进入提交 fixture。
+
+### 12.2 SAR 标志位
+
+- shift count 仍按 x86-64 规则掩码：8/16/32 位 5 位（0..31），64 位 6 位（0..63）；masked count=0 时 flags 保持。
+- `SAR` 的 CF = 最后一个移出的位；masked count >= operand bits 时为操作数符号位（负数 1，正数 0），不得固定为 0。
+- `SHL/SHR` 的 masked count >= 位宽 属于架构未定义/不保证范围；回归只断言有定义的结果和 CF/ZF/SF/PF 及 count=1 的 OF，不比较 AF/多位移位 OF 等未定义位。
+- AOT/JIT 必须通过共享 emitter/helper 用真实 COFF 机器码验证；至少一个条件分支消费 CF 并改变返回结果。
+
+### 12.3 回归边界
+
+- 原 6 个 ctest、PE 110 项、语义 501 项、Trace/AOT 78 项、provenance 与六组 GUI 44 项不得删弱；新增 F1/F2 回归必须绑定实际输入哈希和 AOT/JIT 路径。
+- F1 的零权限、只读、读写、X-only/RX、W+X 拒绝均需证据；F2 的 8/16 位正负、count mask/零计数/分支消费 CF 均需 AOT 和 JIT 证据。
