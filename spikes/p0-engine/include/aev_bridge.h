@@ -121,6 +121,13 @@ int aev_bridge_guest_info(const AevBridge *b, uint64_t *base, uint64_t *size,
                           uint64_t *stack_base, uint64_t *stack_top);
 AevBridgeStatus aev_bridge_artifact_info(const AevBridge *b, AevArtifactInfo *info,
                                          char *err, size_t err_cap);
+/* Actual selected AOT table introspection (not the manifest).  Returns 1/0
+ * for contains; negative for invalid arguments. */
+int aev_bridge_selected_block_contains(const AevBridge *b, uint64_t rip);
+uint32_t aev_bridge_selected_block_count(const AevBridge *b);
+int aev_bridge_selected_block_rip(const AevBridge *b, uint32_t index, uint64_t *rip);
+/* Test-only: exposes the transient GuestState.reserved0 trace sink pointer. */
+uint64_t aev_bridge_debug_reserved0(const AevBridge *b);
 int aev_bridge_register_import(AevBridge *b, uint64_t guest_addr, uint64_t import_id,
                                AevHostImportFn fn, void *host_ctx,
                                char *err, size_t err_cap);

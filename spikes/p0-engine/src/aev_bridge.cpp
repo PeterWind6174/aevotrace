@@ -156,7 +156,7 @@ void trace_block(AevBridge *b, uint32_t source, uint64_t rip) {
                         << "\",\"error\":\"" << json_escape(error) << "\"}\n";
     } else {
         b->trace_stream << ",\"rip\":\"" << aev::hex64(rip)
-                        << "\",\"section_offset\":" << id.section_offset
+                        << "\",\"offset\":" << id.section_offset
                         << ",\"size\":" << id.size
                         << ",\"block_sha256\":\""
                         << aev::hex_bytes(id.sha256, 32) << "\"}\n";
@@ -251,13 +251,13 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         }
         const HostImport &imp = it->second;
         b->last_import_id = imp.id;
-        trace_host_import(b, imp.id);
         uint64_t ret = aev_load(s, s->rsp, 8, 0);
         if (s->error_code) {
             b->last_failure = AEV_BRIDGE_ERR_MEMORY;
             return -1;
         }
         s->rsp += 8;
+        trace_host_import(b, imp.id);
 
         uint64_t out_rax = 0;
         AevBridgeStatus st = AEV_BRIDGE_ERR_HOST;
@@ -597,6 +597,30 @@ AevBridgeStatus aev_bridge_artifact_info(const AevBridge *b, AevArtifactInfo *in
     return AEV_BRIDGE_OK;
 }
 
+int aev_bridge_selected_block_contains(const AevBridge *b, uint64_t rip) {
+    if (!b)
+        return -1;
+    return std::binary_search(b->aot_selected.begin(), b->aot_selected.end(), rip)
+               ? 1
+               : 0;
+}
+
+uint32_t aev_bridge_selected_block_count(const AevBridge *b) {
+    return b ? b->aot_table_count : 0;
+}
+
+int aev_bridge_selected_block_rip(const AevBridge *b, uint32_t index,
+                                  uint64_t *rip) {
+    if (!b || !rip || index >= b->aot_selected.size())
+        return -1;
+    *rip = b->aot_selected[index];
+    return 0;
+}
+
+uint64_t aev_bridge_debug_reserved0(const AevBridge *b) {
+    return b ? b->state.reserved0 : 0;
+}
+
 AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
                                       const char *scenario,
                                       char *err, size_t err_cap) {
@@ -662,6 +686,9 @@ AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
 AevBridgeStatus aev_bridge_trace_close(AevBridge *b) {
     if (!b) {
         return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    if (std::this_thread::get_id() != b->owner) {
+        return AEV_BRIDGE_ERR_WRONG_THREAD;
     }
     if (b->in_call) {
         return AEV_BRIDGE_ERR_REENTRY;

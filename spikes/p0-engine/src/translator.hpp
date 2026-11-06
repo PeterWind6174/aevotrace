@@ -47,6 +47,7 @@ bool build_program(CoffObject &&object,
 /* True when the block needs the JIT because AOT deliberately does not cover
  * one of its instructions (currently imul). */
 bool block_is_aot_covered(const GuestFunction &fn, const Block &block);
+bool is_block_terminator(uint16_t insn_id);
 
 }  // namespace aev
 

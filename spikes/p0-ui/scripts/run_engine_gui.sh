@@ -49,7 +49,7 @@ import json, sys
 s=json.load(open(sys.argv[1]))
 print("success", s.get("success"), "checks", len(s.get("checks") or {}),
       "screenshots", len(s.get("screenshots") or []))
-if not s.get("success"):
+if not s.get("success") or len(s.get("checks") or {}) != 44:
     raise SystemExit(1)
 PY
         if [ $? -ne 0 ]; then

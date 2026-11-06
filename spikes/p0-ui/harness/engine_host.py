@@ -137,6 +137,7 @@ class EngineGuiHost:
         self.bridge = EngineBridge(self.bridge_lib)
         self.bridge.create(self.coff, self.aot, ENTRY_ADDR, trace_aot=True)
         self.artifact_info = self.bridge.artifact_info()
+        self.artifact_info["selected_blocks"] = self.bridge.selected_blocks()
         info = self.bridge.guest_info()
         self.base = info.base
         self.size = info.size
@@ -169,6 +170,8 @@ class EngineGuiHost:
         if self.coverage_profile == "base":
             if info["aot_table_count"] != 4:
                 raise UnsupportedApi(f"base profile expects 4 AOT blocks, got {info['aot_table_count']}")
+            if self.bridge.selected_block_contains(self.promoted_rip):
+                raise UnsupportedApi("base profile unexpectedly selects the promoted RIP")
         elif self.coverage_profile == "supplemented":
             if info["aot_table_count"] != 5:
                 raise UnsupportedApi(f"supplemented profile expects 5 AOT blocks, got {info['aot_table_count']}")
@@ -178,13 +181,16 @@ class EngineGuiHost:
                 raise UnsupportedApi("AOT SHA does not match supplement manifest")
             if self.promoted_rip is None or self.promoted_selected is not True:
                 raise UnsupportedApi("promoted RIP is not selected in supplement manifest")
+            if not self.bridge.selected_block_contains(self.promoted_rip):
+                raise UnsupportedApi("promoted RIP is not in the actual AOT selected table")
         else:
             raise UnsupportedApi(f"unknown coverage profile {self.coverage_profile}")
         self.logger.event("engine.artifact_profile", profile=self.coverage_profile,
                           aot_table_count=info["aot_table_count"],
                           all_block_count=info["all_block_count"],
                           aot_sha256=info["aot_sha256"],
-                          promoted_rip=None if self.promoted_rip is None else hex(self.promoted_rip))
+                          promoted_rip=None if self.promoted_rip is None else hex(self.promoted_rip),
+                          promoted_selected_actual=self.bridge.selected_block_contains(self.promoted_rip))
 
     # ------------------------------------------------------------------
     def _write_ctx(self, update_addr: int, counter_addr: int) -> None:

@@ -98,6 +98,10 @@ std::string format_insn(const X64Insn &insn) {
 
 }  // namespace
 
+bool is_block_terminator(uint16_t insn_id) {
+    return is_jcc(insn_id) || insn_id == X86_INS_JMP || insn_id == X86_INS_RET;
+}
+
 const GuestFunction *Program::find_function_at(uint64_t rip) const {
     for (const auto &fn : functions) {
         if (rip >= fn.address && rip < fn.address + fn.bytes.size())

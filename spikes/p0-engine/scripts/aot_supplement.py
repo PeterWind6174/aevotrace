@@ -66,8 +66,9 @@ def load_manifest(path: Path):
 
 def validate_header(header, manifest, blocks, input_sha, trace_path):
     required = ("trace_abi", "scenario", "input_sha256", "input_fnv", "entry",
-                "function", "aot_artifact_abi", "translator_abi", "target",
-                "all_blocks", "aot_selected")
+                "function", "callback_abi", "guest_abi", "aot_artifact_abi",
+                "translator_abi", "target", "translator_version",
+                "trace_tool_version", "all_blocks", "aot_selected")
     for key in required:
         if key not in header:
             raise ValueError(f"{trace_path}: header missing {key}")
@@ -85,6 +86,9 @@ def validate_header(header, manifest, blocks, input_sha, trace_path):
         raise ValueError(f"{trace_path}: callback/guest ABI mismatch")
     if header["aot_artifact_abi"] != 1 or header["translator_abi"] != 1:
         raise ValueError(f"{trace_path}: artifact/translator ABI mismatch")
+    if header.get("translator_version") != "aev-translate-v1" or \
+            header.get("trace_tool_version") != "aev-trace-sink-v1":
+        raise ValueError(f"{trace_path}: translator/trace tool version mismatch")
     if header["target"] != TARGET or manifest.get("target") != TARGET:
         raise ValueError(f"{trace_path}: target triple mismatch")
     all_blocks = [parse_hex(x, "all_blocks") for x in header["all_blocks"]]
@@ -93,12 +97,14 @@ def validate_header(header, manifest, blocks, input_sha, trace_path):
     selected = [parse_hex(x, "aot_selected") for x in header["aot_selected"]]
     if selected != sorted(set(selected)) or any(x not in blocks for x in selected):
         raise ValueError(f"{trace_path}: header aot_selected is not a sorted subset")
+    return set(selected)
 
 
-def validate_events(path: Path, blocks, selected):
+def validate_events(path: Path, blocks, header_selected):
     call_end = {}
     seen_calls = set()
     selected_here = set()
+    last_call = 0
     with path.open("r", encoding="utf-8") as f:
         for lineno, line in enumerate(f, 1):
             line = line.strip()
@@ -117,29 +123,42 @@ def validate_events(path: Path, blocks, selected):
             call = ev.get("call")
             if not isinstance(call, int) or call <= 0:
                 raise ValueError(f"{path}:{lineno}: invalid call id")
+            if call < last_call:
+                raise ValueError(f"{path}:{lineno}: call ids are not monotonic")
+            if call > last_call:
+                if last_call and last_call not in call_end:
+                    raise ValueError(
+                        f"{path}:{lineno}: call {last_call} has no call_end before call {call}"
+                    )
+                last_call = call
+            if call in call_end:
+                raise ValueError(f"{path}:{lineno}: event after call_end")
             seen_calls.add(call)
             if record == "call_end":
                 if call in call_end:
                     raise ValueError(f"{path}:{lineno}: duplicate call_end")
                 call_end[call] = int(ev.get("status", -1))
+                if call_end[call] != 0:
+                    raise ValueError(f"{path}:{lineno}: failed call_end")
                 continue
-            if call in call_end:
-                raise ValueError(f"{path}:{lineno}: event after call_end")
             if record in ("aot", "jit_compile", "jit_exec"):
                 if "rip" not in ev:
                     raise ValueError(f"{path}:{lineno}: block event missing rip")
                 rip = parse_hex(ev["rip"], "rip")
                 if rip not in blocks:
                     raise ValueError(f"{path}:{lineno}: unknown block {hex(rip)}")
-                if record in ("aot", "jit_compile"):
-                    if ("section_offset" not in ev or "size" not in ev or
-                            "block_sha256" not in ev):
-                        raise ValueError(f"{path}:{lineno}: block identity missing")
-                    expected = blocks[rip]
-                    if int(ev["section_offset"]) != int(expected["section_offset"]) or \
-                            int(ev["size"]) != int(expected["size"]) or \
-                            ev["block_sha256"] != expected["sha256"]:
-                        raise ValueError(f"{path}:{lineno}: block identity mismatch")
+                if ("offset" not in ev or "size" not in ev or
+                        "block_sha256" not in ev):
+                    raise ValueError(f"{path}:{lineno}: block identity missing")
+                expected = blocks[rip]
+                if int(ev["offset"]) != int(expected["section_offset"]) or \
+                        int(ev["size"]) != int(expected["size"]) or \
+                        ev["block_sha256"] != expected["sha256"]:
+                    raise ValueError(f"{path}:{lineno}: block identity mismatch")
+                if record == "aot" and rip not in header_selected:
+                    raise ValueError(f"{path}:{lineno}: aot event for unselected block")
+                if record != "aot" and rip in header_selected:
+                    raise ValueError(f"{path}:{lineno}: jit event for AOT-selected block")
                 selected_here.add(rip)
             elif record == "host_import":
                 if any(k in ev for k in ("a0", "a1", "a2", "a3")):
@@ -155,10 +174,49 @@ def validate_events(path: Path, blocks, selected):
     missing = seen_calls - set(call_end)
     if missing:
         raise ValueError(f"{path}: missing call_end for calls {sorted(missing)}")
-    if any(status != 0 for status in call_end.values()):
-        raise ValueError(f"{path}: failed call_end present")
-    selected.update(selected_here)
-    return set(call_end)
+    return selected_here, set(call_end)
+
+
+def publish_outputs(mapping):
+    """Publish generated files with backups; restore all on any failure."""
+    staged = []
+    backups = {}
+    published = []
+    try:
+        for final, source in mapping:
+            final = Path(final)
+            final.parent.mkdir(parents=True, exist_ok=True)
+            tmp = final.with_name(f".{final.name}.tmp.{os.getpid()}")
+            shutil.copyfile(source, tmp)
+            staged.append((final, tmp))
+        for final, _tmp in staged:
+            if final.exists():
+                backup = final.with_name(f".{final.name}.bak.{os.getpid()}")
+                os.replace(final, backup)
+                backups[final] = backup
+            else:
+                backups[final] = None
+        for final, tmp in staged:
+            os.replace(tmp, final)
+            published.append(final)
+    except BaseException:
+        for final, tmp in staged:
+            if tmp.exists():
+                tmp.unlink()
+        for final in published:
+            backup = backups.get(final)
+            if backup and backup.exists():
+                os.replace(backup, final)
+            elif final.exists():
+                final.unlink()
+        for final, backup in backups.items():
+            if backup and backup.exists():
+                os.replace(backup, final)
+        raise
+    else:
+        for backup in backups.values():
+            if backup and backup.exists():
+                backup.unlink()
 
 
 def main() -> int:
@@ -206,8 +264,11 @@ def main() -> int:
             headers = [x for x in lines if x.get("record") == "header"]
             if len(headers) != 1:
                 raise SystemExit(f"{trace_path}: expected exactly one header")
-            validate_header(headers[0], manifest, blocks, input_sha, trace_path)
-            validate_events(trace_path, blocks, selected)
+            header_selected = validate_header(
+                headers[0], manifest, blocks, input_sha, trace_path
+            )
+            selected_here, _ = validate_events(trace_path, blocks, header_selected)
+            selected.update(selected_here)
         if not selected:
             raise SystemExit("no executed blocks selected from traces")
         selected_list = sorted(selected)
@@ -236,9 +297,11 @@ def main() -> int:
             rip for rip in selected_list if rip not in base_selected
         ]
         final_manifest.write_text(json.dumps(final_data, indent=2) + "\n")
-        os.replace(final_ll, out_ll)
-        os.replace(final_header, out_header)
-        os.replace(final_manifest, out_manifest)
+        publish_outputs([
+            (out_ll, final_ll),
+            (out_header, final_header),
+            (out_manifest, final_manifest),
+        ])
         print(json.dumps({
             "success": True,
             "input_sha256": input_sha,

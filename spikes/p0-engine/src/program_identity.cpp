@@ -30,11 +30,14 @@ bool block_bytes(const Program &program, uint64_t rip, const uint8_t **data,
             if (error) *error = "rip is not a block boundary";
             return false;
         }
-        uint64_t end_addr;
-        if (block->end < fn.insns.size()) {
-            end_addr = fn.insns[block->end].address;
-        } else {
-            end_addr = fn.address + fn.bytes.size();
+        uint64_t end_addr = block->end < fn.insns.size()
+                                ? fn.insns[block->end].address
+                                : fn.address + fn.bytes.size();
+        for (size_t i = block->begin; i < block->end; ++i) {
+            if (is_block_terminator(fn.insns[i].id)) {
+                end_addr = fn.insns[i].address + fn.insns[i].size;
+                break;
+            }
         }
         if (end_addr <= rip) {
             if (error) *error = "invalid block end";

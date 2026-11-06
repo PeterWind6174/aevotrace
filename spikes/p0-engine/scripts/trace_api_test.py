@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import struct
 import sys
@@ -33,11 +34,12 @@ def main() -> int:
     text = "Aevoβ中".encode("utf-16-le")
     bridge.guest_write(text_addr, text)
     bridge.guest_write(ctx_addr, struct.pack("<QQ", 0x140010010, counter_addr))
-    state = {"probe": False, "status": None}
+    state = {"probe": False, "status": None, "reserved0": 0}
 
     def host_update(a0, a1, a2, a3):
         if state["probe"]:
             state["probe"] = False
+            state["reserved0"] = bridge.debug_reserved0()
             try:
                 bridge.trace_open(str(out / "inflight.jsonl"), "inflight")
             except BridgeError as exc:
@@ -65,16 +67,28 @@ def main() -> int:
         raise SystemExit("unwritable trace path unexpectedly succeeded")
 
     # Attempt open from inside a call; must be REENTRY.
+    bridge.trace_open(str(trace), "probe")
+    assert bridge.debug_reserved0() == 0
     state["probe"] = True
     result = bridge.call(0x140001000, [7, text_addr, len(text) // 2, ctx_addr],
                          raise_on_error=False)
     assert result.status == 0 and state["status"] == 9, (result.status, state)
+    assert state["reserved0"] != 0, "trace sink was not installed during the call"
+    assert bridge.debug_reserved0() == 0, "reserved0 was not cleared after the call"
+    bridge.trace_close()
 
     # After close, a normal call must not append trace events or crash.
     bridge.trace_open(str(trace), "events")
     bridge.call(0x140001000, [7, text_addr, len(text) // 2, ctx_addr],
                 raise_on_error=False)
     bridge.trace_close()
+    block_events = [
+        e for e in (json.loads(line) for line in trace.read_text().splitlines())
+        if e.get("record") in ("aot", "jit_compile", "jit_exec")
+    ]
+    assert block_events, "trace has no block events"
+    for ev in block_events:
+        assert "offset" in ev and "section_offset" not in ev, ev
     size_after_close = trace.stat().st_size
     bridge.call(0x140001000, [7, text_addr, len(text) // 2, ctx_addr],
                 raise_on_error=False)

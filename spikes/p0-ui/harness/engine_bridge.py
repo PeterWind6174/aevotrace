@@ -199,6 +199,21 @@ class EngineBridge:
             ctypes.c_size_t,
         ]
         self.lib.aev_bridge_artifact_info.restype = ctypes.c_int
+        self.lib.aev_bridge_selected_block_contains.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint64,
+        ]
+        self.lib.aev_bridge_selected_block_contains.restype = ctypes.c_int
+        self.lib.aev_bridge_selected_block_count.argtypes = [ctypes.c_void_p]
+        self.lib.aev_bridge_selected_block_count.restype = ctypes.c_uint32
+        self.lib.aev_bridge_selected_block_rip.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_uint64),
+        ]
+        self.lib.aev_bridge_selected_block_rip.restype = ctypes.c_int
+        self.lib.aev_bridge_debug_reserved0.argtypes = [ctypes.c_void_p]
+        self.lib.aev_bridge_debug_reserved0.restype = ctypes.c_uint64
         self.lib.aev_bridge_trace_open.argtypes = [
             ctypes.c_void_p,
             ctypes.c_char_p,
@@ -355,6 +370,30 @@ class EngineBridge:
             "aot_sha256": bytes(info.aot_sha256).hex(),
             "target_triple": bytes(info.target_triple).split(b"\0", 1)[0].decode(),
         }
+
+    def selected_block_contains(self, rip: int) -> bool:
+        rc = self.lib.aev_bridge_selected_block_contains(self._handle, rip)
+        if rc < 0:
+            raise BridgeError(rc, "selected_block_contains failed")
+        return rc == 1
+
+    def selected_block_count(self) -> int:
+        return int(self.lib.aev_bridge_selected_block_count(self._handle))
+
+    def selected_block_rip(self, index: int) -> int:
+        rip = ctypes.c_uint64()
+        rc = self.lib.aev_bridge_selected_block_rip(
+            self._handle, index, ctypes.byref(rip)
+        )
+        if rc != 0:
+            raise BridgeError(rc, "selected_block_rip failed")
+        return int(rip.value)
+
+    def selected_blocks(self) -> list[int]:
+        return [self.selected_block_rip(i) for i in range(self.selected_block_count())]
+
+    def debug_reserved0(self) -> int:
+        return int(self.lib.aev_bridge_debug_reserved0(self._handle))
 
     def trace_open(self, path: str, scenario: str) -> None:
         err = self._errbuf()

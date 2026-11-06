@@ -169,5 +169,33 @@ fixture/op 一致。`summary.json` 记录 COFF/AOT/bridge 哈希、backend proof
 计数和截图；stderr 记录 AOT/JIT 实际执行轨迹。`native` 强制失败负例必须非零退出、
 compat 事件为 0、不创建 Compat 控件。
 
+### Coverage profile 与离线补充（P0-TRACE-AOT-01）
+
+`run_engine` / `run_engine_gui.sh` 支持显式 `--coverage-profile base|supplemented` /
+`AEV_COVERAGE_PROFILE`，不得根据观察计数推断：
+
+- `base`：AOT 表 4、总 JIT compile 1、JIT exec > 0；promoted RIP 不得在实际 selected 表。
+- `supplemented`：AOT 表 5、总 JIT compile 0、JIT exec 0；必须提供 supplement manifest
+  （`AEV_SUPPLEMENT_MANIFEST`）、对应 AOT（`AEV_AOT_OVERRIDE`），并绑定 manifest 中的
+  AOT SHA-256 与 promoted RIP（callback `0x140001020`）；实际 dylib 的 selected 表必须包含
+  该 RIP，否则在进入 Guest 前失败，不回退 base AOT/JIT/compat。
+
+离线补充入口（Python 编排共享 `aev-translate`，不重编业务 C、不复制 ORC）：
+
+```sh
+python3 spikes/p0-engine/scripts/aot_supplement.py \
+  --translator <build>/aev-translate --input <coff> \
+  --function <name> --entry <name> --entry-addr 0x140001000 \
+  --trace <trace.jsonl> --out-ll <supp.ll> --out-header <supp.h> \
+  --out-manifest <supp.json>
+# 链接临时 dylib 后用实际导出符号校验并原子发布：
+python3 spikes/p0-engine/scripts/publish_aot.py --dylib-tmp <tmp.dylib> \
+  --dylib-out <supp.dylib> --manifest-in <supp.json> --manifest-out <supp.json> \
+  --promoted-rip 0x140001020 --expected-table 5
+```
+
+trace 为块级 JSONL；块事件字段为 `offset`/`size`/`block_sha256`，`host_import` 只记录 id。
+
+
 边界：这是单层、主线程、最小回调链；`compat` 仍是 P0 语义 harness，不是最终兼容运行库；
 物理键盘/焦点/输入法/窗口外观和真实应用仍未验收。

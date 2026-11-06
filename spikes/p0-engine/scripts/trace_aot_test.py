@@ -41,6 +41,8 @@ def main() -> int:
     ap.add_argument("--scenario", default="A")
     ap.add_argument("--case", choices=["A", "B", "AB"], default="AB")
     ap.add_argument("--expected-aot-table", type=int, required=True)
+    ap.add_argument("--promoted-rip", default="")
+    ap.add_argument("--expect-promoted-selected", action="store_true")
     args = ap.parse_args()
 
     entry = int(args.entry, 0)
@@ -55,6 +57,20 @@ def main() -> int:
         )
     if info["input_sha256"] != sha256_file(args.coff):
         raise SystemExit("artifact input SHA mismatch")
+    selected_blocks = bridge.selected_blocks()
+    if len(selected_blocks) != args.expected_aot_table:
+        raise SystemExit(
+            f"actual selected table length {len(selected_blocks)} != "
+            f"{args.expected_aot_table}"
+        )
+    if args.promoted_rip:
+        promoted = int(args.promoted_rip, 0)
+        actual = bridge.selected_block_contains(promoted)
+        if actual != args.expect_promoted_selected:
+            raise SystemExit(
+                f"promoted RIP {hex(promoted)} selected={actual}, "
+                f"expected {args.expect_promoted_selected}"
+            )
     guest = bridge.guest_info()
     if args.fixture == "callback":
         text = "Aevoβ中".encode("utf-16-le")
