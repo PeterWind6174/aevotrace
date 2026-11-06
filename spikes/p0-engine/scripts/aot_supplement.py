@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -64,11 +65,11 @@ def load_manifest(path: Path):
     return data, blocks
 
 
-def validate_header(header, manifest, blocks, input_sha, trace_path):
+def validate_header(header, manifest, blocks, input_sha, trace_path, expected_aot_sha=None):
     required = ("trace_abi", "scenario", "input_sha256", "input_fnv", "entry",
                 "function", "callback_abi", "guest_abi", "aot_artifact_abi",
                 "translator_abi", "target", "translator_version",
-                "trace_tool_version", "all_blocks", "aot_selected")
+                "trace_tool_version", "aot_sha256", "all_blocks", "aot_selected")
     for key in required:
         if key not in header:
             raise ValueError(f"{trace_path}: header missing {key}")
@@ -91,6 +92,12 @@ def validate_header(header, manifest, blocks, input_sha, trace_path):
         raise ValueError(f"{trace_path}: translator/trace tool version mismatch")
     if header["target"] != TARGET or manifest.get("target") != TARGET:
         raise ValueError(f"{trace_path}: target triple mismatch")
+    aot_sha = header.get("aot_sha256")
+    if not isinstance(aot_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", aot_sha) or \
+            aot_sha == "0" * 64:
+        raise ValueError(f"{trace_path}: invalid aot_sha256")
+    if expected_aot_sha is not None and aot_sha != expected_aot_sha:
+        raise ValueError(f"{trace_path}: aot_sha256 does not match base AOT")
     all_blocks = [parse_hex(x, "all_blocks") for x in header["all_blocks"]]
     if all_blocks != sorted(blocks):
         raise ValueError(f"{trace_path}: header all_blocks does not match COFF")
@@ -114,6 +121,8 @@ def validate_events(path: Path, blocks, header_selected):
                 ev = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise ValueError(f"{path}:{lineno}: invalid JSON: {exc}") from exc
+            if not isinstance(ev, dict):
+                raise ValueError(f"{path}:{lineno}: record is not an object")
             record = ev.get("record")
             if record == "header":
                 continue
@@ -137,9 +146,16 @@ def validate_events(path: Path, blocks, header_selected):
             if record == "call_end":
                 if call in call_end:
                     raise ValueError(f"{path}:{lineno}: duplicate call_end")
-                call_end[call] = int(ev.get("status", -1))
-                if call_end[call] != 0:
-                    raise ValueError(f"{path}:{lineno}: failed call_end")
+                status = ev.get("status")
+                if not isinstance(status, int) or status != 0:
+                    raise ValueError(f"{path}:{lineno}: failed/invalid call_end status")
+                if "error_pc" not in ev or "guest_error" not in ev:
+                    raise ValueError(f"{path}:{lineno}: call_end missing error fields")
+                parse_hex(ev["error_pc"], "error_pc")
+                guest_error = ev["guest_error"]
+                if not isinstance(guest_error, int) or guest_error < 0:
+                    raise ValueError(f"{path}:{lineno}: invalid guest_error")
+                call_end[call] = status
                 continue
             if record in ("aot", "jit_compile", "jit_exec"):
                 if "rip" not in ev:
@@ -226,6 +242,7 @@ def main() -> int:
     ap.add_argument("--function", required=True)
     ap.add_argument("--entry", required=True)
     ap.add_argument("--entry-addr", required=True)
+    ap.add_argument("--base-aot", default="")
     ap.add_argument("--trace", action="append", required=True)
     ap.add_argument("--out-ll", required=True)
     ap.add_argument("--out-header", required=True)
@@ -238,6 +255,9 @@ def main() -> int:
     out_manifest = Path(args.out_manifest).resolve()
     input_sha = sha256_file(input_path)
     entry_addr = int(args.entry_addr, 0)
+    expected_aot_sha = None
+    if args.base_aot:
+        expected_aot_sha = sha256_file(Path(args.base_aot).resolve())
 
     out_ll.parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="aev-supplement-", dir=str(out_ll.parent)))
@@ -258,16 +278,24 @@ def main() -> int:
             trace_path = Path(trace_name).resolve()
             trace_hashes[str(trace_path)] = sha256_file(trace_path)
             with trace_path.open("r", encoding="utf-8") as f:
-                lines = [json.loads(line) for line in f if line.strip()]
-            if not lines or lines[0].get("record") != "header":
+                try:
+                    lines = [json.loads(line) for line in f if line.strip()]
+                except json.JSONDecodeError as exc:
+                    raise SystemExit(f"{trace_path}: invalid JSON: {exc}") from exc
+            if not lines or not isinstance(lines[0], dict) or \
+                    lines[0].get("record") != "header":
                 raise SystemExit(f"{trace_path}: missing header")
-            headers = [x for x in lines if x.get("record") == "header"]
+            headers = [x for x in lines if isinstance(x, dict) and x.get("record") == "header"]
             if len(headers) != 1:
                 raise SystemExit(f"{trace_path}: expected exactly one header")
-            header_selected = validate_header(
-                headers[0], manifest, blocks, input_sha, trace_path
-            )
-            selected_here, _ = validate_events(trace_path, blocks, header_selected)
+            try:
+                header_selected = validate_header(
+                    headers[0], manifest, blocks, input_sha, trace_path,
+                    expected_aot_sha,
+                )
+                selected_here, _ = validate_events(trace_path, blocks, header_selected)
+            except (ValueError, TypeError, KeyError) as exc:
+                raise SystemExit(f"{trace_path}: invalid trace: {exc}") from exc
             selected.update(selected_here)
         if not selected:
             raise SystemExit("no executed blocks selected from traces")

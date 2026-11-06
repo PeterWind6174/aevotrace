@@ -41,15 +41,20 @@ u32 aev_trace_guest(unsigned int op, unsigned int x, GuestCtx *ctx);
 
 ## Windows reference
 
-From this directory on the Windows reference machine:
+From this directory on the Windows reference machine, with the committed
+`aev_trace_fixture.obj` copied next to the script/source:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build_msvc.ps1
 ```
 
-The script compiles `aev_trace_fixture.c`, links the driver with the same
-committed object, runs A/B, dumps disassembly/relocations, and prints
-`FIXTURE_SHA256 ...` / `BUILD_RUN_OK`.
+The script verifies the committed object SHA-256, compiles `aev_trace_fixture.c`
+to `aev_trace_fixture.rebuilt.obj` only as a diagnostic, links the driver with
+the committed object, runs A/B, dumps disassembly/relocations, and prints
+`FIXTURE_SHA256 ...`, `REBUILT_SHA256 ...`, `REBUILT_MATCH ...`,
+`COMMITTED_OBJECT_BUILD_RUN_OK`. Under different MSVC versions the rebuilt
+object bytes may differ while the `.aevtext` instruction sequence is the same;
+the behavior reference always uses the committed object.
 
 ## Evidence
 

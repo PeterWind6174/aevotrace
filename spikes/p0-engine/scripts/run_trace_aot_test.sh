@@ -57,7 +57,8 @@ pass "trace API lifecycle checks"
 echo "== callback supplement =="
 "$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$CB_COFF" \
     --function aev_guest_callback --entry aev_guest_callback \
-    --entry-addr 0x140001000 --trace "$OUT/callback_base.jsonl" \
+    --entry-addr 0x140001000 --base-aot "$CB_BASE" \
+    --trace "$OUT/callback_base.jsonl" \
     --out-ll "$OUT/callback_supp.ll" --out-header "$OUT/callback_supp.h" \
     --out-manifest "$OUT/callback_supp.json" >"$OUT/callback_supp.stdout"
 clang --target=arm64-apple-macos14.0 -O2 -c "$OUT/callback_supp.ll" -o "$OUT/callback_supp.o"
@@ -144,6 +145,7 @@ PY
 echo "== trace fixture supplement =="
 "$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
     --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
+    --base-aot "$TR_BASE" \
     --trace "$OUT/trace_base_A.jsonl" --trace "$OUT/trace_base_B.jsonl" \
     --out-ll "$OUT/trace_supp.ll" --out-header "$OUT/trace_supp.h" \
     --out-manifest "$OUT/trace_supp.json" >"$OUT/trace_supp.stdout"
@@ -190,6 +192,10 @@ def write(name, mutate):
     mutate(copy)
     (out/name).write_text("\n".join(json.dumps(x) for x in copy)+"\n")
 write("bad_sha.jsonl", lambda xs: xs[0].__setitem__("input_sha256","00"*32))
+write("bad_aot_sha.jsonl", lambda xs: xs[0].__setitem__("aot_sha256","0"*64))
+def bad_aot_missing(xs):
+    xs[0].pop("aot_sha256", None)
+write("bad_aot_missing.jsonl", bad_aot_missing)
 write("bad_block.jsonl", lambda xs: next(x for x in xs if x.get("record")=="aot").__setitem__("block_sha256","00"*32))
 write("bad_all.jsonl", lambda xs: xs[0].__setitem__("all_blocks", xs[0]["all_blocks"][1:]))
 write("bad_unsorted.jsonl", lambda xs: xs[0].__setitem__("all_blocks", list(reversed(xs[0]["all_blocks"]))))
@@ -235,15 +241,32 @@ def bad_failed(xs):
         if x.get("record")=="call_end":
             x["status"]=1
 write("bad_failed.jsonl", bad_failed)
+def bad_call_end_missing(xs):
+    for x in xs:
+        if x.get("record")=="call_end":
+            x.pop("guest_error", None)
+            break
+write("bad_call_end_missing.jsonl", bad_call_end_missing)
+def bad_call_end_status_string(xs):
+    for x in xs:
+        if x.get("record")=="call_end":
+            x["status"]="0"
+            break
+write("bad_call_end_status_string.jsonl", bad_call_end_status_string)
+write("bad_json_array.jsonl", lambda xs: xs.append([]))
+(out/"bad_malformed.jsonl").write_text(json.dumps(header)+"\n{not json\n")
 PY
-for bad in bad_sha bad_block bad_all bad_unsorted bad_all_duplicate bad_abi \
-           bad_entry bad_function bad_target bad_artifact_abi bad_callback_abi \
-           bad_guest_abi bad_selected_duplicate bad_aot_unselected bad_jit_selected \
-           bad_jit_identity bad_interleaved bad_host_args bad_trunc bad_failed; do
+for bad in bad_sha bad_aot_sha bad_aot_missing bad_block bad_all bad_unsorted \
+           bad_all_duplicate bad_abi bad_entry bad_function bad_target \
+           bad_artifact_abi bad_callback_abi bad_guest_abi \
+           bad_selected_duplicate bad_aot_unselected bad_jit_selected \
+           bad_jit_identity bad_interleaved bad_host_args bad_trunc bad_failed \
+           bad_call_end_missing bad_call_end_status_string bad_json_array \
+           bad_malformed; do
     rm -f "$OUT/${bad}_out.ll" "$OUT/${bad}_out.json"
     if "$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$CB_COFF" \
         --function aev_guest_callback --entry aev_guest_callback \
-        --entry-addr 0x140001000 --trace "$OUT/$bad.jsonl" \
+        --entry-addr 0x140001000 --base-aot "$CB_BASE" --trace "$OUT/$bad.jsonl" \
         --out-ll "$OUT/${bad}_out.ll" --out-header "$OUT/${bad}_out.h" \
         --out-manifest "$OUT/${bad}_out.json" >"$OUT/${bad}.stdout" 2>"$OUT/${bad}.stderr"; then
         fail "$bad trace unexpectedly accepted"
