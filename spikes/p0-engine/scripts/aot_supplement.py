@@ -31,10 +31,19 @@ TARGET = "arm64-apple-macosx14.0.0"
 
 def run_translator(args, input_path, function, entry, out_ll, out_header, out_manifest,
                    includes, excludes=()):
-    cmd = [str(args.translator), "--input", str(input_path),
-           "--function", function, "--entry", entry,
-           "--out-ll", str(out_ll), "--out-header", str(out_header),
-           "--out-manifest", str(out_manifest)]
+    cmd = [str(args.translator)]
+    if args.input_kind == "pe":
+        cmd += ["--pe", str(input_path), "--load-base", args.load_base,
+                "--entry", args.entry_export]
+        if args.registry:
+            cmd += ["--registry", str(args.registry)]
+        for name in args.export or []:
+            cmd += ["--export", name]
+    else:
+        cmd += ["--input", str(input_path), "--function", function,
+                "--entry", entry]
+    cmd += ["--out-ll", str(out_ll), "--out-header", str(out_header),
+            "--out-manifest", str(out_manifest)]
     for rip in sorted(includes):
         cmd += ["--aot-include-rip", hex(rip)]
     for rip in sorted(excludes):
@@ -73,31 +82,58 @@ def load_manifest(path: Path):
 
 
 def validate_header(header, manifest, blocks, input_sha, trace_path,
-                    base_sha, base_selected):
+                    base_sha, base_selected, input_kind):
     required = ("trace_abi", "scenario", "input_sha256", "input_fnv", "entry",
                 "function", "callback_abi", "guest_abi", "aot_artifact_abi",
                 "translator_abi", "target", "translator_version",
                 "trace_tool_version", "aot_sha256", "all_blocks", "aot_selected")
+    if input_kind == "pe":
+        required += ("module_kind", "module_file_size", "preferred_base",
+                     "load_base", "image_size", "image_sha256",
+                     "import_binding_sha256", "host_binding_sha256",
+                     "entry_exports_sha256", "entry_exports", "entry_addr",
+                     "offset_kind", "thunk_base", "import_count")
     for key in required:
         if key not in header:
             raise ValueError(f"{trace_path}: header missing {key}")
-    if header["trace_abi"] != 1:
-        raise ValueError(f"{trace_path}: unsupported trace ABI")
+    expected_trace_abi = 4 if input_kind == "pe" else 3
+    if header["trace_abi"] != expected_trace_abi:
+        raise ValueError(f"{trace_path}: unsupported trace ABI {header['trace_abi']}")
+    if input_kind == "coff" and header.get("module_kind", "coff") != "coff":
+        raise ValueError(f"{trace_path}: COFF trace has non-COFF module kind")
     if header["input_sha256"] != input_sha:
         raise ValueError(f"{trace_path}: input SHA-256 mismatch")
     if parse_hex(header["input_fnv"], "input_fnv") != int(manifest["input_hash"]):
         raise ValueError(f"{trace_path}: input FNV mismatch")
-    if parse_hex(header["entry"], "entry") != int(manifest["entry_address"]):
-        raise ValueError(f"{trace_path}: entry mismatch")
+    if input_kind == "pe":
+        if header["entry"] != manifest.get("entry_export"):
+            raise ValueError(f"{trace_path}: entry export mismatch")
+        if parse_hex(header["entry_addr"], "entry_addr") != int(manifest["entry_address"]):
+            raise ValueError(f"{trace_path}: entry address mismatch")
+        for key in ("module_kind", "module_file_size", "preferred_base",
+                    "load_base", "image_size", "image_sha256",
+                    "import_binding_sha256", "host_binding_sha256",
+                    "entry_exports_sha256", "thunk_base", "import_count"):
+            if header[key] != manifest.get(key):
+                raise ValueError(f"{trace_path}: {key} does not match manifest")
+        if header["offset_kind"] != "rva":
+            raise ValueError(f"{trace_path}: PE trace offset_kind must be rva")
+        if header["entry_exports"] != manifest.get("entry_exports"):
+            raise ValueError(f"{trace_path}: entry_exports mismatch")
+    else:
+        if parse_hex(header["entry"], "entry") != int(manifest["entry_address"]):
+            raise ValueError(f"{trace_path}: entry mismatch")
     if header["function"] != manifest["entry"]:
         raise ValueError(f"{trace_path}: function mismatch")
-    if header.get("callback_abi") != 2 or header.get("guest_abi") != 1:
+    if header.get("callback_abi") != 3 or header.get("guest_abi") != 2:
         raise ValueError(f"{trace_path}: callback/guest ABI mismatch")
-    if header["aot_artifact_abi"] != 1 or header["translator_abi"] != 1:
+    if header["aot_artifact_abi"] != 2 or header["translator_abi"] != 2:
         raise ValueError(f"{trace_path}: artifact/translator ABI mismatch")
-    if header.get("translator_version") != "aev-translate-v1" or \
-            header.get("trace_tool_version") != "aev-trace-sink-v1":
-        raise ValueError(f"{trace_path}: translator/trace tool version mismatch")
+    if header.get("translator_version") != "aev-translate-v2":
+        raise ValueError(f"{trace_path}: translator version mismatch")
+    expected_tool = "aev-pe-trace-v1" if input_kind == "pe" else "aev-trace-sink-v1"
+    if header.get("trace_tool_version") != expected_tool:
+        raise ValueError(f"{trace_path}: trace tool version mismatch")
     if header["target"] != TARGET or manifest.get("target") != TARGET:
         raise ValueError(f"{trace_path}: target triple mismatch")
     aot_sha = header.get("aot_sha256")
@@ -108,7 +144,7 @@ def validate_header(header, manifest, blocks, input_sha, trace_path,
         raise ValueError(f"{trace_path}: aot_sha256 does not match actual base AOT")
     all_blocks = [parse_hex(x, "all_blocks") for x in header["all_blocks"]]
     if all_blocks != sorted(blocks):
-        raise ValueError(f"{trace_path}: header all_blocks does not match COFF")
+        raise ValueError(f"{trace_path}: header all_blocks does not match input")
     selected = [parse_hex(x, "aot_selected") for x in header["aot_selected"]]
     if selected != sorted(set(selected)):
         raise ValueError(f"{trace_path}: header aot_selected is not sorted/unique")
@@ -251,9 +287,14 @@ def publish_outputs(mapping):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--translator", required=True)
+    ap.add_argument("--input-kind", choices=["coff", "pe"], default="coff")
     ap.add_argument("--input", required=True)
-    ap.add_argument("--function", required=True)
-    ap.add_argument("--entry", required=True)
+    ap.add_argument("--function", default="")
+    ap.add_argument("--entry", default="")
+    ap.add_argument("--entry-export", default="")
+    ap.add_argument("--load-base", default="")
+    ap.add_argument("--registry", default="")
+    ap.add_argument("--export", action="append", default=[])
     ap.add_argument("--entry-addr", required=True)
     ap.add_argument("--base-aot", required=True)
     ap.add_argument("--trace", action="append", required=True)
@@ -261,6 +302,18 @@ def main() -> int:
     ap.add_argument("--out-header", required=True)
     ap.add_argument("--out-manifest", required=True)
     args = ap.parse_args()
+    if args.input_kind == "coff":
+        if not args.function or not args.entry:
+            raise SystemExit("--function and --entry are required for COFF")
+    else:
+        if not args.entry_export:
+            raise SystemExit("--entry-export is required for PE")
+        if not args.load_base:
+            raise SystemExit("--load-base is required for PE")
+        if not args.export:
+            raise SystemExit("at least one --export is required for PE")
+        args.entry = args.entry_export
+        args.function = args.entry_export
 
     input_path = Path(args.input).resolve()
     out_ll = Path(args.out_ll).resolve()
@@ -289,7 +342,7 @@ def main() -> int:
         try:
             expected = manifest_identity(manifest)
             expected["entry_addr"] = entry_addr
-            expected["guest_state_size"] = 256
+            expected["guest_state_size"] = 296
             expected["all_blocks"] = sorted(blocks)
             require_identity(base, expected)
         except (ArtifactError, KeyError, TypeError, ValueError) as exc:
@@ -313,7 +366,7 @@ def main() -> int:
             try:
                 header_selected = validate_header(
                     headers[0], manifest, blocks, input_sha, trace_path,
-                    base.sha256, base.selected_blocks,
+                    base.sha256, base.selected_blocks, args.input_kind,
                 )
                 selected_here, _ = validate_events(trace_path, blocks, header_selected)
             except (ValueError, TypeError, KeyError) as exc:
@@ -347,8 +400,8 @@ def main() -> int:
         final_data["trace_files"] = [
             {"path": p, "sha256": h} for p, h in sorted(trace_hashes.items())
         ]
-        final_data["trace_abi"] = 1
-        final_data["supplement_tool"] = "aev-aot-supplement-v1"
+        final_data["trace_abi"] = 4 if args.input_kind == "pe" else 3
+        final_data["supplement_tool"] = "aev-aot-supplement-v2"
         final_data["promoted_blocks"] = promoted
         final_data["demoted_blocks"] = demoted
         final_manifest.write_text(json.dumps(final_data, indent=2) + "\n")

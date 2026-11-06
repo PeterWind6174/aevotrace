@@ -5,8 +5,9 @@
 extern const AevBlock aev_blocks[];
 extern const uint64_t aev_block_count;
 
-/* ABI/identity symbols checked by the callback bridge before it executes a
- * loaded dylib.  These are intentionally plain exported data symbols. */
+/* ABI/identity symbols checked by the callback bridge / PE runner before it
+ * executes a loaded dylib.  These are intentionally plain exported data
+ * symbols. */
 const uint64_t aev_aot_abi_version = AEV_GUEST_ABI_VERSION;
 const uint64_t aev_guest_state_size = sizeof(GuestState);
 const uint64_t aev_artifact_abi_version = AEV_ARTIFACT_ABI_VERSION;
@@ -36,6 +37,12 @@ int aev_aot_run(GuestState *s, const AevRuntime *rt) {
         s->steps = steps + 1;
         const AevBlock *block = find_block(s->rip);
         if (block) {
+            /* Guest instruction fetch is checked even for AOT blocks.  The
+             * block bytes are already Host-compiled, but the Guest PC must
+             * still point into an executable mapped region. */
+            if (!aev_guest_require_exec(s, block->rip, 1))
+                return (int)s->error_code;
+            s->pending_transfer = AEV_TRANSFER_NONE;
             block->fn(s);
             continue;
         }

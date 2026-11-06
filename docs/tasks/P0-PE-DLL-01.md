@@ -14,6 +14,7 @@
 
 - 主控会话 `ses_e510bd71cffdkpJjzuxMRrMM1G`：`opencode-go / deepseek-v4.1-flash / max`（从 `session_v2` 实际记录核对）。
 - 本轮写代码采用**单实施者串行**：桌面端子会话无法由主控工具明确绑定独立 worktree，按 `docs/OpenCode弹性调度.md` 在不能保证隔离时串行实施。binary/compiler/platform 的会签以只读审查/契约评审会话完成；QA/reviewer 在冻结提交上独立验证。没有启动 CLI worker，没有递归派生。
+- 契约 v3 会签（提交 `7d55333`）：binary `ses_e50c58852ffeMRvedwgW27tOTi`、compiler `ses_e50d40fcaffeCi9J97fQKq92dr`、platform `ses_e50c58850ffezlNChzcTDHUv5u`、reviewer `ses_e50c5884fffeWenm9He40TC5hl`；实际记录均为 `opencode-go / deepseek-v4.1-flash / max`（binary 会话从 `session_v2` 核对；其余会话头显示 provider/model，variant 由主控按 `session_v2` 复核）。
 - 任何新增子会话必须记录其实际 `model`（provider/id/variant），不得假定继承。
 
 ## 文件 owner（本轮）

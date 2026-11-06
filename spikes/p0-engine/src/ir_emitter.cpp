@@ -161,6 +161,7 @@ class Emitter {
         }
         if (!terminated) {
             uint64_t next = next_block_address(fn, block);
+            store_field(GF_pending_transfer, u64(AEV_TRANSFER_NONE));
             store_field(GF_rip, u64(next));
         }
         emit("ret void");
@@ -570,6 +571,7 @@ class Emitter {
                 target = read_operand(insn, insn.operands[0], 8);
             else
                 throw Unsupported("jmp without operand in " + format_insn(insn));
+            store_field(GF_pending_transfer, u64(AEV_TRANSFER_JMP));
             store_field(GF_rip, target);
             return;
         }
@@ -582,12 +584,14 @@ class Emitter {
             else
                 throw Unsupported("call without operand in " + format_insn(insn));
             emit_push(insn, u64(insn.address + insn.size));
+            store_field(GF_pending_transfer, u64(AEV_TRANSFER_CALL));
             store_field(GF_rip, target);
             return;
         }
         if (insn.id == X86_INS_RET) {
             std::string rsp = load_field(GF_rsp);
             std::string target = load_mem(insn, rsp, 8, false);
+            store_field(GF_pending_transfer, u64(AEV_TRANSFER_RET));
             store_field(GF_rip, target);
             std::string nrsp = fresh("rsp");
             emit(nrsp + " = add i64 " + rsp + ", 8");
@@ -611,6 +615,7 @@ class Emitter {
             std::string sel = fresh("rip");
             emit(sel + " = select i1 " + c + ", i64 " + target + ", i64 " +
                  fallthrough);
+            store_field(GF_pending_transfer, u64(AEV_TRANSFER_JCC));
             store_field(GF_rip, sel);
             return;
         }
@@ -805,6 +810,7 @@ std::string module_prefix() {
 bool emit_aot_module(const Program &program, uint64_t input_hash,
                      const uint8_t input_sha256[32], uint64_t entry_addr,
                      const uint8_t function_name_sha256[32],
+                     const AotModuleIdentity &identity,
                      std::string *out, std::string *error) {
     try {
         std::ostringstream os;
@@ -826,6 +832,34 @@ bool emit_aot_module(const Program &program, uint64_t input_hash,
         };
         emit_i8_array("aev_input_sha256", input_sha256, 32);
         emit_i8_array("aev_function_name_sha256", function_name_sha256, 32);
+        std::string kind = identity.module_kind;
+        std::vector<uint8_t> kind_bytes(kind.begin(), kind.end());
+        kind_bytes.push_back(0);
+        emit_i8_array("aev_module_kind", kind_bytes.data(), kind_bytes.size());
+        os << "@aev_module_file_size = constant i64 " << identity.module_file_size << "\n";
+        os << "@aev_preferred_base = constant i64 " << identity.preferred_base << "\n";
+        os << "@aev_load_base = constant i64 " << identity.load_base << "\n";
+        os << "@aev_image_size = constant i64 " << identity.image_size << "\n";
+        emit_i8_array("aev_image_sha256", identity.image_sha256, 32);
+        emit_i8_array("aev_import_binding_sha256", identity.import_binding_sha256, 32);
+        emit_i8_array("aev_host_binding_sha256", identity.host_binding_sha256, 32);
+        emit_i8_array("aev_entry_exports_sha256", identity.entry_exports_sha256, 32);
+        os << "@aev_thunk_base = constant i64 " << identity.thunk_base << "\n";
+        os << "@aev_import_count = constant i64 " << identity.import_count << "\n";
+        os << "@aev_import_thunks = constant [" << identity.import_thunks.size()
+           << " x i64] ";
+        if (identity.import_thunks.empty()) {
+            os << "zeroinitializer";
+        } else {
+            os << "[";
+            for (size_t i = 0; i < identity.import_thunks.size(); ++i) {
+                if (i) os << ", ";
+                os << "i64 " << identity.import_thunks[i];
+            }
+            os << "]";
+        }
+        os << "\n";
+        os << "@aev_relocs_stripped = constant i64 " << identity.relocs_stripped << "\n";
         std::string target = AEV_AOT_TARGET_TRIPLE;
         emit_i8_array("aev_target_triple",
                       reinterpret_cast<const uint8_t *>(target.data()),

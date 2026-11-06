@@ -255,7 +255,7 @@ class EngineGuiHost:
                 raise UnsupportedApi("actual base all-block table does not match manifest")
             try:
                 expected = manifest_identity(manifest)
-                expected["guest_state_size"] = 256
+                expected["guest_state_size"] = 296
                 expected["all_blocks"] = manifest_all
                 expected["selected_blocks"] = base_selected
                 require_identity(base, expected)

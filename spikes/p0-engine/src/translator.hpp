@@ -5,10 +5,19 @@
 #include "x64.hpp"
 
 #include <cstdint>
+#include <set>
 #include <string>
 #include <vector>
 
 namespace aev {
+
+struct FunctionSpec {
+    std::string name;
+    int section_number = 0;
+    uint64_t guest_va = 0;
+    uint32_t rva = 0; /* section-relative offset; PE uses image RVA */
+    uint32_t size = 0;
+};
 
 struct Block {
     uint64_t address = 0;
@@ -43,6 +52,11 @@ bool build_program(CoffObject &&object,
                    const std::vector<uint64_t> &addresses,
                    Program *program,
                    std::string *error);
+bool build_program_from_specs(CoffObject &&object,
+                              const std::vector<FunctionSpec> &specs,
+                              const std::set<uint64_t> *external_jmp_targets,
+                              Program *program,
+                              std::string *error);
 
 /* True when the block needs the JIT because AOT deliberately does not cover
  * one of its instructions (currently imul). */

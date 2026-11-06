@@ -513,9 +513,9 @@ write("bad_abi.jsonl", lambda xs: xs[0].__setitem__("translator_abi", 9))
 write("bad_entry.jsonl", lambda xs: xs[0].__setitem__("entry", "0x140009999"))
 write("bad_function.jsonl", lambda xs: xs[0].__setitem__("function", "not_the_entry"))
 write("bad_target.jsonl", lambda xs: xs[0].__setitem__("target", "arm64-apple-macosx13.0.0"))
-write("bad_artifact_abi.jsonl", lambda xs: xs[0].__setitem__("aot_artifact_abi", 2))
+write("bad_artifact_abi.jsonl", lambda xs: xs[0].__setitem__("aot_artifact_abi", 3))
 write("bad_callback_abi.jsonl", lambda xs: xs[0].__setitem__("callback_abi", 1))
-write("bad_guest_abi.jsonl", lambda xs: xs[0].__setitem__("guest_abi", 2))
+write("bad_guest_abi.jsonl", lambda xs: xs[0].__setitem__("guest_abi", 1))
 write("bad_selected_duplicate.jsonl", lambda xs: xs[0].__setitem__(
     "aot_selected", [xs[0]["aot_selected"][0], xs[0]["aot_selected"][0]] + xs[0]["aot_selected"][1:]))
 def bad_aot_unselected(xs):
@@ -812,7 +812,7 @@ else
     pass "publisher rejected missing base file"
 fi
 
-sed 's/const uint64_t aev_artifact_abi_version = AEV_ARTIFACT_ABI_VERSION;/const uint64_t aev_artifact_abi_version = 2;/' \
+sed 's/const uint64_t aev_artifact_abi_version = AEV_ARTIFACT_ABI_VERSION;/const uint64_t aev_artifact_abi_version = 3;/' \
     "$SRC_DIR/src/aot_runtime.c" >"$OUT/aot_runtime_bad_artifact.c"
 sed 's/const uint64_t aev_aot_abi_version = AEV_GUEST_ABI_VERSION;/const uint64_t aev_aot_abi_version = 0;/' \
     "$SRC_DIR/src/aot_runtime.c" >"$OUT/aot_runtime_bad_guest.c"

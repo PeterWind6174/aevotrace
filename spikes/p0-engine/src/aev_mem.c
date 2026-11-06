@@ -31,38 +31,91 @@ static void set_zsp(GuestState *s, uint32_t width, uint64_t r) {
     set_flag(s, AEV_PF, parity_even(r));
 }
 
-static void memory_error(GuestState *s, uint64_t addr, uint32_t size) {
+/* Record the first fault.  Subsequent helper calls in the same block must
+ * not overwrite the originating instruction/fault fields. */
+static void mem_fault(GuestState *s, uint64_t kind, uint64_t addr,
+                      uint64_t len, uint64_t access) {
     if (!s->error_code) {
         s->error_code = AEV_ERR_MEMORY;
-        s->error_pc = s->rip;
+        s->error_pc = (access == AEV_MEM_ACCESS_EXEC) ? addr : s->rip;
+        s->mem_fault_kind = kind;
+        s->mem_fault_addr = addr;
+        s->mem_fault_size = len;
+        s->mem_access = access;
         fprintf(stderr,
-                "AOT memory error: addr=0x%llx size=%u base=0x%llx mem_size=0x%llx rip=0x%llx\n",
-                (unsigned long long)addr, size,
-                (unsigned long long)s->mem_base,
-                (unsigned long long)s->mem_size,
+                "AOT memory error: kind=%llu addr=0x%llx size=%llu access=%llu "
+                "rip=0x%llx\n",
+                (unsigned long long)kind, (unsigned long long)addr,
+                (unsigned long long)len, (unsigned long long)access,
                 (unsigned long long)s->rip);
     }
 }
 
-static int range_ok(const GuestState *s, uint64_t addr, uint32_t size) {
-    if (size == 0 || size > 8)
-        return 0;
-    if (addr < s->mem_base)
-        return 0;
-    uint64_t off = addr - s->mem_base;
-    if (off > s->mem_size)
-        return 0;
-    if (s->mem_size - off < size)
-        return 0;
-    return 1;
+/*
+ * Locate a checked Guest range.  Returns 0 on success and stores the Host
+ * backing pointer.  Otherwise returns an AEV_MEM_FAULT_* kind.  A range must
+ * be contained in exactly one region; crossing a region boundary fails.
+ * Without a region table, the historical COFF identity mode is used (RWX over
+ * [mem_base, mem_base+mem_size)); PE modules always install a region table.
+ */
+static uint64_t locate_range(const GuestState *s, uint64_t addr, uint64_t len,
+                             uint32_t need, uint64_t *host) {
+    if (!s || !host || len == 0)
+        return AEV_MEM_FAULT_SIZE;
+    if (addr > UINT64_MAX - (len - 1))
+        return AEV_MEM_FAULT_RANGE;
+
+    if (s->reserved1 && s->reserved2) {
+        const AevMemRegion *regions =
+            (const AevMemRegion *)(uintptr_t)s->reserved1;
+        uint64_t count = s->reserved2;
+        for (uint64_t i = 0; i < count; ++i) {
+            const AevMemRegion *r = &regions[i];
+            if (r->size == 0 || r->guest_base > UINT64_MAX - (r->size - 1))
+                continue;
+            if (addr < r->guest_base)
+                continue;
+            uint64_t off = addr - r->guest_base;
+            if (off > r->size || r->size - off < len)
+                continue;
+            uint32_t prot = r->prot;
+            if ((need & AEV_MEM_PROT_READ) && !(prot & AEV_MEM_PROT_READ))
+                return AEV_MEM_FAULT_READ;
+            if ((need & AEV_MEM_PROT_WRITE) && !(prot & AEV_MEM_PROT_WRITE))
+                return AEV_MEM_FAULT_WRITE;
+            if ((need & AEV_MEM_PROT_EXEC) && !(prot & AEV_MEM_PROT_EXEC))
+                return AEV_MEM_FAULT_EXEC;
+            *host = r->host_base + off;
+            return AEV_MEM_FAULT_NONE;
+        }
+        return AEV_MEM_FAULT_UNMAPPED;
+    }
+
+    /* Legacy COFF identity mode: single RWX region backed by mem_base. */
+    if (s->mem_base && s->mem_size) {
+        if (addr < s->mem_base)
+            return AEV_MEM_FAULT_UNMAPPED;
+        uint64_t off = addr - s->mem_base;
+        if (off > s->mem_size || s->mem_size - off < len)
+            return AEV_MEM_FAULT_UNMAPPED;
+        *host = addr;
+        return AEV_MEM_FAULT_NONE;
+    }
+    return AEV_MEM_FAULT_UNMAPPED;
 }
 
 uint64_t aev_load(GuestState *s, uint64_t addr, uint32_t size, uint32_t sign_extend) {
-    if (!range_ok(s, addr, size)) {
-        memory_error(s, addr, size);
+    if (size == 0 || size > 8) {
+        mem_fault(s, AEV_MEM_FAULT_SIZE, addr, size, AEV_MEM_ACCESS_READ);
         return 0;
     }
-    const uint8_t *p = (const uint8_t *)(uintptr_t)addr;
+    uint64_t host = 0;
+    uint64_t kind = locate_range(s, addr, size, AEV_MEM_PROT_READ, &host);
+    if (kind != AEV_MEM_FAULT_NONE) {
+        mem_fault(s, kind, addr, size, AEV_MEM_ACCESS_READ);
+        return 0;
+    }
+    const uint8_t *p = (const uint8_t *)(uintptr_t)host;
     uint64_t v = 0;
     memcpy(&v, p, size); /* host is little-endian ARM64; x86 is little-endian */
     if (sign_extend && size < 8) {
@@ -75,12 +128,34 @@ uint64_t aev_load(GuestState *s, uint64_t addr, uint32_t size, uint32_t sign_ext
 }
 
 void aev_store(GuestState *s, uint64_t addr, uint64_t value, uint32_t size) {
-    if (!range_ok(s, addr, size)) {
-        memory_error(s, addr, size);
+    if (size == 0 || size > 8) {
+        mem_fault(s, AEV_MEM_FAULT_SIZE, addr, size, AEV_MEM_ACCESS_WRITE);
         return;
     }
-    uint8_t *p = (uint8_t *)(uintptr_t)addr;
+    uint64_t host = 0;
+    uint64_t kind = locate_range(s, addr, size, AEV_MEM_PROT_WRITE, &host);
+    if (kind != AEV_MEM_FAULT_NONE) {
+        mem_fault(s, kind, addr, size, AEV_MEM_ACCESS_WRITE);
+        return;
+    }
+    uint8_t *p = (uint8_t *)(uintptr_t)host;
     memcpy(p, &value, size);
+}
+
+int aev_guest_require_exec(GuestState *s, uint64_t rip, uint64_t len) {
+    if (!s)
+        return 0;
+    /* Legacy COFF identity mode has synthetic Guest PCs outside the Host
+     * mapping; keep the historical regressions working.  PE modules always
+     * use a region table and get the real check. */
+    if (!s->reserved1 || !s->reserved2)
+        return 1;
+    uint64_t host = 0;
+    uint64_t kind = locate_range(s, rip, len ? len : 1, AEV_MEM_PROT_EXEC, &host);
+    if (kind == AEV_MEM_FAULT_NONE)
+        return 1;
+    mem_fault(s, kind, rip, len ? len : 1, AEV_MEM_ACCESS_EXEC);
+    return 0;
 }
 
 void aev_flags_add(GuestState *s, uint32_t width, uint64_t a, uint64_t b, uint64_t r) {
@@ -170,7 +245,7 @@ void aev_note_aot(GuestState *s, uint64_t rip) {
         fprintf(stderr, "AOT  rip=0x%llx\n", (unsigned long long)rip);
     if (s->reserved0) {
         AevTraceSink *sink = (AevTraceSink *)(uintptr_t)s->reserved0;
-        if (sink->abi_version == AEV_TRACE_ABI_VERSION && sink->on_block)
+        if (sink->abi_version == AEV_TRACE_SINK_ABI_VERSION && sink->on_block)
             sink->on_block(sink->ctx, AEV_TRACE_SINK_SOURCE_AOT, rip);
     }
 }

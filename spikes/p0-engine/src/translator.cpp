@@ -151,13 +151,11 @@ bool build_program(CoffObject &&object,
         if (error) *error = "function names and addresses have different sizes";
         return false;
     }
-    program->object = std::move(object);
-    program->functions.clear();
-
-    std::set<uint64_t> used_addresses;
+    std::vector<FunctionSpec> specs;
+    specs.reserve(function_names.size());
     for (size_t fi = 0; fi < function_names.size(); ++fi) {
         const std::string &name = function_names[fi];
-        const CoffSymbol *sym = program->object.find_symbol(name);
+        const CoffSymbol *sym = object.find_symbol(name);
         if (!sym) {
             if (error) *error = "COFF symbol not found: " + name;
             return false;
@@ -166,7 +164,7 @@ bool build_program(CoffObject &&object,
             if (error) *error = "symbol has no section: " + name;
             return false;
         }
-        const CoffSection *section = program->object.section(sym->section_number);
+        const CoffSection *section = object.section(sym->section_number);
         if (!section) {
             if (error) *error = "invalid section for symbol: " + name;
             return false;
@@ -175,17 +173,63 @@ bool build_program(CoffObject &&object,
             if (error) *error = "symbol offset outside section: " + name;
             return false;
         }
-        if (!used_addresses.insert(addresses[fi]).second) {
-            if (error) *error = "duplicate synthetic function address";
+        uint64_t remaining = section->data.size() - sym->value;
+        if (remaining > UINT32_MAX) {
+            if (error) *error = "function exceeds 32-bit function size limit: " + name;
+            return false;
+        }
+        specs.push_back(FunctionSpec{name, sym->section_number, addresses[fi],
+                                     sym->value, (uint32_t)remaining});
+    }
+    return build_program_from_specs(std::move(object), specs, nullptr, program, error);
+}
+
+bool build_program_from_specs(CoffObject &&object,
+                              const std::vector<FunctionSpec> &specs,
+                              const std::set<uint64_t> *external_jmp_targets,
+                              Program *program,
+                              std::string *error) {
+    program->object = std::move(object);
+    program->functions.clear();
+
+    std::set<uint64_t> used_addresses;
+    std::set<std::string> used_names;
+    for (const auto &spec : specs) {
+        const std::string &name = spec.name;
+        if (spec.section_number <= 0) {
+            if (error) *error = "function has no section: " + name;
+            return false;
+        }
+        const CoffSection *section = program->object.section(spec.section_number);
+        if (!section) {
+            if (error) *error = "invalid section for function: " + name;
+            return false;
+        }
+        if (spec.size == 0 || spec.rva > section->data.size() ||
+            spec.size > section->data.size() - spec.rva) {
+            if (error) *error = "function range outside section: " + name;
+            return false;
+        }
+        if (spec.guest_va > UINT64_MAX - (spec.size - 1)) {
+            if (error) *error = "function guest address overflows: " + name;
+            return false;
+        }
+        if (!used_addresses.insert(spec.guest_va).second) {
+            if (error) *error = "duplicate function address";
+            return false;
+        }
+        if (!used_names.insert(name).second) {
+            if (error) *error = "duplicate function name: " + name;
             return false;
         }
 
         GuestFunction fn;
         fn.name = name;
-        fn.section_number = sym->section_number;
-        fn.section_offset = sym->value;
-        fn.address = addresses[fi];
-        fn.bytes.assign(section->data.begin() + sym->value, section->data.end());
+        fn.section_number = spec.section_number;
+        fn.section_offset = spec.rva;
+        fn.address = spec.guest_va;
+        fn.bytes.assign(section->data.begin() + spec.rva,
+                        section->data.begin() + spec.rva + spec.size);
 
         DecodeResult dr = decode_x64(fn.bytes, fn.address);
         if (!dr.ok) {
@@ -255,11 +299,13 @@ bool build_program(CoffObject &&object,
                 if (!insn.operands.empty() &&
                     insn.operands[0].kind == OperandKind::Immediate) {
                     uint64_t target = (uint64_t)insn.operands[0].imm;
-                    if (!in_range(target)) {
+                    if (in_range(target)) {
+                        leaders.insert(target);
+                    } else if (!external_jmp_targets ||
+                               !external_jmp_targets->count(target)) {
                         if (error) *error = "jump target outside function in " + format_insn(insn);
                         return false;
                     }
-                    leaders.insert(target);
                 }
             } else if (insn.id == X86_INS_CALL) {
                 if (!insn.operands.empty() &&

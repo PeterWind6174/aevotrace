@@ -2,11 +2,11 @@
 #define AEV_GUEST_H
 
 /*
- * P0-ENGINE-01 spike ABI.  This is intentionally not a frozen product ABI.
+ * P0-PE-DLL-01 Guest ABI v2 (contract v3).  Not a frozen product ABI.
  *
  * The guest x86-64 register file is kept in one contiguous, 8-byte aligned
- * structure so the LLVM-generated ARM64 blocks and the C runtime agree on
- * offsets.  All fields are uint64_t to avoid host-struct padding surprises.
+ * structure so LLVM-generated ARM64 blocks and the C runtime agree on
+ * offsets.  All fields are uint64_t; new fields are appended at the end.
  */
 
 #include <stdint.h>
@@ -21,9 +21,8 @@ typedef struct GuestState {
 
 #undef AEV_FIELD
 
-/* Transient trace sink stored in GuestState.reserved0 only while a bridge
- * trace is active.  It is bridge-owned, cleared on every call exit, and is
- * never persisted in trace/artifact data. */
+/* Transient trace sink stored in GuestState.reserved0 only while a bridge /
+ * PE runner trace is active.  Bridge-owned; cleared on every call exit. */
 typedef struct AevTraceSink {
     uint32_t abi_version;
     uint32_t reserved;
@@ -31,9 +30,40 @@ typedef struct AevTraceSink {
     void *ctx;
 } AevTraceSink;
 
+/* Runtime-only checked Guest memory region.  host_base must never be
+ * persisted in artifacts, traces or Guest-visible memory. */
+typedef struct AevMemRegion {
+    uint64_t guest_base;
+    uint64_t size;
+    uint64_t host_base;
+    uint32_t prot;
+    uint32_t reserved;
+} AevMemRegion;
+
+#define AEV_MEM_PROT_READ 1u
+#define AEV_MEM_PROT_WRITE 2u
+#define AEV_MEM_PROT_EXEC 4u
+
+#define AEV_MEM_FAULT_NONE 0ULL
+#define AEV_MEM_FAULT_UNMAPPED 1ULL
+#define AEV_MEM_FAULT_READ 2ULL
+#define AEV_MEM_FAULT_WRITE 3ULL
+#define AEV_MEM_FAULT_EXEC 4ULL
+#define AEV_MEM_FAULT_RANGE 5ULL
+#define AEV_MEM_FAULT_SIZE 6ULL
+
+#define AEV_MEM_ACCESS_NONE 0ULL
+#define AEV_MEM_ACCESS_READ 1ULL
+#define AEV_MEM_ACCESS_WRITE 2ULL
+#define AEV_MEM_ACCESS_EXEC 3ULL
+
+#define AEV_TRANSFER_NONE 0ULL
+#define AEV_TRANSFER_CALL 1ULL
+#define AEV_TRANSFER_JMP 2ULL
+#define AEV_TRANSFER_RET 3ULL
+#define AEV_TRANSFER_JCC 4ULL
+
 #define AEV_RETURN_SENTINEL 0xFFFFFFFFFFFFFF00ULL
-#define AEV_GUEST_ABI_VERSION 1ULL
-#define AEV_GUEST_STATE_SIZE (32ULL * 8ULL)
 
 /* x86-64 RFLAGS bits used by the spike. */
 #define AEV_CF (1ULL << 0)
@@ -51,14 +81,17 @@ enum {
     AEV_ERR_JIT = 3,
     AEV_ERR_STEP_LIMIT = 4,
     AEV_ERR_BAD_TARGET = 5,
-    AEV_ERR_INTERNAL = 6
+    AEV_ERR_INTERNAL = 6,
+    AEV_ERR_HOST = 7
 };
 
 typedef struct AevRuntime {
     /*
      * Called by the AOT dispatcher when a guest RIP has no AOT block.
      * ctx is opaque to the AOT runtime; the runner owns it.
-     * Returns 0 after the JIT-compiled block has run and updated s->rip.
+     * Returns 0 after the JIT-compiled block / import thunk has run and
+     * updated s->rip.  Import thunks are recognized by the callback before
+     * JIT compilation; no Host pointer is passed through Guest state.
      */
     int64_t (*jit_dispatch)(void *ctx, GuestState *s, uint64_t rip);
     void *ctx;
@@ -84,6 +117,12 @@ void aev_flags_dec(GuestState *s, uint32_t width, uint64_t a, uint64_t r);
 void aev_flags_neg(GuestState *s, uint32_t width, uint64_t a, uint64_t r);
 void aev_flags_imul(GuestState *s, uint32_t width, uint64_t a, uint64_t b, uint64_t r);
 void aev_note_aot(GuestState *s, uint64_t rip);
+
+/* Checked instruction-fetch permission.  Returns 1 when [rip,rip+len) is
+ * executable, 0 otherwise (sets error_code/mem_fault_*).  In legacy COFF
+ * identity mode (no region table) this returns 1; PE modules must use the
+ * region table. */
+int aev_guest_require_exec(GuestState *s, uint64_t rip, uint64_t len);
 
 #ifdef __cplusplus
 }

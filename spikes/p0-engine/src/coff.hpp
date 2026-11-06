@@ -42,6 +42,8 @@ class CoffObject {
     uint64_t content_hash = 0;
     /* SHA-256 of the complete input file; authoritative persistent identity. */
     uint8_t content_sha256[32] = {};
+    /* Complete input file size. */
+    uint64_t content_size = 0;
 
   private:
     std::vector<uint8_t> file_;

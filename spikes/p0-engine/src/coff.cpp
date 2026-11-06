@@ -50,6 +50,7 @@ bool CoffObject::load(const std::string &path, std::string *error) {
         hash *= 1099511628211ULL;
     }
     content_hash = hash;
+    content_size = (uint64_t)file_.size();
     sha256(file_.data(), file_.size(), content_sha256);
 
     const uint8_t *base = file_.data();

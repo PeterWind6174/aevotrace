@@ -118,6 +118,7 @@ int main(int argc, char **argv) {
     const uint64_t first_function = image_base + 0x1000ULL;
     const uint64_t stride = 0x1000ULL;
     const uint64_t input_hash = object.content_hash;
+    const uint64_t input_size = object.content_size;
     uint8_t input_sha256[32];
     std::memcpy(input_sha256, object.content_sha256, sizeof(input_sha256));
     std::vector<uint64_t> addresses;
@@ -180,9 +181,12 @@ int main(int argc, char **argv) {
 
     uint8_t function_name_sha256[32];
     aev::sha256(opt.entry.data(), opt.entry.size(), function_name_sha256);
+    aev::AotModuleIdentity identity;
+    identity.module_kind = AEV_MODULE_KIND_COFF;
+    identity.module_file_size = input_size;
     std::string ll;
     if (!aev::emit_aot_module(program, input_hash, input_sha256, entry_address,
-                              function_name_sha256, &ll, &error)) {
+                              function_name_sha256, identity, &ll, &error)) {
         std::fprintf(stderr, "AOT IR emission failed: %s\n", error.c_str());
         return 1;
     }
@@ -239,6 +243,17 @@ int main(int argc, char **argv) {
         out << "  \"input\": \"" << json_escape(opt.input) << "\",\n";
         out << "  \"input_sha256\": \"" << aev::hex_bytes(input_sha256, 32) << "\",\n";
         out << "  \"input_hash\": " << input_hash << ",\n";
+        out << "  \"module_kind\": \"" << identity.module_kind << "\",\n";
+        out << "  \"module_file_sha256\": \"" << aev::hex_bytes(input_sha256, 32) << "\",\n";
+        out << "  \"module_file_size\": " << identity.module_file_size << ",\n";
+        out << "  \"preferred_base\": 0,\n  \"load_base\": 0,\n  \"image_size\": 0,\n";
+        out << "  \"image_sha256\": \"" << std::string(64, '0') << "\",\n";
+        out << "  \"import_binding_sha256\": \"" << std::string(64, '0') << "\",\n";
+        out << "  \"host_binding_sha256\": \"" << std::string(64, '0') << "\",\n";
+        out << "  \"entry_exports_sha256\": \"" << std::string(64, '0') << "\",\n";
+        out << "  \"entry_exports\": [],\n  \"entry_export\": \"" << json_escape(opt.entry) << "\",\n";
+        out << "  \"thunk_base\": 0,\n  \"import_count\": 0,\n  \"imports\": [],\n";
+        out << "  \"relocs_stripped\": 0,\n  \"registry_sha256\": null,\n";
         out << "  \"entry\": \"" << json_escape(opt.entry) << "\",\n";
         out << "  \"entry_function_sha256\": \"" << aev::hex_bytes(function_name_sha256, 32) << "\",\n";
         out << "  \"artifact_abi\": " << AEV_ARTIFACT_ABI_VERSION << ",\n";

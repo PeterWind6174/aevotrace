@@ -231,11 +231,16 @@ bool JitRuntime::compile_block(uint64_t rip, void **out_fn, std::string *error) 
 
     *out_fn = (void *)(uintptr_t)addr;
     if (impl_->trace_hook)
-        impl_->trace_hook(impl_->trace_ctx, 1, rip);
+        impl_->trace_hook(impl_->trace_ctx, AEV_TRACE_SINK_SOURCE_JIT_COMPILE, rip);
     return true;
 }
 
 int64_t JitRuntime::dispatch(GuestState *s, uint64_t rip) {
+    /* Guest instruction fetch must be executable even for JIT-only blocks.
+     * This rejects calls into data/read-only/unmapped Guest addresses. */
+    if (!aev_guest_require_exec(s, rip, 1))
+        return -1;
+
     auto it = impl_->cache.find(rip);
     void *fn = nullptr;
     if (it == impl_->cache.end()) {
@@ -266,9 +271,10 @@ int64_t JitRuntime::dispatch(GuestState *s, uint64_t rip) {
     }
 
     if (impl_->trace_hook)
-        impl_->trace_hook(impl_->trace_ctx, 2, rip);
+        impl_->trace_hook(impl_->trace_ctx, AEV_TRACE_SINK_SOURCE_JIT_EXEC, rip);
     using JitFn = void (*)(GuestState *);
     JitFn jf = reinterpret_cast<JitFn>(fn);
+    s->pending_transfer = AEV_TRANSFER_NONE;
     jf(s);
     s->jit_blocks++;
 

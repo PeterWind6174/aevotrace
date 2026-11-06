@@ -229,6 +229,8 @@ AevBridgeStatus map_guest_error(const AevBridge *b, int rc) {
             return AEV_BRIDGE_ERR_STEP_LIMIT;
         case AEV_ERR_JIT:
             return AEV_BRIDGE_ERR_JIT;
+        case AEV_ERR_HOST:
+            return AEV_BRIDGE_ERR_HOST;
         case AEV_ERR_NO_BLOCK:
         case AEV_ERR_BAD_TARGET:
             return AEV_BRIDGE_ERR_NO_BLOCK;
@@ -272,7 +274,7 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
             b->last_failure = st;
             s->error_pc = rip;
             if (!s->error_code)
-                s->error_code = AEV_ERR_INTERNAL;
+                s->error_code = AEV_ERR_HOST;
             return -1;
         }
         s->rip = ret;
@@ -423,6 +425,8 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         static_cast<const uint8_t *>(dlsym(b->aot_handle, "aev_function_name_sha256"));
     const char *aot_target =
         static_cast<const char *>(dlsym(b->aot_handle, "aev_target_triple"));
+    const char *aot_module_kind =
+        static_cast<const char *>(dlsym(b->aot_handle, "aev_module_kind"));
     const AevBlock *aot_blocks =
         static_cast<const AevBlock *>(dlsym(b->aot_handle, "aev_blocks"));
     const uint64_t *aot_block_count =
@@ -434,8 +438,12 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
     if (!b->aot_run || !aot_abi || !aot_guest_size || !aot_input_hash ||
         !aot_input_sha || !aot_artifact_abi || !aot_translator_abi ||
         !aot_entry_addr || !aot_function_sha || !aot_target || !aot_blocks ||
-        !aot_block_count || !aot_all_count || !aot_all_blocks) {
+        !aot_block_count || !aot_all_count || !aot_all_blocks || !aot_module_kind) {
         set_error(err, err_cap, "AOT dylib is missing required ABI/identity symbols");
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    if (std::string(aot_module_kind) != AEV_MODULE_KIND_COFF) {
+        set_error(err, err_cap, std::string("AOT module kind is not COFF: ") + aot_module_kind);
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
     if (*aot_abi != AEV_GUEST_ABI_VERSION ||
@@ -653,7 +661,7 @@ AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
     b->trace_scenario = scenario;
     b->trace_open = true;
     b->trace_stream << "{\"record\":\"header\",\"trace_abi\":"
-                    << AEV_TRACE_ABI_VERSION << ",\"scenario\":\""
+                    << AEV_TRACE_FILE_ABI_COFF << ",\"scenario\":\""
                     << json_escape(b->trace_scenario) << "\",\"input_sha256\":\""
                     << aev::hex_bytes(b->input_sha256, 32)
                     << "\",\"input_fnv\":\"" << aev::hex64(b->input_hash)
@@ -666,7 +674,7 @@ AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
                     << ",\"aot_artifact_abi\":" << AEV_ARTIFACT_ABI_VERSION
                     << ",\"translator_abi\":" << AEV_TRANSLATOR_ABI_VERSION
                     << ",\"target\":\"" << json_escape(b->target_triple)
-                    << "\",\"translator_version\":\"aev-translate-v1\""
+                    << "\",\"translator_version\":\"aev-translate-v2\""
                     << ",\"trace_tool_version\":\"aev-trace-sink-v1\""
                     << ",\"all_blocks\":";
     trace_array(b->trace_stream, b->all_blocks);
@@ -680,7 +688,7 @@ AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
         set_error(err, err_cap, "cannot write trace header");
         return AEV_BRIDGE_ERR_LOAD;
     }
-    b->trace_sink.abi_version = AEV_TRACE_ABI_VERSION;
+    b->trace_sink.abi_version = AEV_TRACE_SINK_ABI_VERSION;
     b->trace_sink.reserved = 0;
     b->trace_sink.on_block = bridge_trace_on_block;
     b->trace_sink.ctx = b;
