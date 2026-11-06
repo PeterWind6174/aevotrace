@@ -250,7 +250,7 @@ void aev_flags_shift(GuestState *s, uint32_t width, uint64_t value,
                      uint64_t count, uint64_t result, uint32_t kind) {
     uint32_t bits = width * 8;
     uint64_t mask = width_mask(width);
-    uint64_t n = count & 31;
+    uint64_t n = count & ((width == 8) ? 63 : 31);
     if (n == 0)
         return;
     uint64_t v = value & mask;

@@ -763,8 +763,11 @@ class Emitter {
                                           format_insn(insn));
                 }
                 std::string bits = fresh("shc");
-                /* x86 masks shift counts to 5 bits for all operand sizes. */
-                emit(bits + " = and i64 " + count + ", 31");
+                /* x86-64 masks 8/16/32-bit shift counts to 5 bits and
+                 * 64-bit counts to 6 bits. */
+                int shift_mask = (width == 8) ? 63 : 31;
+                emit(bits + " = and i64 " + count + ", " +
+                     std::to_string(shift_mask));
                 std::string zero = fresh("shz");
                 emit(zero + " = icmp eq i64 " + bits + ", 0");
                 std::string shifted;

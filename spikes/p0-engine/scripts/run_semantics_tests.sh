@@ -367,6 +367,15 @@ jit_run F2_imul2_16 imul2_16 rax=10 rcx=3
 if jit_ok F2_imul2_16; then expect_hex F2_imul2_16 "$JIT_OUT" rax 0x1e; fi
 jit_run F2_imul3_16_neg imul3_16_neg rax=10 rcx=3
 if jit_ok F2_imul3_16_neg; then expect_hex F2_imul3_16_neg "$JIT_OUT" rax 0xfff7; fi
+# Shift counts: 64-bit uses 6 bits; 8/16/32-bit use 5 bits.
+jit_run F2_shift64_32 shift64_cl rax=1 rcx=32
+if jit_ok F2_shift64_32; then expect_hex F2_shift64_32 "$JIT_OUT" rax 0x100000000; fi
+jit_run F2_shift64_63 shift64_cl rax=1 rcx=63
+if jit_ok F2_shift64_63; then expect_hex F2_shift64_63 "$JIT_OUT" rax 0x8000000000000000; fi
+jit_run F2_shift32_32 shift32_cl rax=1 rcx=32
+if jit_ok F2_shift32_32; then expect_hex F2_shift32_32 "$JIT_OUT" rax 0x1; fi
+jit_run F2_shift8_8 shift8_cl rax=1 rcx=8
+if jit_ok F2_shift8_8; then expect_hex F2_shift8_8 "$JIT_OUT" rax 0x0; fi
 # One-operand IMUL is rejected at every width, and the diagnostic must carry
 # the actual width rather than always saying 8-bit.
 translate_fail imul1_8 "one-operand imul" "8-bit IMUL form" "0x140001000"
