@@ -433,6 +433,63 @@ def run(driver: Driver) -> int:
                           int(e["rip"], 16) in promoted for e in events),
                  "promoted block has no JIT after supplement")
 
+    # Publisher must validate the actual base/new dylibs and provenance.
+    pub_tmp = driver.art / "pe_publish_tmp.dylib"
+    shutil.copyfile(supp_dylib, pub_tmp)
+    pub_out = driver.art / "libpe_published.dylib"
+    pub_manifest = driver.art / "pe_published.json"
+    proc = driver.run([
+        sys.executable, str(driver.source / "scripts" / "publish_aot.py"),
+        "--dylib-tmp", str(pub_tmp), "--dylib-out", str(pub_out),
+        "--base-aot", str(base_dylib), "--manifest-in",
+        str(driver.art / "pe_supp.json"), "--manifest-out", str(pub_manifest),
+        "--expected-table", str(len(supp_manifest["selected_blocks"])),
+        "--promoted-rip", hex(promoted[0]),
+    ], "pe-publish")
+    driver.check(proc.returncode == 0, f"publisher accepted PE provenance: {proc.stderr}")
+    if proc.returncode == 0:
+        pub_art = load_artifact(pub_out)
+        driver.check(set(pub_art.selected_blocks) == set(supp_manifest["selected_blocks"]),
+                     "published artifact selected table")
+        pub_trace = driver.art / "hidden_pubbed.jsonl"
+        rc, pubbed = driver.calls(
+            PREFERRED, [f"AevDllReset:{reset_ref['seed']}",
+                        "AevDllCompute:-9,2,17"],
+            "hidden-pubbed", aot=pub_out,
+            extra=["--trace", str(pub_trace), "--scenario", "hidden"])
+        pc = {c["export"]: c for c in pubbed["iteration_0"]["calls"]}["AevDllCompute"]
+        driver.check(pc["status"] == 0 and pc["jit_compiles"] == 0,
+                     "published artifact zero JIT hidden")
+
+    base_manifest_text = (driver.art / "pe_supp.json").read_text()
+    base_manifest_obj = json.loads(base_manifest_text)
+    for name, mutate in (
+        ("pub-wrong-base-sha", lambda m: m.__setitem__("base_aot_sha256", "0" * 64)),
+        ("pub-wrong-base-selected", lambda m: m.__setitem__("base_selected_blocks", m["base_selected_blocks"][:-1])),
+        ("pub-fake-promoted", lambda m: m.__setitem__("promoted_blocks", m["base_selected_blocks"][:1])),
+    ):
+        variant = json.loads(base_manifest_text)
+        mutate(variant)
+        variant_path = driver.art / f"{name}.json"
+        variant_path.write_text(json.dumps(variant))
+        proc = driver.run([
+            sys.executable, str(driver.source / "scripts" / "publish_aot.py"),
+            "--dylib-tmp", str(pub_tmp), "--dylib-out", str(driver.art / f"{name}.dylib"),
+            "--base-aot", str(base_dylib), "--manifest-in", str(variant_path),
+            "--manifest-out", str(driver.art / f"{name}.out.json"),
+            "--expected-table", str(len(supp_manifest["selected_blocks"])),
+        ], name)
+        driver.check(proc.returncode != 0, f"publisher rejected {name}")
+    proc = driver.run([
+        sys.executable, str(driver.source / "scripts" / "publish_aot.py"),
+        "--dylib-tmp", str(pub_tmp), "--dylib-out", str(driver.art / "pub-missing-base.dylib"),
+        "--base-aot", str(driver.art / "does_not_exist.dylib"),
+        "--manifest-in", str(driver.art / "pe_supp.json"),
+        "--manifest-out", str(driver.art / "pub-missing-base.json"),
+        "--expected-table", str(len(supp_manifest["selected_blocks"])),
+    ], "pub-missing-base")
+    driver.check(proc.returncode != 0, "publisher rejected missing base")
+
     # 4. Full non-preferred AOT + business comparison.
     ll190, _, man190 = driver.translate(NON_PREFERRED, tag="all190")
     dylib190 = driver.build_dylib(ll190, "pe_all190")
