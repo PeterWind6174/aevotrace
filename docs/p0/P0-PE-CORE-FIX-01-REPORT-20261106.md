@@ -1,6 +1,6 @@
 # P0-PE-CORE-FIX-01 报告：PE 段权限与 SAR 标志位聚焦修复
 
-日期：2026-11-06。状态：**本轮有界修复 PASS，独立 QA 两项 PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES；P0 整体未完成**。基线 `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`（上一轮源码 `f864d97`），本轮代码提交 `987692be19fdc1057f8bdd4be3ada87d2047e280`。分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`。main 仍 `c91a3f7`；未合入、未 push、未删除工作树。
+日期：2026-11-06。状态：**本轮有界修复 PASS，独立 QA 两项 PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES；P0 整体未完成**。基线 `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`（上一轮源码 `f864d97`），本轮代码提交 `987692be19fdc1057f8bdd4be3ada87d2047e280`；最终测试/文档提交 `ac84ae3bf8662f2041096bf9b71d909d587c2dab`。分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`。main 仍 `c91a3f7`；未合入、未 push、未删除工作树。
 
 ## 1. 外部审查问题与范围
 
@@ -68,9 +68,9 @@
 | 全新 configure/build | rc 0 | QA `build-qa-corefix-perm`/`-sar` |
 | ctest | **6/6** | QA `logs/ctest.log` |
 | `p0_pe_dll` | **147/147** | QA perm |
-| `p0_core_fix_semantics` | 代码提交 987692b 上 **715/0**；测试加强后本地 **791/0** | QA `qa-sar/semantics/summary.txt`；本轮本地 rerun |
+| `p0_core_fix_semantics` | 代码提交 987692b 上 **715/0**；最终测试提交 ac84ae3 上 **791/0** | QA `qa-sar/semantics/summary.txt`、`qa-final/semantics/summary.txt` |
 | Trace/AOT | **78/0** | ctest verbose / `logs/trace-aot.log` |
-| GUI base / 首次补充 / 空新增再补充 × compat/native | 六组各 **44/44**、4 截图 | QA perm 重跑；`gui/*/summary.json` |
+| GUI base / 首次补充 / 空新增再补充 × compat/native | 六组各 **44/44**、4 截图（`git_head=ac84ae3`） | 最终重跑；`gui/*/summary.json` |
 | 旧 PE AOT artifact | 旧 `libpe_base.dylib` SHA `19d8645d…` 在当前 runner 下成功加载并运行 prep | `old-pe-artifact.json`（`.local/results/P0-PE-CORE-FIX-01/`） |
 | 原始 DLL / 修改 DLL | SHA 未变 | QA perm |
 
@@ -118,4 +118,4 @@ ssh win 'python -' < .local/results/CODEX-PE-DLL-REVIEW-20261106/windows-sar-ref
 
 ## 7. 停止状态
 
-代码提交 `987692b`；测试/文档加强后集成分支 HEAD 见 `git rev-parse p0/pe-core-fix-integration`。未合入 main（仍 `c91a3f7`）、未 push、未清理工作树、未开启下一轮。
+代码提交 `987692b`；最终测试/文档提交 `ac84ae3`；集成分支 `p0/pe-core-fix-integration` 指向 `ac84ae3`。未合入 main（仍 `c91a3f7`）、未 push、未清理工作树、未开启下一轮。

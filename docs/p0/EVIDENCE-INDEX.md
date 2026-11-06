@@ -83,10 +83,10 @@
 
 ## P0-PE-CORE-FIX-01（本轮有界修复 PASS；P0 整体未通过）
 
-- 分支/工作树：`p0/pe-core-fix-01` / `.worktrees/p0-pe-core-fix`；基线 `00ee8d3`，代码 `987692b`。
+- 分支/工作树：`p0/pe-core-fix-01` / `.worktrees/p0-pe-core-fix`；基线 `00ee8d3`，代码 `987692b`，最终测试/文档 `ac84ae3`。
 - 外部审查：`.local/results/CODEX-PE-DLL-REVIEW-20261106/REPORT.md` F1/F2。
 - 契约：`docs/p0/PE-DLL-CONTRACT-20261106.md` §12。
 - 报告：`docs/p0/P0-PE-CORE-FIX-01-REPORT-20261106.md`。
-- 独立 QA：`qa-perm/REPORT.md`（F1 PASS，343/343，Windows PAGE_NOACCESS）、`qa-sar/REPORT.md`（F2 PASS，312 矩阵/52 Windows 对照）。
+- 独立 QA：`qa-perm/REPORT.md`（F1 PASS，343/343，Windows PAGE_NOACCESS）、`qa-sar/REPORT.md`（F2 PASS，312 矩阵/52 Windows 对照）、`qa-final/REPORT.md`（最终提交 6/6、PE 147、语义 791、Trace 78、GUI 44×6）。
 - 结果：ctest 6/6、PE 147/147、语义 715（代码提交）/791（测试加强后）、Trace/AOT 78、六组 GUI 44/44、旧 PE AOT 可加载。
 - 未测：PE 驱动 GUI、人工输入/IME、打包/签名/性能、真实应用、TLS/CRT/SEH/COM/线程。
