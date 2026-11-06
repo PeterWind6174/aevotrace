@@ -17,7 +17,7 @@
 | P0-CALLBACK-ABI-01 | 最小 Host↔Guest 回调契约与固定 fixture | coordinator + compiler/platform | 是（隔离 worktree） | 完成（v2 会签；QA/reviewer PASS） |
 | P0-CORE-BRIDGE-01 | 共享 JIT/回调 bridge、AOT 身份与无 GUI 测试 | compiler + binary | 是（隔离 worktree） | 完成（4 ctest/77 checks；QA PASS） |
 | P0-TRACE-AOT-01 | 实际 Trace → 补充 AOT → 新进程验证 | compiler + binary + platform | 是（隔离 worktree） | 外部复核 F1，修复中（原 `adf9a95` QA/reviewer PASS 为历史；见 P0-PROMOTION-FIX-01） |
-| P0-PROMOTION-FIX-01 | 修正 promoted_blocks 来源为实际 base artifact | compiler + binary + platform | 是（隔离 worktree） | 进行中（F1 已复现；契约待会签） |
+| P0-PROMOTION-FIX-01 | 修正 promoted_blocks 来源为实际 base artifact | compiler + binary + platform | 是（隔离 worktree） | 进行中（F1 已复现；v1.1 会签；compiler 实施中） |
 | P0-APP-RUN-01 | 7-Zip 26.05 Windows 参考工作流 | qa | 否 | 未开始 |
 | P0-PKG-01 | 最小 ARM64 `.app`/随包依赖/签名探针 | platform + qa | 是（隔离 worktree） | 未开始 |
 | P0-BUILD-REPRO-01 | ENGINE/UI 构建可复现口径 | compiler + qa | 是（隔离 worktree） | 未开始 |

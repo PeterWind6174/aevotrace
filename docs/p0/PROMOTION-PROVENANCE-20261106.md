@@ -1,6 +1,6 @@
 # P0-PROMOTION-FIX-01：AOT 提升来源最小契约（Trace/artifact provenance v1.1）
 
-日期：2026-11-06。状态：待 compiler/binary/platform 复签、reviewer 复核。只修订 P0-TRACE-AOT-01 的 baseline/`promoted_blocks` 语义，不改变 trace/artifact ABI 1 的字段布局、执行并集规则或产品范围。
+日期：2026-11-06。状态：compiler/binary/platform/reviewer 已复签（v1.1）。只修订 P0-TRACE-AOT-01 的 baseline/`promoted_blocks` 语义，不改变 trace/artifact ABI 1 的字段布局、执行并集规则或产品范围。
 
 ## 1. 问题与范围
 
@@ -73,7 +73,7 @@ manifest 记录：`base_aot_sha256`、`base_selected_blocks`、`selected_blocks`
 
 | 角色 | 结论 | 证据 |
 | --- | --- | --- |
-| compiler | CHANGES REQUIRED 已修订，待复签 | ses_e515087ebffeC2uMH8UyWTirHI |
-| binary | CHANGES REQUIRED 已修订，待复签 | ses_e515087e9ffe78klWhkhdHuS2D |
-| platform | CHANGES REQUIRED 已修订，待复签 | ses_e515087e8ffeKDJ5NEvC6f45vJ |
-| reviewer | CHANGES REQUIRED 已修订，待复核 | ses_e515087dcffe6Tu8uHzJUkUkyE |
+| compiler | SIGN-OFF：contract accepted | ses_e515087ebffeC2uMH8UyWTirHI |
+| binary | SIGN-OFF：contract accepted | ses_e515087e9ffe78klWhkhdHuS2D |
+| platform | SIGN-OFF：contract accepted | ses_e515087e8ffeKDJ5NEvC6f45vJ |
+| reviewer | SIGN-OFF：contract accepted | ses_e515087dcffe6Tu8uHzJUkUkyE |

@@ -1,6 +1,6 @@
 # P0-PROMOTION-FIX-01：修正 AOT 提升来源与 promoted_blocks 语义
 
-状态：进行中（外部复核 F1 已在基线复现；来源契约待 compiler/binary/platform 会签；尚未修改产品源码）。
+状态：进行中（F1 已复现；来源契约 v1.1 已获 compiler/binary/platform/reviewer 会签；compiler 实施中）。
 
 ## 输入与责任
 
