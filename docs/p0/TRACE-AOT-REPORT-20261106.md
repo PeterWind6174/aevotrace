@@ -142,4 +142,4 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 
 ## 7. 分支状态
 
-停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`），两者均在 `74fc21e`（源码 `8325b64`）。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
+停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`）。实现源码头为 `603a246`；文档 HEAD 为本报告所在提交。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
