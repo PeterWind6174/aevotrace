@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-状态：待审查（reviewer/QA 阻断已在 `823ede4`/`603a246`/`9c2aafe` 修复；最终 HEAD 自动验证通过，独立复跑待做）。
+状态：完成（source `9c2aafe` / docs `adf9a95` 获独立 QA PASS 与 reviewer SIGN-OFF；物理 GUI/IME 待人工验收；P0 整体未通过）。
 
 ## 输入与责任
 
@@ -49,10 +49,10 @@
   - 最终 GUI supplemented：compat/native 各 44/44，`aot_table_count=5`、`total_jit_compiles=0`、`jit_execs=0`；base artifact 负例 exit 1、compat 事件 0。
   - Windows `ssh win` 同一对象构建运行 exit 0，A=3922、B=45320、`BUILD_RUN_OK`。
 - 二进制哈希、日志和报告位置：
-  - callback `4f6929f7…`；trace fixture `145800f4…`；supplemented callback `50efd83c…`；supplemented trace `7dfdac40…`。
-  - `.local/results/P0-TRACE-AOT-01/{ctest-final.log,final-trace-test.log,final-gui-base.log,final-gui-supp.log,final-gui-summary.json,windows-trace-fixture.log}`。
-- 正确性/性能结果：A、B 两轮均从真实 JIT 发现进入新进程 AOT；负例全部明确拒绝；未做性能测量。
+  - callback `4f6929f7…`；trace fixture `145800f4…`；实现侧最终构建 supplemental callback `e4661369…`、trace `463ac067…`、B-only `d28ee0f7…`、no-JIT `1014d327…`；独立 QA 在 `adf9a95` 重新构建的 AOT SHA 见 `QA-final3/REPORT.md`。
+  - `.local/results/P0-TRACE-AOT-01/{ctest-final3.log,final3-trace-test.log,final3-gui-base.log,final3-gui-supp.log,final3-gui-summary.json,final3-hashes.txt,windows-trace-fixture-final.log}`。
+- 正确性/性能结果：A、B 两轮均从真实 JIT 发现进入新进程 AOT；B-only/no-JIT 精确 selected 与 publisher/bridge 负例通过；独立 QA final3 为 48 PASS/0 FAIL、597/77 独立校验、GUI 44/44；未做性能测量。
 - 审查问题及修复：契约经 compiler/binary/platform 三轮会签与 reviewer 复核；已修复块 offset/size、target/translator 标识、HostImport 仅 id、失败 trace 拒绝、GUI 44/44 profile 与真实控件断言。reviewer 在 `74fc21e` 的 trace 字段/调用序列/事件身份/发布原子性/selected 表绑定/负例缺口，以及 QA 在 `74fc21e` 的 `aot_sha256`/call_end 字段/JSON 错误处理缺口，已在 `823ede4`/`603a246` 修复并新增回归负例；需对新 HEAD 独立复跑。复核第二轮又修复 selected 精确执行并集/B-only/no-JIT、bool/float 类型、publisher 全表/fn/符号校验、`aev_block_count` 越界；Windows reference 现在始终链接提交的固定对象并打印 `COMMITTED_OBJECT_BUILD_RUN_OK`。
-- 未测项、已知限制、需要用户操作的具体步骤：见阶段报告 §5；GUI 物理键鼠/焦点/IME 仍需人工验收；未做通用 PE、真实应用、`.app`、运行中失效或性能结论。
-- 后续任务与接口变更：trace/artifact ABI v1、translator ABI 1；callback ABI v2 不变。独立 QA/reviewer 通过前不合并 main、不 push、不删除 worktree。
+- 未测项、已知限制、需要用户操作的具体步骤：见阶段报告 §5；GUI 物理键鼠/焦点/IME 仍需人工验收；未做通用 PE、真实应用、`.app`、运行中失效或性能结论。QA final3 报告：`.local/results/P0-TRACE-AOT-01/QA-final3/REPORT.md`。
+- 后续任务与接口变更：trace/artifact ABI v1、translator ABI 1；callback ABI v2 不变。独立 QA/reviewer 已通过；仍不合并 main、不 push、不删除 worktree。
 - 不宣称 P0/首版完成；不自动合入 main/push/删除 worktree。

@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01 阶段报告：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-日期：2026-11-06（Asia/Shanghai）。状态：**实现、reviewer/QA 阻断修复与自动验证通过；独立 QA 尚未复核最终代码 HEAD `9c2aafe`；P0 整体与首版仍未通过。**
+日期：2026-11-06（Asia/Shanghai）。状态：**实现、reviewer/QA 阻断修复与独立 QA/reviewer 复核通过（source `9c2aafe` / docs `adf9a95`）；物理 GUI/IME 待人工验收；P0 整体与首版仍未通过。**
 
 本轮是从已接受的 callback 集成分支继续的有界实验，不是通用转换器、完整 PE/Win32 支持、完整运行中代码失效或性能结论。
 
@@ -22,7 +22,7 @@
 - **块身份**：`offset` 为 section-relative（`fn.section_offset + (rip - fn.address)`），`size` 覆盖到 terminator 末字节；无 terminator 时取下一 leader，仍无则取函数末尾。块哈希取实际 COFF section 字节，不从 `fn.bytes[offset]` 误取；bridge 与 supplement 共用实现。
 - **真实记录**：AOT dylib 的 `aev_note_aot` 通过 `GuestState.reserved0` 的瞬态 `AevTraceSink` 记录 AOT 块；共享 `JitRuntime` 在 ORC lookup 成功后记录 JIT compile、在真正调用 JIT 函数前记录 exec；bridge 记录 dispatch miss、HostImport id（在栈参数读取成功、实际调用 Host 前；v1 不记录原始参数）、call_end/错误。块事件字段按契约使用 `offset`/`size`/`block_sha256`，不持久化 Host 指针。trace 启用时 `reserved0` 仅在调用内有效，所有退出路径清零；trace open/close 限制在 owner 线程且不能在调用中操作，destroy 时自动 flush/close。
 - **coverage 与 AOT**：删除“IMUL 只能 JIT”的硬编码；AOT emitter 可发射受支持的 IMUL。translator 新增可重复 `--aot-include-rip` / `--aot-exclude-rip`（同一 RIP 冲突报错），默认 coverage 仍排除 IMUL 块以保留旧回归；AOT artifact 新增全部/selected 块表。bridge 在加载时比较实际 dylib 的 SHA-256、输入/FNV/entry/function/target/translator/artifact/guest ABI，检查 `aev_all_blocks` 与 `Program` 完全一致，selected 表排序去重、`fn` 必须等于 `dlsym("aev_blk_<rip>")`，再据 selected 反推每块 `jit_only`；GUI 通过 bridge 查询实际 selected 表，而不是只信 manifest。
-- **离线补充**：`scripts/aot_supplement.py` 校验 trace header 与事件（输入 SHA/FNV、entry、function、ABI/translator/target、header 全部块与 COFF 重建结果一致、selected 为排序子集、call 编号单调且每个 call 必须先 call_end、每个 trace 的 call_end 全部 status 0、所有块事件的 offset/size/hash 与 COFF 一致、`aot` 事件必须属于 header selected、`jit_*` 事件不得属于 header selected、host_import 仅 id），以实际执行的 AOT/JIT 块并集为 selected，调用共享 `aev-translate` 生成新 IR/header/manifest。输出先在目标目录暂存，再带备份/回滚发布，不覆盖 base artifact，不重编业务 C 源码，不复制 ORC dispatcher。新建 dylib 由 `scripts/publish_aot.py` 在临时路径链接后校验实际导出表/输入 SHA/ARM64 slice/promoted RIP，再原子发布；失败保留旧产物。
+- **离线补充**：`scripts/aot_supplement.py` 校验 trace header 与事件（输入 SHA/FNV、entry、function、ABI/translator/target、header 全部块与 COFF 重建结果一致、selected 为排序子集、call 编号单调且每个 call 必须先 call_end、每个 trace 的 call_end 全部 status 0、所有块事件的 offset/size/hash 与 COFF 一致、`aot` 事件必须属于 header selected、`jit_*` 事件不得属于 header selected、host_import 仅 id），以实际执行的 AOT/JIT 块并集为 selected，调用共享 `aev-translate` 生成新 IR/header/manifest。输出先在目标目录暂存，再带备份/回滚发布，不覆盖 base artifact，不重编业务 C 源码，不复制 ORC dispatcher。新建 dylib 由 `scripts/publish_aot.py` 在临时路径链接后校验实际导出表/输入 SHA/ARM64 slice/promoted RIP，再带备份/回滚发布（处理异常安全，不是崩溃原子）；失败保留旧产物。
 - **新 fixture**：`testdata/trace/aev_trace_fixture.c/.obj`，函数在独立 `.aevtext` section；A 路径（`op != 0xA5A5`）不执行 B 分支，B 路径有独立基本块和 IMUL，B RIP 只在 B 执行事件出现。
 - **GUI**：`run_engine` 增加显式 `--coverage-profile base|supplemented`；base 期望 `aot_table_count=4`、总 JIT compile 1、JIT exec > 0；supplemented 期望 5、0、0，并绑定 supplement manifest、AOT SHA-256 与 promoted RIP `0x140001020`。新增 `aot_table_count` 检查；精确 44 项 = 42 个原有检查名称（helper-after-fault 4 个同名升级为真实控件断言）+ 1 个同名位置替换（`loop_100_jit_executed` → `loop_100_jit_policy`）+ 1 个新增 `aot_table_count`。GUI 脚本增加 supplemented 下拒绝 base artifact 的负例。
 - **测试**：新增 `p0_trace_aot`，覆盖 trace API 生命周期、callback A 的 JIT→补充→新进程、trace fixture A/B 的新分支 JIT→补充→新进程，以及 trace/artifact 负例；保留原 4 组 ctest。
@@ -59,7 +59,7 @@ ctest --test-dir .local/build-trace-aot-final3 --output-on-failure  exit 0
 - base A：`guest_rax=3922`，`jit_compiles=0`；A 执行事件中不含 `0x140001015`。
 - base B：`guest_rax=45320`，真实 JIT `0x140001015`（`jit_compiles=1`），证明新分支首次被动态发现。
 - 补充 A/B 新进程：A `3922`、B `45320`；两者 `jit_compiles=0`、`jit_execs=0`；AOT 表 5；B trace 中 `0x140001015` 为 `aot` 且没有对应 `jit_compile`；实际 selected 表包含 `0x140001015`。补充 dylib SHA-256 `463ac0671780921bd37c98ed1745402e22dc589578ef082729ec9b84ad16b512`。
-- B-only 补充：只用 B trace 时生成 selected 4（entry、B、helper、counter/return，排除未执行的 `0x14000101c`），新进程 B 结果 45320、零 JIT；证明 selected 是实际执行并集，不是默认 coverage 的并集。dylib SHA-256 `d28ee0f7535c4462455562d6944e0205562efc8f31ca76b8d10058a130f20b04`。
+- B-only 补充：只用 B trace 时生成 selected 4（entry、B、helper、counter/return，排除未执行的 A body `0x140001026`），新进程 B 结果 45320、零 JIT；证明 selected 是实际执行并集，不是默认 coverage 的并集。dylib SHA-256 `d28ee0f7535c4462455562d6944e0205562efc8f31ca76b8d10058a130f20b04`。
 - no-JIT 输入：只用 A trace（本来就是同 coverage、无 JIT）生成的 artifact selected 4、promoted 为空，新进程 A 结果 3922、零 JIT；dylib SHA-256 `1014d3270f13cfc0b8ad6d0ec89aa1867dd1b1941ef3accbf06885bee99147da`。
 - 说明：trace header 的 `all_blocks` 按契约包含全部可翻译块，因此 A 的 header 也会列出 B 块；验收以执行事件集合判断“B 未在 A 出现”。
 
@@ -67,10 +67,10 @@ ctest --test-dir .local/build-trace-aot-final3 --output-on-failure  exit 0
 
 以下均明确失败（退出码非 0），且未生成完整输出；base artifact 仍可复跑：
 
-- 输入 SHA、`aot_sha256`（缺失/全 0）、块 SHA、header all table、乱序/重复表、entry/function/target、callback/guest/artifact/translator ABI、selected 重复、`aot` 事件不在 selected、`jit_*` 事件属于 selected、`jit_exec` 块身份缺失、call 编号非单调/事件交错、host_import 参数、截断/非对象/非法 JSON、`call_end` 非 0/字符串 status/缺少 `error_pc`/`guest_error`；
+- 输入 SHA、`aot_sha256`（缺失/全 0）、块 SHA、header all table、乱序/重复表、entry/function/target、callback/guest/artifact/translator ABI、selected 重复、`aot` 事件不在 selected、`jit_*` 事件属于 selected、`jit_exec` 块身份缺失、call 编号非单调/事件交错、host_import 参数、截断/非对象/非法 JSON、`call_end` 非 0/字符串/bool/float status/缺少 `error_pc`/`guest_error`、`offset`/`size` bool/float；
 - base artifact 传入 supplemented profile（`aot_table_count` 4≠5，退出 1）；
-- mutated 输入 AOT、错误 all 表、错误 selected `fn` 指针、selected 表重复、错误 target、错误 artifact/guest ABI；
-- `publish_aot.py` 缺少 promoted RIP 时拒绝并保留旧 dylib；所有负例均未生成完整输出。
+- mutated 输入 AOT、错误 all 表（含 sorted 错误值）、错误 selected `fn` 指针、selected 表重复、错误 target、错误 artifact/guest ABI、错误 `aev_block_count`；
+- `publish_aot.py` 对缺失 promoted RIP/错误 all 表/错误 `fn`/重复 selected/target/count 均拒绝，且不留下部分输出、旧 dylib 不变；bridge 对错误 count 返回 `ABI_MISMATCH` 而不崩溃。
 
 ### 3.5 trace API 生命周期
 
@@ -83,7 +83,7 @@ ctest --test-dir .local/build-trace-aot-final3 --output-on-failure  exit 0
 - 真实按钮 → helper 成功 → Guest counter 故障 → `backend.get_text` 实际控件文本不变 → 恢复：4 项检查通过。
 - supplemented 下 base artifact 负例：退出 1，`success=false`，错误 `supplemented profile expects 5 AOT blocks, got 4`，无 Guest 提交、compat 事件 0。
 - forced native failure：退出 1，compat 事件 0、native 事件 5。
-- 截图各后端 4 张，位于 `.local/results/P0-TRACE-AOT-01/final2-gui-{base,supp}/{compat,native}/`；本轮 coordinator 未逐张人工查看，未代替物理键鼠/焦点/IME 验收。
+- 截图各后端 4 张，位于 `.local/results/P0-TRACE-AOT-01/final3-gui-{base,supp}/{compat,native}/`；本轮 coordinator 未逐张人工查看，未代替物理键鼠/焦点/IME 验收。
 
 ### 3.7 Windows 参考
 
@@ -117,6 +117,7 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 - `ctest-final3.log`、`build-final3.log`、`final3-trace-test.log`；
 - `final3-gui-base.log`、`final3-gui-supp.log`、`final3-hashes.txt`；
 - `windows-trace-fixture-final.log`；
+- `QA-final3/REPORT.md` 及同目录原始日志；reviewer 结论见会话 `ses_e51a4abd7ffe3kqP1lLFOTLTS0`。
 - 供 QA/reviewer 读取的实现侧结果：`.local/build-trace-aot-final3/results-trace-aot/`。
 
 ## 5. 未测项与已知限制
@@ -130,18 +131,13 @@ COMMITTED_OBJECT_BUILD_RUN_OK
 - 上一轮 `5773...` AOT dylib 仅归档，不与新 artifact ABI 兼容；本轮“旧 artifact 可跑”指新 translator 的 base artifact。
 - `AevCallResult.aot_blocks` 仍是每次调用的 AOT 入口次数，不是 AOT 表大小；表大小由 `AevArtifactInfo.aot_table_count` 提供。
 
-## 6. 独立验证状态
+## 6. 独立验证结论
 
-- reviewer 在 `74fc21e` 返回 `CHANGES REQUIRED`：trace 字段名、call 单调性、块事件身份/source 一致性、发布原子性、GUI promoted RIP 实际表绑定、负例/lifecycle 覆盖。上述项已在 `823ede4`/`603a246` 中处理；复核又发现 selected 未精确按执行并集、bool/float 类型、publisher 全表/fn/符号校验、`aev_block_count` 越界，已在 `9c2aafe` 修复，并新增对应负例；需 reviewer 对新 HEAD 复核。
-- QA 在 `74fc21e` 返回 FAIL（核心功能通过）：`aot_supplement.py` 仍接受非单调 call、缺失/全 0 `aot_sha256`、缺失 `call_end.error_pc/guest_error`、字符串 status，以及 malformed/non-object JSON 抛未捕获异常。修复后新增 `--base-aot` 绑定、header/`call_end` 字段/类型校验、显式 JSON 错误和回归负例；需 QA 对新 HEAD 重跑。
-- 新 HEAD 的独立 QA/reviewer 结论出来前，本报告不能视为最终通过。
-
-本报告由实现侧 coordinator 编写，**不能替代独立 QA/reviewer**。下一步需在最终代码 HEAD 上：
-
-1. QA 独立全新构建、复跑 5 组 ctest、trace/AOT 脚本、base/supplemented 双 GUI、Windows 参考，并检查截图与哈希；
-2. reviewer 只读审查契约覆盖、ABI/身份校验、负例是否可绕过、旧 artifact 保留、GUI profile 断言；
-3. 合并 QA/reviewer 结论；若有阻断则修复后重跑。
+- **QA final3**：在 worktree HEAD `adf9a95`（source `9c2aafe`）独立新建 `.local/build-trace-aot-qa-final3`，configure/build rc 0（46/46），CTest **5/5 PASS**，trace/AOT 脚本 **48 PASS / 0 FAIL**，独立 trace 校验 597 PASS、final3 校验 77 PASS、执行敏感性 9 PASS；GUI base/supplemented × compat/native 各 **44/44**；Windows 提交对象参考 A=3922/B=45320/`COMMITTED_OBJECT_BUILD_RUN_OK`。结论 **PASS / ACCEPTED**，无阻断项。报告：`.local/results/P0-TRACE-AOT-01/QA-final3/REPORT.md`。
+- **reviewer**：在 `adf9a95` 对 `1f83dc3..adf9a95` 和完整 diff 复核，确认第一轮六项与第二轮四项阻断均已在源码关闭，结论 **`SIGN-OFF: accepted`**（会话 `ses_e51a4abd7ffe3kqP1lLFOTLTS0`）。非阻断备注：publisher 未显式要求 selected 是 all table 子集/promoted manifest 一致；header 数值字段的 JSON bool 类型未单独收紧；publish 是回滚安全而非崩溃原子；部分 publisher 缺符号负例未覆盖；物理 GUI/IME、真实应用、ARM64 实际字节复核未测。
+- QA final3 指出并已修正的文档笔误：B-only 排除的是 A body `0x140001026`，不是 callback 的 `0x14000101c`。
+- 本报告由实现侧 coordinator 编写；独立结论以 QA 报告和 reviewer 会话为准。
 
 ## 7. 分支状态
 
-停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`）。实现源码头为 `9c2aafe`；文档 HEAD 为本报告所在提交。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
+停在集成分支 `p0/integration-trace-aot-01`（worktree `.worktrees/p0-trace-aot-qa`）与本轮实现分支 `p0/trace-aot-01`（worktree `.worktrees/p0-trace-aot`）。实现源码头为 `9c2aafe`；独立 QA/reviewer 在文档 HEAD `adf9a95` 上通过；本文档头部为最终文档提交。未合入 main、未 push、未删除 worktree。上一轮 callback worktree/证据保留。
