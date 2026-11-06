@@ -169,7 +169,7 @@ fixture/op 一致。`summary.json` 记录 COFF/AOT/bridge 哈希、backend proof
 计数和截图；stderr 记录 AOT/JIT 实际执行轨迹。`native` 强制失败负例必须非零退出、
 compat 事件为 0、不创建 Compat 控件。
 
-### Coverage profile 与离线补充（P0-TRACE-AOT-01）
+### Coverage profile 与离线补充（P0-PROMOTION-FIX-01）
 
 `run_engine` / `run_engine_gui.sh` 支持显式 `--coverage-profile base|supplemented` /
 `AEV_COVERAGE_PROFILE`，不得根据观察计数推断：

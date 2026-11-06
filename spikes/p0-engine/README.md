@@ -87,7 +87,7 @@ AEV_RESULTS_DIR="$PWD/.local/results/semantics" \
   .local/build-core-fix spikes/p0-engine
 ```
 
-Trace/AOT supplement entry point (P0-TRACE-AOT-01):
+Trace/AOT supplement entry point (P0-PROMOTION-FIX-01):
 
 ```sh
 python3 spikes/p0-engine/scripts/aot_supplement.py \
