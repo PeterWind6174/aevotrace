@@ -317,11 +317,13 @@ sar_case() { # label object value count expected_result expected_cf
     if jit_ok "jit-$label"; then
         expect_hex "jit-$label" "$JIT_OUT" rax "$expected"
         expect_cf "jit-$label" "$JIT_OUT" "$cf"
+        expect_dec "jit-$label" "$JIT_OUT" error 0
     fi
     aot_run "aot-$label" "$obj" rax="$value" rcx="$count"
     if [ "$AOT_RC" -eq 0 ]; then
         expect_hex "aot-$label" "$AOT_OUT" rax "$expected"
         expect_cf "aot-$label" "$AOT_OUT" "$cf"
+        expect_dec "aot-$label" "$AOT_OUT" error 0
     else
         fail "aot-$label: AOT probe failed rc=$AOT_RC"
     fi
@@ -418,6 +420,33 @@ for spec in     "sar8_neg_0 sar8 0x80 0 0x80 0"     "sar8_neg_1 sar8 0x80 1 0xc0
     set -- $spec
     sar_case "$1" "$2" "$3" "$4" "$5" "$6"
 done
+# count=0 must leave flags unchanged.  Preset CF=1 so a helper that clears
+# flags cannot pass this check.
+jit_run F2_sar8_zero_flags_jit sar8 rax=0x80 rcx=0 rflags=0x1
+if jit_ok F2_sar8_zero_flags_jit; then
+    expect_hex F2_sar8_zero_flags_jit "$JIT_OUT" rflags 0x1
+    expect_cf F2_sar8_zero_flags_jit "$JIT_OUT" 1
+fi
+aot_run F2_sar8_zero_flags_aot sar8 rax=0x80 rcx=0 rflags=0x1
+if [ "$AOT_RC" -eq 0 ]; then
+    expect_hex F2_sar8_zero_flags_aot "$AOT_OUT" rflags 0x1
+    expect_cf F2_sar8_zero_flags_aot "$AOT_OUT" 1
+else
+    fail "F2_sar8_zero_flags_aot: AOT probe failed rc=$AOT_RC"
+fi
+jit_run F2_sar16_zero_flags_jit sar16 rax=0x8000 rcx=0 rflags=0x1
+if jit_ok F2_sar16_zero_flags_jit; then
+    expect_hex F2_sar16_zero_flags_jit "$JIT_OUT" rflags 0x1
+    expect_cf F2_sar16_zero_flags_jit "$JIT_OUT" 1
+fi
+aot_run F2_sar16_zero_flags_aot sar16 rax=0x8000 rcx=0 rflags=0x1
+if [ "$AOT_RC" -eq 0 ]; then
+    expect_hex F2_sar16_zero_flags_aot "$AOT_OUT" rflags 0x1
+    expect_cf F2_sar16_zero_flags_aot "$AOT_OUT" 1
+else
+    fail "F2_sar16_zero_flags_aot: AOT probe failed rc=$AOT_RC"
+fi
+
 # count=1 OF is architecturally defined as 0; count>1 OF is undefined and
 # must not be asserted.
 jit_run F2_sar8_neg_1_of sar8 rax=0x80 rcx=1
@@ -459,19 +488,19 @@ build_aot_empty sar16_cf 0x140001000 0x140001005 0x14000100b
 aot_jit_run F2_sar8_cf_neg_jit sar8_cf_jit rax=0x80 rcx=9
 if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_neg_jit "$AOT_JIT_OUT" rax 0x1; else fail "F2_sar8_cf_neg_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
 aot_run F2_sar8_cf_neg sar8_cf rax=0x80 rcx=9
-if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_neg "$AOT_OUT" rax 0x1; fi
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_neg "$AOT_OUT" rax 0x1; else fail "F2_sar8_cf_neg: AOT probe failed rc=$AOT_RC"; fi
 aot_jit_run F2_sar8_cf_pos_jit sar8_cf_jit rax=0x7f rcx=9
 if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_pos_jit "$AOT_JIT_OUT" rax 0x0; else fail "F2_sar8_cf_pos_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
 aot_run F2_sar8_cf_pos sar8_cf rax=0x7f rcx=9
-if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_pos "$AOT_OUT" rax 0x0; fi
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar8_cf_pos "$AOT_OUT" rax 0x0; else fail "F2_sar8_cf_pos: AOT probe failed rc=$AOT_RC"; fi
 aot_jit_run F2_sar16_cf_neg_jit sar16_cf_jit rax=0x8000 rcx=17
 if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_neg_jit "$AOT_JIT_OUT" rax 0x1; else fail "F2_sar16_cf_neg_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
 aot_run F2_sar16_cf_neg sar16_cf rax=0x8000 rcx=17
-if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_neg "$AOT_OUT" rax 0x1; fi
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_neg "$AOT_OUT" rax 0x1; else fail "F2_sar16_cf_neg: AOT probe failed rc=$AOT_RC"; fi
 aot_jit_run F2_sar16_cf_pos_jit sar16_cf_jit rax=0x7fff rcx=17
 if [ "$AOT_JIT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_pos_jit "$AOT_JIT_OUT" rax 0x0; else fail "F2_sar16_cf_pos_jit: AOT+JIT probe failed rc=$AOT_JIT_RC"; fi
 aot_run F2_sar16_cf_pos sar16_cf rax=0x7fff rcx=17
-if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_pos "$AOT_OUT" rax 0x0; fi
+if [ "$AOT_RC" -eq 0 ]; then expect_hex F2_sar16_cf_pos "$AOT_OUT" rax 0x0; else fail "F2_sar16_cf_pos: AOT probe failed rc=$AOT_RC"; fi
 # One-operand IMUL is rejected at every width, and the diagnostic must carry
 # the actual width rather than always saying 8-bit.
 translate_fail imul1_8 "one-operand imul" "8-bit IMUL form" "0x140001000"

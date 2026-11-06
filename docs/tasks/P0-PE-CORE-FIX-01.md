@@ -1,6 +1,6 @@
 # P0-PE-CORE-FIX-01：PE 段权限与 SAR 标志位聚焦修复
 
-状态：进行中。基线：`p0/pe-dll-01` / `p0/pe-dll-integration` HEAD `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`，最终源码 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`。本轮分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`。main 仍 `c91a3f7`。
+状态：完成，独立 QA PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES，待外部复核。基线：`p0/pe-dll-01` / `p0/pe-dll-integration` HEAD `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`（上一轮源码 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`）。本轮分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`；本轮代码 `987692be19fdc1057f8bdd4be3ada87d2047e280`。main 仍 `c91a3f7`。
 
 ## 输入与责任
 
@@ -36,6 +36,10 @@
 - 独立 QA 分 F1/权限与 F2/语义两个会话（或明确串行）；reviewer 只读最终源码提交。原始 DLL/旧产物不变。
 
 ## 完成报告
+
+- 报告：[P0-PE-CORE-FIX-01-REPORT-20261106](../p0/P0-PE-CORE-FIX-01-REPORT-20261106.md)。
+- 独立 QA：[qa-perm](../../.local/results/P0-PE-CORE-FIX-01/qa-perm/REPORT.md)、[qa-sar](../../.local/results/P0-PE-CORE-FIX-01/qa-sar/REPORT.md)。
+- reviewer：ACCEPT WITH NON-BLOCKING NOTES（无阻断）。
 
 - 最终代码/集成分支、契约版本、输入/产物 SHA-256。
 - 命令、退出码、日志路径、Windows/Mac 双机输出。

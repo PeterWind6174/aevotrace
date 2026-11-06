@@ -80,3 +80,13 @@
 - 独立 QA：`qa-final2/REPORT.md`（PASS，0 阻断；ctest 6/6、`p0_pe_dll` 110/110、`p0_core_fix_semantics` 501/0、六组 GUI 44/44、relocation/COFF jmp/shift 复测）、`qa-behavior/REPORT.md`（PASS，274/274）。
 - 关键：首选/非首选 Guest base、DIR64/IAT、真实 JIT→Trace→supplement→新进程 AOT 零 JIT、100 次调用、reload 隔离、显式负例；原 6/6 ctest、78 Trace/AOT、六组 GUI 通过。
 - 未测：PE 驱动 GUI、人工键鼠/焦点/IME、Windows 指令 Trace、打包/签名/性能；不得据此宣布 P0 或产品完成。
+
+## P0-PE-CORE-FIX-01（本轮有界修复 PASS；P0 整体未通过）
+
+- 分支/工作树：`p0/pe-core-fix-01` / `.worktrees/p0-pe-core-fix`；基线 `00ee8d3`，代码 `987692b`。
+- 外部审查：`.local/results/CODEX-PE-DLL-REVIEW-20261106/REPORT.md` F1/F2。
+- 契约：`docs/p0/PE-DLL-CONTRACT-20261106.md` §12。
+- 报告：`docs/p0/P0-PE-CORE-FIX-01-REPORT-20261106.md`。
+- 独立 QA：`qa-perm/REPORT.md`（F1 PASS，343/343，Windows PAGE_NOACCESS）、`qa-sar/REPORT.md`（F2 PASS，312 矩阵/52 Windows 对照）。
+- 结果：ctest 6/6、PE 147/147、语义 715（代码提交）/791（测试加强后）、Trace/AOT 78、六组 GUI 44/44、旧 PE AOT 可加载。
+- 未测：PE 驱动 GUI、人工输入/IME、打包/签名/性能、真实应用、TLS/CRT/SEH/COM/线程。

@@ -371,12 +371,12 @@ Windows 系统 loader 对修改后的同一 DLL `.data` 段实测（`VirtualQuer
 | --- | --- | --- |
 | R/W/X 全空（0x40） | `PAGE_NOACCESS` (0x1) | prot 0；所有访问失败 |
 | R only | `PAGE_READONLY` (0x2) | R |
-| W only | `PAGE_READWRITE` (0x8) | R+W（Windows 可写页可读） |
-| R+W | `PAGE_READWRITE` (0x8) | R+W |
+| W only | image section `PAGE_WRITECOPY` (0x8；有效 R/W) | R+W（本 loader 无 COW） |
+| R+W | image section `PAGE_WRITECOPY` (0x8；有效 R/W) | R+W |
 | X only | `PAGE_EXECUTE` (0x10) | X（数据读/写失败） |
 | R+X | `PAGE_EXECUTE_READ` (0x20) | R+X |
-| W+X | `PAGE_EXECUTE_READWRITE` (0x80) | **明确拒绝**（既有 W+X 边界，不在本轮扩展） |
-| R+W+X | `PAGE_EXECUTE_READWRITE` (0x80) | **明确拒绝** |
+| W+X | image section `PAGE_EXECUTE_WRITECOPY` (0x80；有效 R/W/X) | **明确拒绝**（既有 W+X 边界，不在本轮扩展） |
+| R+W+X | image section `PAGE_EXECUTE_WRITECOPY` (0x80；有效 R/W/X) | **明确拒绝** |
 
 规则：
 

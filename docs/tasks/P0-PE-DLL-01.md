@@ -1,6 +1,6 @@
 # P0-PE-DLL-01 任务记录：最小 PE32+ DLL 装载与共享核心执行
 
-状态：实施完成，独立 QA PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES；代码提交 `f864d97`，集成分支 `p0/pe-dll-integration`，待外部复核（报告：[P0-PE-DLL-01-REPORT-20261106](../p0/P0-PE-DLL-01-REPORT-20261106.md)）。基线：`p0/promotion-fix-01` / `p0/promotion-fix-integration`，HEAD `aed3b46435bff4347966be03b33cf7013d1aa2d8`。本轮分支 `p0/pe-dll-01`，工作树 `.worktrees/p0-pe-dll`。不改 main（仍 `c91a3f7`）。
+状态：上一轮实施完成，原独立 QA PASS；外部审查 CODEX-PE-DLL-REVIEW-20261106 的 F1/F2 已由 P0-PE-CORE-FIX-01 修复（代码 `987692b`），待外部复核。原版本与历史结论保留：代码 `f864d97`，集成分支 `p0/pe-dll-integration`（报告：[P0-PE-DLL-01-REPORT-20261106](../p0/P0-PE-DLL-01-REPORT-20261106.md)）。基线：`p0/promotion-fix-01` / `p0/promotion-fix-integration`，HEAD `aed3b46435bff4347966be03b33cf7013d1aa2d8`。本轮分支 `p0/pe-dll-01`，工作树 `.worktrees/p0-pe-dll`。不改 main（仍 `c91a3f7`）。
 
 ## 输入与身份
 
