@@ -1,6 +1,6 @@
 # P0 Trace → 补充 AOT → 新进程验证契约（试验 v1）
 
-日期：2026-11-06。状态：compiler/binary/platform/reviewer 已会签（v1）。只冻结本轮 P0-TRACE-AOT-01 所需的有界实验边界，不是 P1 的完整 Trace/artifact/失效契约。
+日期：2026-11-06。状态：compiler/binary/platform/reviewer 已会签（v1）；P0-PROMOTION-FIX-01 以 [promotion provenance v1.1](PROMOTION-PROVENANCE-20261106.md) 修订 base artifact/`promoted_blocks` 语义，trace/artifact ABI 1 字段布局不变。只冻结本轮 P0-TRACE-AOT-01 所需的有界实验边界，不是 P1 的完整 Trace/artifact/失效契约。
 
 ## 1. 范围与不承诺
 

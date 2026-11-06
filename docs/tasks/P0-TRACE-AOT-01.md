@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-状态：完成（source `9c2aafe` / docs `adf9a95` 获独立 QA PASS 与 reviewer SIGN-OFF；物理 GUI/IME 待人工验收；P0 整体未通过）。
+状态：外部复核发现 F1（`promoted_blocks` 使用默认 coverage 而非实际 base artifact），待 P0-PROMOTION-FIX-01 修复；原 QA final3 PASS/reviewer SIGN-OFF 保留为 `adf9a95` 历史结论；物理 GUI/IME 仍待人工验收；P0 整体未通过。
 
 ## 输入与责任
 
