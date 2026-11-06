@@ -1,0 +1,2 @@
+CASE A op=1 x=7 result=3922 counter=1
+CASE B op=42405 x=9 result=45320 counter=2

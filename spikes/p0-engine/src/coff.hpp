@@ -40,6 +40,8 @@ class CoffObject {
      * non-cryptographic identity check so a stale AOT artifact with the
      * same version cannot be silently paired with a different object. */
     uint64_t content_hash = 0;
+    /* SHA-256 of the complete input file; authoritative persistent identity. */
+    uint8_t content_sha256[32] = {};
 
   private:
     std::vector<uint8_t> file_;

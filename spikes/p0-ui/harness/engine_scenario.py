@@ -42,7 +42,8 @@ def parse_label(text: str) -> tuple[int, int, int] | None:
 
 class EngineScenario:
     def __init__(self, host, backend, logger, evidence_dir: str,
-                 bridge_lib: str, coff: str, aot: str):
+                 bridge_lib: str, coff: str, aot: str,
+                 coverage_profile: str = "base"):
         self.host = host
         self.backend = backend
         self.logger = logger
@@ -50,6 +51,8 @@ class EngineScenario:
         self.bridge_lib = bridge_lib
         self.coff = coff
         self.aot = aot
+        self.coverage_profile = coverage_profile
+        self.expect_jit = coverage_profile == "base"
         self.checks: dict[str, bool] = {}
         self.states: dict[str, dict] = {}
         self.screenshots: list[str] = []
@@ -96,6 +99,10 @@ class EngineScenario:
         self._check("initial_counter", initial["counter"] == 0, str(initial["counter"]))
         self._check("initial_result_pending",
                     initial["result_text"] == "等待 Guest 回调", initial["result_text"])
+        expected_table = 4 if self.coverage_profile == "base" else 5
+        self._check("aot_table_count",
+                    initial.get("aot_table_count") == expected_table,
+                    f"{initial.get('aot_table_count')} != {expected_table}")
 
         edit = self.host.edit_handle
         button = self.host.button_handle
@@ -177,7 +184,8 @@ class EngineScenario:
         self._check("loop_100_counter", loop_end == loop_start + 100,
                     f"{loop_end} - {loop_start}")
         self._check("loop_100_jit_cached", loop_jit_cached)
-        self._check("loop_100_jit_executed", loop_jit_executed)
+        self._check("loop_100_jit_policy", loop_jit_executed == self.expect_jit,
+                    f"observed={loop_jit_executed} expected={self.expect_jit}")
         last = self.host.read_state()
         expected_loop = self._expected_label(text_loop, 2)
         self._check("loop_100_label", last["result_text"] == expected_loop,
@@ -186,9 +194,10 @@ class EngineScenario:
                     (last["bridge"] or {}).get("guest_rax") ==
                     self._expected_guest_rax(text_loop, 2),
                     str((last["bridge"] or {}).get("guest_rax")))
+        expected_compiles = 1 if self.expect_jit else 0
         self._check("loop_total_jit_compiles",
-                    (last["bridge"] or {}).get("total_jit_compiles") == 1,
-                    str((last["bridge"] or {}).get("total_jit_compiles")))
+                    (last["bridge"] or {}).get("total_jit_compiles") == expected_compiles,
+                    f"{(last['bridge'] or {}).get('total_jit_compiles')} != {expected_compiles}")
 
         self._screenshot(f"03-after-100-{self.backend.name}.png")
 
@@ -242,7 +251,7 @@ class EngineScenario:
 
         # Negative: helper succeeds but the following Guest counter access faults;
         # the pending UI result must not be committed.
-        label_before = self.host.read_state()["result_text"]
+        label_before = self.backend.get_text(self.host.result_handle)
         counter_before = self.host.read_state()["counter"]
         status, helper_called = self.host.probe_helper_then_fault()
         self.negative["helper_then_fault"] = {
@@ -254,7 +263,8 @@ class EngineScenario:
         self._check("helper_then_fault_helper_called", helper_called)
         state = self.host.read_state()
         self._check("helper_then_fault_counter", state["counter"] == counter_before)
-        self._check("helper_then_fault_label", state["result_text"] == label_before)
+        self._check("helper_then_fault_label",
+                    self.backend.get_text(self.host.result_handle) == label_before)
 
         # Recovery after failures: a normal event sequence must commit again.
         self.host.button_op = 7
@@ -305,6 +315,7 @@ class EngineScenario:
         return {
             "success": all(self.checks.values()) and bool(self.checks) and
                        bool(self.screenshots),
+            "coverage_profile": self.coverage_profile,
             "checks": self.checks,
             "states": self.states,
             "negative": self.negative,
@@ -316,6 +327,8 @@ class EngineScenario:
             "notes": self.notes,
             "guest_execution": {
                 "counter": self.host.read_state()["counter"],
+                "coverage_profile": self.coverage_profile,
+                "aot_table_count": self.host.read_state().get("aot_table_count"),
                 "helper_calls": self.host.helper_calls,
                 "last_bridge": self.host.read_state()["bridge"],
                 "backend": self.backend.name,

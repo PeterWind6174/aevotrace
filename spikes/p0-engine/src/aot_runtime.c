@@ -9,6 +9,8 @@ extern const uint64_t aev_block_count;
  * loaded dylib.  These are intentionally plain exported data symbols. */
 const uint64_t aev_aot_abi_version = AEV_GUEST_ABI_VERSION;
 const uint64_t aev_guest_state_size = sizeof(GuestState);
+const uint64_t aev_artifact_abi_version = AEV_ARTIFACT_ABI_VERSION;
+const uint64_t aev_translator_abi_version = AEV_TRANSLATOR_ABI_VERSION;
 
 static const AevBlock *find_block(uint64_t rip) {
     for (uint64_t i = 0; i < aev_block_count; ++i) {

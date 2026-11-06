@@ -53,6 +53,8 @@ struct JitRuntime::Impl {
     std::unordered_map<uint64_t, void *> cache;
     bool trace = false;
     bool dump_jit = false;
+    void *trace_ctx = nullptr;
+    JitRuntime::TraceHook trace_hook = nullptr;
     uint64_t compile_count = 0;
     uint64_t exec_count = 0;
     std::string data_layout;
@@ -73,6 +75,10 @@ JitRuntime::~JitRuntime() {
 
 void JitRuntime::set_trace(bool enabled) { impl_->trace = enabled; }
 void JitRuntime::set_dump_jit(bool enabled) { impl_->dump_jit = enabled; }
+void JitRuntime::set_trace_hook(void *ctx, TraceHook hook) {
+    impl_->trace_ctx = ctx;
+    impl_->trace_hook = hook;
+}
 uint64_t JitRuntime::compile_count() const { return impl_->compile_count; }
 uint64_t JitRuntime::exec_count() const { return impl_->exec_count; }
 
@@ -224,6 +230,8 @@ bool JitRuntime::compile_block(uint64_t rip, void **out_fn, std::string *error) 
         dump_arm64((const void *)(uintptr_t)addr, 64);
 
     *out_fn = (void *)(uintptr_t)addr;
+    if (impl_->trace_hook)
+        impl_->trace_hook(impl_->trace_ctx, 1, rip);
     return true;
 }
 
@@ -257,6 +265,8 @@ int64_t JitRuntime::dispatch(GuestState *s, uint64_t rip) {
                      (unsigned long long)s->rax, (unsigned long long)s->rsp);
     }
 
+    if (impl_->trace_hook)
+        impl_->trace_hook(impl_->trace_ctx, 2, rip);
     using JitFn = void (*)(GuestState *);
     JitFn jf = reinterpret_cast<JitFn>(fn);
     jf(s);

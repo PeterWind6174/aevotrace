@@ -13,6 +13,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "aev_artifact.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,6 +28,19 @@ extern "C" {
 #define AEV_BRIDGE_STEP_LIMIT 1000000ULL
 
 typedef struct AevBridge AevBridge;
+
+typedef struct AevArtifactInfo {
+    uint32_t struct_size;
+    uint32_t abi_version;          /* AEV_ARTIFACT_INFO_ABI_VERSION */
+    uint32_t aot_table_count;      /* aev_block_count, not per-call aot_blocks */
+    uint32_t all_block_count;
+    uint32_t artifact_abi_version;
+    uint32_t translator_abi_version;
+    uint64_t entry_addr;
+    uint8_t input_sha256[32];
+    uint8_t aot_sha256[32];
+    char target_triple[48];
+} AevArtifactInfo;
 
 typedef enum AevBridgeStatus {
     AEV_BRIDGE_OK = 0,
@@ -104,6 +119,8 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
 AevBridgeStatus aev_bridge_destroy(AevBridge *b);
 int aev_bridge_guest_info(const AevBridge *b, uint64_t *base, uint64_t *size,
                           uint64_t *stack_base, uint64_t *stack_top);
+AevBridgeStatus aev_bridge_artifact_info(const AevBridge *b, AevArtifactInfo *info,
+                                         char *err, size_t err_cap);
 int aev_bridge_register_import(AevBridge *b, uint64_t guest_addr, uint64_t import_id,
                                AevHostImportFn fn, void *host_ctx,
                                char *err, size_t err_cap);
@@ -121,6 +138,11 @@ int aev_bridge_call(AevBridge *b, uint64_t entry_addr,
  * mode=0 clears the injection. */
 int aev_bridge_set_test_fault(AevBridge *b, uint32_t mode, uint64_t rip,
                               char *err, size_t err_cap);
+
+AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
+                                      const char *scenario,
+                                      char *err, size_t err_cap);
+AevBridgeStatus aev_bridge_trace_close(AevBridge *b);
 
 #ifdef __cplusplus
 }

@@ -41,6 +41,8 @@ add_library(aev_translator STATIC
   src/x64.cpp
   src/translator.cpp
   src/ir_emitter.cpp
+  src/program_identity.cpp
+  src/sha256.cpp
 )
 target_include_directories(aev_translator PUBLIC ${AEV_INCLUDE_DIR})
 target_link_libraries(aev_translator PUBLIC aev_capstone)
@@ -252,6 +254,43 @@ add_custom_command(
 )
 add_custom_target(aev_callback_mutated ALL DEPENDS ${AEV_MUTATED_DYLIB})
 
+# Trace fixture base AOT: default coverage excludes the B-only IMUL block.
+set(AEV_TRACE_INPUT_OBJ ${CMAKE_CURRENT_SOURCE_DIR}/testdata/trace/aev_trace_fixture.obj)
+set(AEV_TRACE_LL ${AEV_GEN_DIR}/trace_aot.ll)
+set(AEV_TRACE_HEADER ${AEV_GEN_DIR}/trace_layout.h)
+set(AEV_TRACE_MANIFEST ${AEV_GEN_DIR}/trace_manifest.json)
+set(AEV_TRACE_AOT_OBJ ${AEV_GEN_DIR}/trace_aot.o)
+set(AEV_TRACE_DYLIB ${AEV_GEN_DIR}/libtrace_aot.dylib)
+add_custom_command(
+  OUTPUT ${AEV_TRACE_LL} ${AEV_TRACE_HEADER} ${AEV_TRACE_MANIFEST}
+  COMMAND aev-translate
+          --input ${AEV_TRACE_INPUT_OBJ}
+          --function aev_trace_guest
+          --entry aev_trace_guest
+          --out-ll ${AEV_TRACE_LL}
+          --out-header ${AEV_TRACE_HEADER}
+          --out-manifest ${AEV_TRACE_MANIFEST}
+  DEPENDS aev-translate ${AEV_TRACE_INPUT_OBJ}
+  COMMENT "Translating trace fixture to LLVM IR and ARM64 layout header"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_TRACE_AOT_OBJ}
+  COMMAND clang --target=arm64-apple-macos14.0 -O2 -c ${AEV_TRACE_LL} -o ${AEV_TRACE_AOT_OBJ}
+  DEPENDS ${AEV_TRACE_LL}
+  COMMENT "Compiling trace fixture AOT IR to ARM64 object"
+  VERBATIM
+)
+add_custom_command(
+  OUTPUT ${AEV_TRACE_DYLIB}
+  COMMAND clang -arch arm64 -dynamiclib -o ${AEV_TRACE_DYLIB}
+          ${AEV_TRACE_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  DEPENDS ${AEV_TRACE_AOT_OBJ} ${AEV_RT_OBJ} ${AEV_MEM_AOT_OBJ}
+  COMMENT "Linking the trace fixture ARM64 AOT dylib"
+  VERBATIM
+)
+add_custom_target(aev_trace_aot ALL DEPENDS ${AEV_TRACE_DYLIB})
+
 enable_testing()
 add_test(NAME p0_engine_closed_loop
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_tests.sh
@@ -290,4 +329,12 @@ add_test(NAME p0_callback_bridge
           ${CMAKE_CURRENT_SOURCE_DIR}
 )
 set_tests_properties(p0_callback_bridge PROPERTIES
+  ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}")
+
+add_test(NAME p0_trace_aot
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_trace_aot_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(p0_trace_aot PROPERTIES
   ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}")

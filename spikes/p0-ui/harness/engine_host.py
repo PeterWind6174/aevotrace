@@ -55,13 +55,21 @@ class WindowInfo:
 
 class EngineGuiHost:
     def __init__(self, backend, logger, evidence_dir: str, bridge_lib: str,
-                 coff: str, aot: str):
+                 coff: str, aot: str, coverage_profile: str = "base",
+                 expected_aot_sha256: str | None = None,
+                 promoted_rip: int | None = None,
+                 promoted_selected: bool | None = None):
         self.backend = backend
         self.logger = logger
         self.evidence_dir = evidence_dir
         self.bridge_lib = bridge_lib
         self.coff = coff
         self.aot = aot
+        self.coverage_profile = coverage_profile
+        self.expected_aot_sha256 = expected_aot_sha256
+        self.promoted_rip = promoted_rip
+        self.promoted_selected = promoted_selected
+        self.artifact_info: dict | None = None
         self.windows: dict[int, WindowInfo] = {}
         self.main_hwnd = 0
         self.edit_handle = 0
@@ -83,6 +91,7 @@ class EngineGuiHost:
         self.reentry_outer_status = None
         self.button_op = 2
         self._event_update_override = None
+        self._event_counter_override = None
         self.closed = False
         self.created = False
 
@@ -127,6 +136,7 @@ class EngineGuiHost:
 
         self.bridge = EngineBridge(self.bridge_lib)
         self.bridge.create(self.coff, self.aot, ENTRY_ADDR, trace_aot=True)
+        self.artifact_info = self.bridge.artifact_info()
         info = self.bridge.guest_info()
         self.base = info.base
         self.size = info.size
@@ -134,6 +144,7 @@ class EngineGuiHost:
         self.stack_top = info.stack_top
         if self.base + TEXT_OFFSET + TEXT_CAP_UNITS * 2 >= self.stack_base:
             raise UnsupportedApi("guest data area overlaps the guest stack")
+        self._validate_artifact_profile()
         self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
         self._write_counter(0)
         self.bridge.register_import(IMPORT_UPDATE, 1, self._host_update)
@@ -147,6 +158,33 @@ class EngineGuiHost:
             main_thread=bool(NSThread.isMainThread()),
         )
         return self.main_hwnd
+
+    def _validate_artifact_profile(self) -> None:
+        assert self.artifact_info is not None
+        info = self.artifact_info
+        if info["target_triple"] != "arm64-apple-macosx14.0.0":
+            raise UnsupportedApi(f"unexpected AOT target: {info['target_triple']}")
+        if info["artifact_abi_version"] != 1 or info["translator_abi_version"] != 1:
+            raise UnsupportedApi("unexpected AOT artifact/translator ABI")
+        if self.coverage_profile == "base":
+            if info["aot_table_count"] != 4:
+                raise UnsupportedApi(f"base profile expects 4 AOT blocks, got {info['aot_table_count']}")
+        elif self.coverage_profile == "supplemented":
+            if info["aot_table_count"] != 5:
+                raise UnsupportedApi(f"supplemented profile expects 5 AOT blocks, got {info['aot_table_count']}")
+            if not self.expected_aot_sha256:
+                raise UnsupportedApi("supplemented profile requires expected AOT SHA-256")
+            if info["aot_sha256"] != self.expected_aot_sha256:
+                raise UnsupportedApi("AOT SHA does not match supplement manifest")
+            if self.promoted_rip is None or self.promoted_selected is not True:
+                raise UnsupportedApi("promoted RIP is not selected in supplement manifest")
+        else:
+            raise UnsupportedApi(f"unknown coverage profile {self.coverage_profile}")
+        self.logger.event("engine.artifact_profile", profile=self.coverage_profile,
+                          aot_table_count=info["aot_table_count"],
+                          all_block_count=info["all_block_count"],
+                          aot_sha256=info["aot_sha256"],
+                          promoted_rip=None if self.promoted_rip is None else hex(self.promoted_rip))
 
     # ------------------------------------------------------------------
     def _write_ctx(self, update_addr: int, counter_addr: int) -> None:
@@ -233,12 +271,15 @@ class EngineGuiHost:
         op = self.button_op if control_id == IDC_BTN_COMPUTE else 1
         update_addr = self._event_update_override or IMPORT_UPDATE
         self._event_update_override = None
+        counter_addr = self._event_counter_override or (self.base + COUNTER_OFFSET)
+        self._event_counter_override = None
         self.logger.event("engine.guest_enter", control_id=control_id,
                           op=op, text=text, source=source,
                           update_addr=f"0x{update_addr:x}",
                           main_thread=bool(NSThread.isMainThread()))
         try:
             result = self._call_guest(op, text=text, update_addr=update_addr,
+                                      counter_addr=counter_addr,
                                       raise_on_error=False)
         except Exception as exc:  # noqa: BLE001 - report, do not update UI
             self.last_error = str(exc)
@@ -274,7 +315,7 @@ class EngineGuiHost:
         The result control must remain at its previous text and the Guest
         counter must not change, because dispatch_command commits only on OK.
         """
-        label_before = self.result_text
+        label_before = self.backend.get_text(self.result_handle)
         counter_before = self._read_counter()
         self._event_update_override = UNKNOWN_IMPORT
         self.backend.click_button(self.button_handle)
@@ -282,7 +323,7 @@ class EngineGuiHost:
         self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
         return (
             self.last_status,
-            self.result_text == label_before,
+            self.backend.get_text(self.result_handle) == label_before,
             self._read_counter() == counter_before,
         )
 
@@ -299,11 +340,13 @@ class EngineGuiHost:
         return result.status
 
     def probe_helper_then_fault(self) -> tuple[int, bool]:
+        """Event-driven: real button -> helper OK -> counter fault -> no commit."""
         before = self.helper_calls
-        result = self._call_guest(3, text="helper-fault",
-                                  counter_addr=BAD_ADDRESS)
+        self._event_counter_override = BAD_ADDRESS
+        self.backend.click_button(self.button_handle)
+        self._event_counter_override = None
         self._write_ctx(IMPORT_UPDATE, self.base + COUNTER_OFFSET)
-        return result.status, self.helper_calls > before
+        return self.last_status, self.helper_calls > before
 
     # ------------------------------------------------------------------
     def drain_posted_messages(self) -> int:
@@ -329,6 +372,10 @@ class EngineGuiHost:
             "last_error": self.last_error,
             "reentry_status": self.reentry_status,
             "reentry_outer_status": self.reentry_outer_status,
+            "coverage_profile": self.coverage_profile,
+            "aot_table_count": (self.artifact_info or {}).get("aot_table_count"),
+            "all_block_count": (self.artifact_info or {}).get("all_block_count"),
+            "artifact_info": self.artifact_info,
             "closed": self.closed,
             "bridge": None if self.last_result is None else {
                 "call_index": self.last_result.call_index,
@@ -386,6 +433,8 @@ class EngineGuiHost:
             "guest_size": self.size,
             "stack_base": f"0x{self.stack_base:x}",
             "stack_top": f"0x{self.stack_top:x}",
+            "coverage_profile": self.coverage_profile,
+            "artifact_info": self.artifact_info,
             "helper_calls": self.helper_calls,
             "unicorn_loaded": "unicorn" in __import__("sys").modules,
             "guest_pe_loaded": "harness.guest_pe" in __import__("sys").modules,

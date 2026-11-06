@@ -1,4 +1,7 @@
 #include "ir_emitter.hpp"
+
+#include "aev_artifact.h"
+#include "program_identity.hpp"
 #include "aev_guest.h"
 
 #include <capstone/x86.h>
@@ -710,9 +713,6 @@ class Emitter {
                 return;
             }
             case X86_INS_IMUL: {
-                if (!jit_mode_)
-                    throw Unsupported("imul reached the AOT emitter; block should be JIT-only: " +
-                                      format_insn(insn));
                 if (insn.operands.size() < 2 ||
                     insn.operands[0].kind != OperandKind::Register)
                     throw Unsupported("unsupported imul form (one-operand IMUL is not implemented) " +
@@ -803,12 +803,41 @@ std::string module_prefix() {
 }  // namespace
 
 bool emit_aot_module(const Program &program, uint64_t input_hash,
+                     const uint8_t input_sha256[32], uint64_t entry_addr,
+                     const uint8_t function_name_sha256[32],
                      std::string *out, std::string *error) {
     try {
         std::ostringstream os;
         os << module_prefix();
         os << "%BlockEntry = type { i64, ptr }\n\n";
         os << "@aev_input_hash = constant i64 " << input_hash << "\n";
+
+        std::vector<BlockIdentity> all_blocks;
+        if (!all_block_identities(program, &all_blocks, error))
+            return false;
+
+        auto emit_i8_array = [&](const char *name, const uint8_t *data, size_t len) {
+            os << "@" << name << " = constant [" << len << " x i8] [";
+            for (size_t i = 0; i < len; ++i) {
+                if (i) os << ", ";
+                os << "i8 " << (unsigned)data[i];
+            }
+            os << "]\n";
+        };
+        emit_i8_array("aev_input_sha256", input_sha256, 32);
+        emit_i8_array("aev_function_name_sha256", function_name_sha256, 32);
+        std::string target = AEV_AOT_TARGET_TRIPLE;
+        emit_i8_array("aev_target_triple",
+                      reinterpret_cast<const uint8_t *>(target.data()),
+                      target.size() + 1);
+        os << "@aev_entry_addr = constant i64 " << entry_addr << "\n";
+        os << "@aev_all_block_count = constant i64 " << all_blocks.size() << "\n";
+        os << "@aev_all_blocks = constant [" << all_blocks.size() << " x i64] [";
+        for (size_t i = 0; i < all_blocks.size(); ++i) {
+            if (i) os << ", ";
+            os << "i64 " << all_blocks[i].rip;
+        }
+        os << "]\n";
 
         struct Entry {
             uint64_t rip;

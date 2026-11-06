@@ -91,6 +91,10 @@ def main(argv=None) -> int:
     parser.add_argument("--coff", required=True)
     parser.add_argument("--aot", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--coverage-profile", choices=["base", "supplemented"],
+                        default="base")
+    parser.add_argument("--supplement-manifest", default="")
+    parser.add_argument("--promoted-rip", default="0x140001020")
     parser.add_argument("--force-native-failure", action="store_true")
     args = parser.parse_args(argv)
 
@@ -99,6 +103,24 @@ def main(argv=None) -> int:
     aot = os.path.abspath(args.aot)
     out_dir = os.path.abspath(args.out)
     os.makedirs(out_dir, exist_ok=True)
+
+    coverage_profile = args.coverage_profile
+    supplement_manifest = None
+    expected_aot_sha256 = None
+    promoted_rip = int(args.promoted_rip, 0)
+    promoted_selected = None
+    if coverage_profile == "supplemented":
+        if not args.supplement_manifest:
+            raise SystemExit("supplemented profile requires --supplement-manifest")
+        with open(args.supplement_manifest, "r", encoding="utf-8") as f:
+            supplement_manifest = json.load(f)
+        expected_aot_sha256 = supplement_manifest.get("aot_sha256")
+        selected = supplement_manifest.get("selected_blocks") or []
+        promoted_selected = promoted_rip in selected
+        if not promoted_selected:
+            raise SystemExit(f"promoted RIP 0x{promoted_rip:x} not selected in manifest")
+        if supplement_manifest.get("input_sha256") != sha256_file(coff):
+            raise SystemExit("supplement manifest input SHA does not match COFF")
 
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
@@ -109,6 +131,9 @@ def main(argv=None) -> int:
         "task": "P0-UI-INT-01",
         "mode": "engine-callback",
         "backend": args.backend,
+        "coverage_profile": coverage_profile,
+        "supplement_manifest": args.supplement_manifest or None,
+        "promoted_rip": f"0x{promoted_rip:x}",
         "library": lib,
         "library_sha256": sha256_file(lib),
         "coff": coff,
@@ -134,9 +159,14 @@ def main(argv=None) -> int:
     try:
         backend_cls = NativeBackend if args.backend == "native" else CompatBackend
         backend = backend_cls(None, logger, out_dir)
-        host = EngineGuiHost(backend, logger, out_dir, lib, coff, aot)
+        host = EngineGuiHost(backend, logger, out_dir, lib, coff, aot,
+                             coverage_profile=coverage_profile,
+                             expected_aot_sha256=expected_aot_sha256,
+                             promoted_rip=promoted_rip,
+                             promoted_selected=promoted_selected)
         backend.host = host
-        scenario = EngineScenario(host, backend, logger, out_dir, lib, coff, aot)
+        scenario = EngineScenario(host, backend, logger, out_dir, lib, coff, aot,
+                                  coverage_profile=coverage_profile)
         host.start()
         if args.force_native_failure:
             if args.backend != "native":
@@ -153,7 +183,8 @@ def main(argv=None) -> int:
         summary["screenshots"] = _screenshot_info(scenario.screenshots)
         linkage = summary.get("bridge_linkage") or {}
         deps_after = summary.get("dependencies_after") or {}
-        if (linkage.get("has_unicorn") or linkage.get("has_pefile") or
+        if (linkage.get("error") or linkage.get("has_unicorn") or
+                linkage.get("has_pefile") or
                 deps_after.get("unicorn_loaded") or
                 deps_after.get("pefile_loaded") or
                 deps_after.get("guest_pe_loaded")):

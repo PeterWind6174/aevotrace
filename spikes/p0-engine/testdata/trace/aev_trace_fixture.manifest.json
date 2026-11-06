@@ -1,0 +1,17 @@
+{
+  "input": "spikes/p0-engine/testdata/trace/aev_trace_fixture.obj",
+  "input_sha256": "145800f4a4729c201aab2c94a74937d349e01f6ec7871658b6becd3773bd1205",
+  "input_hash": 10272409672363613313,
+  "entry": "aev_trace_guest",
+  "entry_function_sha256": "9ee12c9f2382b47880a6f9d83f86fbeb768993b2ad39f47a6a287a50dfad1f62",
+  "artifact_abi": 1,
+  "translator_abi": 1,
+  "target": "arm64-apple-macosx14.0.0",
+  "all_block_count": 5,
+  "entry_address": 5368713216,
+  "aot_block_count": 4,
+  "jit_block_count": 1,
+  "functions": [
+    {"name": "aev_trace_guest", "address": 5368713216, "bytes": 76, "blocks": [{"rip": 5368713216, "jit_only": false, "section_offset": 0, "size": 21, "sha256": "2e27e6fc485121df7956322cb60a3ebce10b29b5d76cbf9ec38a9f7be690faa7", "reason": ""}, {"rip": 5368713237, "jit_only": true, "section_offset": 21, "size": 17, "sha256": "dc17edc09dd6b8a15db91b938b9cedffd9f674f820762d9360068abcd1f9575d", "reason": "AOT coverage boundary: imul delegated to JIT"}, {"rip": 5368713254, "jit_only": false, "section_offset": 38, "size": 9, "sha256": "2ceb0be2a543faf0beedacd6905af3a3a4d46564fd0397ea2038d4bc672f73f0", "reason": ""}, {"rip": 5368713263, "jit_only": false, "section_offset": 47, "size": 9, "sha256": "41845d8435953eb089b8b1dac6cbe6723210105600589fd6b155422d574c0330", "reason": ""}, {"rip": 5368713272, "jit_only": false, "section_offset": 56, "size": 20, "sha256": "1bb07eb34984c730d1e385f58e302b4cb99ae588864eaa7fe11c81533cabca23", "reason": ""}]}
+  ]
+}

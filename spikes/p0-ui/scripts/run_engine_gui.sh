@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the engine-backed compat and native GUI paths plus a forced native
 # failure (must exit non-zero with no compat fallback).
-set -u
+set -euo pipefail
 
 BUILD_DIR=${1:?build dir}
 OUT_ROOT=${2:?output root}
@@ -9,7 +9,9 @@ PYTHON=${PYTHON:-python3}
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 LIB="$BUILD_DIR/libaev_bridge.dylib"
 COFF="$ROOT/spikes/p0-engine/testdata/callback/aev_callback_fixture.obj"
-AOT="$BUILD_DIR/generated/libcallback_aot.dylib"
+AOT="${AEV_AOT_OVERRIDE:-$BUILD_DIR/generated/libcallback_aot.dylib}"
+PROFILE="${AEV_COVERAGE_PROFILE:-base}"
+MANIFEST="${AEV_SUPPLEMENT_MANIFEST:-}"
 FAILURES=0
 mkdir -p "$OUT_ROOT"
 
@@ -18,10 +20,24 @@ run_backend() {
     local out="$OUT_ROOT/$backend"
     rm -rf "$out"
     echo "== engine GUI backend=$backend =="
-    PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
-        --backend "$backend" --lib "$LIB" --coff "$COFF" --aot "$AOT" \
-        --out "$out" >"$out.stdout" 2>"$out.stderr"
-    local rc=$?
+    if [ "$PROFILE" = "supplemented" ]; then
+        if [ -z "$MANIFEST" ]; then
+            echo "FAIL: supplemented profile requires AEV_SUPPLEMENT_MANIFEST"
+            FAILURES=$((FAILURES + 1))
+            return 0
+        fi
+        PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+            --backend "$backend" --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+            --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
+            --out "$out" >"$out.stdout" 2>"$out.stderr" || local rc=$?
+        local rc=${rc:-0}
+    else
+        PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+            --backend "$backend" --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+            --coverage-profile base \
+            --out "$out" >"$out.stdout" 2>"$out.stderr" || local rc=$?
+        local rc=${rc:-0}
+    fi
     echo "$backend rc=$rc"
     if [ "$rc" -ne 0 ]; then
         echo "FAIL: $backend exited $rc"
@@ -69,14 +85,54 @@ if [ $? -ne 0 ]; then
     FAILURES=$((FAILURES + 1))
 fi
 
+echo "== supplemented profile rejects base artifact =="
+if [ "$PROFILE" = "supplemented" ]; then
+    NEG_OUT="$OUT_ROOT/supplemented-base-rejection"
+    rm -rf "$NEG_OUT"
+    set +e
+    PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+        --backend native --lib "$LIB" --coff "$COFF" \
+        --aot "$BUILD_DIR/generated/libcallback_aot.dylib" \
+        --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
+        --out "$NEG_OUT" >"$NEG_OUT.stdout" 2>"$NEG_OUT.stderr"
+    NEG_RC=$?
+    set -e
+    echo "supplemented-base rejection rc=$NEG_RC"
+    if [ "$NEG_RC" -eq 0 ]; then
+        echo "FAIL: supplemented profile accepted base artifact"
+        FAILURES=$((FAILURES + 1))
+    fi
+    "$PYTHON" - "$NEG_OUT/summary.json" <<'PY'
+import json, sys
+s=json.load(open(sys.argv[1]))
+if s.get("success") is not False or s.get("checks"):
+    raise SystemExit("base artifact under supplemented profile did not fail before Guest")
+if (s.get("backend_event_counts") or {}).get("compat", 0) != 0:
+    raise SystemExit("compat fallback observed")
+print("supplemented-base-negative", s.get("error"))
+PY
+else
+    echo "skip (base profile)"
+fi
+
 echo "== forced native failure =="
 FAIL_OUT="$OUT_ROOT/native-failure"
 rm -rf "$FAIL_OUT"
-PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
-    --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
-    --out "$FAIL_OUT" --force-native-failure \
-    >"$FAIL_OUT.stdout" 2>"$FAIL_OUT.stderr"
+set +e
+if [ "$PROFILE" = "supplemented" ]; then
+    PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+        --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+        --coverage-profile supplemented --supplement-manifest "$MANIFEST" \
+        --out "$FAIL_OUT" --force-native-failure \
+        >"$FAIL_OUT.stdout" 2>"$FAIL_OUT.stderr"
+else
+    PYTHONPATH="$ROOT/spikes/p0-ui" "$PYTHON" -m harness.run_engine \
+        --backend native --lib "$LIB" --coff "$COFF" --aot "$AOT" \
+        --coverage-profile base --out "$FAIL_OUT" --force-native-failure \
+        >"$FAIL_OUT.stdout" 2>"$FAIL_OUT.stderr"
+fi
 FAIL_RC=$?
+set -e
 echo "forced native failure rc=$FAIL_RC"
 if [ "$FAIL_RC" -eq 0 ]; then
     echo "FAIL: forced native failure unexpectedly exited 0"

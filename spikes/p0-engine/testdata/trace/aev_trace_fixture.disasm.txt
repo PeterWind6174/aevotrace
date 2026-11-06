@@ -1,0 +1,38 @@
+
+Dump of file aev_trace_fixture.obj
+
+File Type: COFF OBJECT
+
+aev_trace_guest:
+  0000000000000000: 48 89 5C 24 08     mov         qword ptr [rsp+8],rbx
+  0000000000000005: 57                 push        rdi
+  0000000000000006: 48 83 EC 20        sub         rsp,20h
+  000000000000000A: 49 8B F8           mov         rdi,r8
+  000000000000000D: 81 F9 A5 A5 00 00  cmp         ecx,0A5A5h
+  0000000000000013: 75 11              jne         0000000000000026
+  0000000000000015: 6B DA 11           imul        ebx,edx,11h
+  0000000000000018: 81 F3 34 12 00 00  xor         ebx,1234h
+  000000000000001E: 81 C3 00 02 00 00  add         ebx,200h
+  0000000000000024: EB 09              jmp         000000000000002F
+  0000000000000026: 8D 5A 55           lea         ebx,[rdx+55h]
+  0000000000000029: 81 F3 0F 0F 00 00  xor         ebx,0F0Fh
+  000000000000002F: 44 8B C1           mov         r8d,ecx
+  0000000000000032: 8B CB              mov         ecx,ebx
+  0000000000000034: 8B D2              mov         edx,edx
+  0000000000000036: FF 17              call        qword ptr [rdi]
+  0000000000000038: 48 8B 4F 08        mov         rcx,qword ptr [rdi+8]
+  000000000000003C: 48 FF 01           inc         qword ptr [rcx]
+  000000000000003F: 33 C3              xor         eax,ebx
+  0000000000000041: 48 8B 5C 24 30     mov         rbx,qword ptr [rsp+30h]
+  0000000000000046: 48 83 C4 20        add         rsp,20h
+  000000000000004A: 5F                 pop         rdi
+  000000000000004B: C3                 ret
+
+  Summary
+
+          4C .aevtext
+          30 .chks64
+          9C .debug$S
+          2F .drectve
+           C .pdata
+           C .xdata

@@ -1,0 +1,4 @@
+translated input=spikes/p0-engine/testdata/trace/aev_trace_fixture.obj entry=aev_trace_guest entry_addr=0x140001000 functions=1 aot_blocks=4 jit_blocks=1 input_hash=0x8e8eee2be4851c81
+input_sha256=145800f4a4729c201aab2c94a74937d349e01f6ec7871658b6becd3773bd1205
+function aev_trace_guest addr=0x140001000 bytes=76 insns=23 blocks=5
+  JIT-only block 0x140001015: AOT coverage boundary: imul delegated to JIT

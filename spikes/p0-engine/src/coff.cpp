@@ -1,5 +1,7 @@
 #include "coff.hpp"
 
+#include "sha256.hpp"
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -48,6 +50,7 @@ bool CoffObject::load(const std::string &path, std::string *error) {
         hash *= 1099511628211ULL;
     }
     content_hash = hash;
+    sha256(file_.data(), file_.size(), content_sha256);
 
     const uint8_t *base = file_.data();
     machine = rd16(base + 0);

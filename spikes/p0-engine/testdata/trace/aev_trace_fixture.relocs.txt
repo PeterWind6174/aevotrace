@@ -1,0 +1,21 @@
+
+Dump of file aev_trace_fixture.obj
+
+File Type: COFF OBJECT
+
+RELOCATIONS #5
+                                                Symbol    Symbol
+ Offset    Type              Applied To         Index     Name
+ --------  ----------------  -----------------  --------  ------
+ 00000000  ADDR32NB                   00000000         9  $LN7
+ 00000004  ADDR32NB                   0000004C         9  $LN7
+ 00000008  ADDR32NB                   00000000         C  $unwind$aev_trace_guest
+
+  Summary
+
+          4C .aevtext
+          30 .chks64
+          9C .debug$S
+          2F .drectve
+           C .pdata
+           C .xdata

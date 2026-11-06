@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+#include "aev_artifact.h"
+
 #define AEV_FIELD(name) uint64_t name;
 
 typedef struct GuestState {
@@ -18,6 +20,16 @@ typedef struct GuestState {
 } GuestState;
 
 #undef AEV_FIELD
+
+/* Transient trace sink stored in GuestState.reserved0 only while a bridge
+ * trace is active.  It is bridge-owned, cleared on every call exit, and is
+ * never persisted in trace/artifact data. */
+typedef struct AevTraceSink {
+    uint32_t abi_version;
+    uint32_t reserved;
+    void (*on_block)(void *ctx, uint32_t source, uint64_t rip);
+    void *ctx;
+} AevTraceSink;
 
 #define AEV_RETURN_SENTINEL 0xFFFFFFFFFFFFFF00ULL
 #define AEV_GUEST_ABI_VERSION 1ULL

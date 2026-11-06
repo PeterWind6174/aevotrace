@@ -12,6 +12,9 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 AEV_CALLBACK_ABI_VERSION = 2
+AEV_ARTIFACT_ABI_VERSION = 1
+AEV_TRANSLATOR_ABI_VERSION = 1
+AEV_ARTIFACT_INFO_ABI_VERSION = 1
 AEV_GUEST_SENTINEL = 0xFFFFFFFFFFFFFF00
 AEV_BRIDGE_IMPORT_BASE = 0x140010000
 AEV_BRIDGE_IMPORT_STRIDE = 0x10
@@ -102,6 +105,21 @@ class CallResult(ctypes.Structure):
     ]
 
 
+class ArtifactInfo(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("aot_table_count", ctypes.c_uint32),
+        ("all_block_count", ctypes.c_uint32),
+        ("artifact_abi_version", ctypes.c_uint32),
+        ("translator_abi_version", ctypes.c_uint32),
+        ("entry_addr", ctypes.c_uint64),
+        ("input_sha256", ctypes.c_uint8 * 32),
+        ("aot_sha256", ctypes.c_uint8 * 32),
+        ("target_triple", ctypes.c_char * 48),
+    ]
+
+
 HostImportFn = ctypes.CFUNCTYPE(
     ctypes.c_int,
     ctypes.c_void_p,
@@ -174,6 +192,23 @@ class EngineBridge:
             ctypes.POINTER(ctypes.c_uint64),
         ]
         self.lib.aev_bridge_guest_info.restype = ctypes.c_int
+        self.lib.aev_bridge_artifact_info.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ArtifactInfo),
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+        self.lib.aev_bridge_artifact_info.restype = ctypes.c_int
+        self.lib.aev_bridge_trace_open.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+        self.lib.aev_bridge_trace_open.restype = ctypes.c_int
+        self.lib.aev_bridge_trace_close.argtypes = [ctypes.c_void_p]
+        self.lib.aev_bridge_trace_close.restype = ctypes.c_int
         self.lib.aev_bridge_register_import.argtypes = [
             ctypes.c_void_p,
             ctypes.c_uint64,
@@ -260,6 +295,7 @@ class EngineBridge:
         trace_aot: bool = False,
         dump_jit: bool = True,
         require_main_thread: bool = True,
+        function_name: str = "aev_guest_callback",
     ) -> None:
         if self._handle:
             raise RuntimeError("bridge already created")
@@ -267,7 +303,7 @@ class EngineBridge:
         cfg.struct_size = ctypes.sizeof(BridgeConfig)
         cfg.abi_version = AEV_CALLBACK_ABI_VERSION
         cfg.coff_path = str(coff_path).encode()
-        cfg.function_name = b"aev_guest_callback"
+        cfg.function_name = function_name.encode()
         cfg.entry_addr = int(entry_addr)
         cfg.aot_dylib_path = str(aot_dylib_path).encode()
         cfg.guest_mem_size = int(guest_mem_size)
@@ -298,6 +334,41 @@ class EngineBridge:
         if rc != AEV_BRIDGE_OK:
             raise BridgeError(rc, "guest_info failed")
         return GuestInfo(base.value, size.value, stack_base.value, stack_top.value)
+
+    def artifact_info(self) -> dict:
+        info = ArtifactInfo()
+        info.struct_size = ctypes.sizeof(ArtifactInfo)
+        info.abi_version = AEV_ARTIFACT_INFO_ABI_VERSION
+        err = self._errbuf()
+        rc = self.lib.aev_bridge_artifact_info(
+            self._handle, ctypes.byref(info), err, ctypes.sizeof(err)
+        )
+        if rc != AEV_BRIDGE_OK:
+            raise BridgeError(rc, self._errmsg(err) or "artifact_info failed")
+        return {
+            "aot_table_count": info.aot_table_count,
+            "all_block_count": info.all_block_count,
+            "artifact_abi_version": info.artifact_abi_version,
+            "translator_abi_version": info.translator_abi_version,
+            "entry_addr": info.entry_addr,
+            "input_sha256": bytes(info.input_sha256).hex(),
+            "aot_sha256": bytes(info.aot_sha256).hex(),
+            "target_triple": bytes(info.target_triple).split(b"\0", 1)[0].decode(),
+        }
+
+    def trace_open(self, path: str, scenario: str) -> None:
+        err = self._errbuf()
+        rc = self.lib.aev_bridge_trace_open(
+            self._handle, str(path).encode(), str(scenario).encode(),
+            err, ctypes.sizeof(err)
+        )
+        if rc != AEV_BRIDGE_OK:
+            raise BridgeError(rc, self._errmsg(err) or "trace_open failed")
+
+    def trace_close(self) -> None:
+        rc = self.lib.aev_bridge_trace_close(self._handle)
+        if rc != AEV_BRIDGE_OK:
+            raise BridgeError(rc, "trace_close failed")
 
     def register_import(
         self, guest_addr: int, import_id: int, fn: Callable[[int, int, int, int], int]

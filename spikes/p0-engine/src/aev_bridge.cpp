@@ -1,8 +1,11 @@
 #include "aev_bridge.h"
 
 #include "aev_guest.h"
+#include "aev_artifact.h"
 #include "coff.hpp"
 #include "jit_runtime.hpp"
+#include "program_identity.hpp"
+#include "sha256.hpp"
 #include "translator.hpp"
 
 #include <dlfcn.h>
@@ -13,8 +16,11 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <memory>
+#include <set>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -42,6 +48,12 @@ struct AevBridge {
     std::unique_ptr<aev::JitRuntime> jit;
     void *aot_handle = nullptr;
     AotRunFn aot_run = nullptr;
+    uint8_t input_sha256[32] = {};
+    uint8_t aot_sha256[32] = {};
+    std::vector<uint64_t> all_blocks;
+    std::vector<uint64_t> aot_selected;
+    uint32_t aot_table_count = 0;
+    std::string target_triple;
 
     uint64_t mem_base = 0;
     uint64_t mem_size = 0;
@@ -70,6 +82,10 @@ struct AevBridge {
     bool trace = false;
     bool dump_jit = false;
     bool trace_aot = false;
+    bool trace_open = false;
+    std::ofstream trace_stream;
+    std::string trace_scenario;
+    AevTraceSink trace_sink{};
 };
 
 namespace {
@@ -97,6 +113,86 @@ bool range_ok(const AevBridge *b, uint64_t addr, uint64_t len) {
     if (off > b->mem_size)
         return false;
     return len <= b->mem_size - off;
+}
+
+std::string json_escape(const std::string &s) {
+    std::string out;
+    for (char c : s) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out += c; break;
+        }
+    }
+    return out;
+}
+
+void trace_array(std::ostream &os, const std::vector<uint64_t> &values) {
+    os << "[";
+    for (size_t i = 0; i < values.size(); ++i) {
+        if (i) os << ",";
+        os << "\"" << aev::hex64(values[i]) << "\"";
+    }
+    os << "]";
+}
+
+void trace_block(AevBridge *b, uint32_t source, uint64_t rip) {
+    if (!b->trace_open)
+        return;
+    aev::BlockIdentity id;
+    std::string error;
+    const char *kind = source == AEV_TRACE_SINK_SOURCE_AOT
+                           ? "aot"
+                           : (source == AEV_TRACE_SINK_SOURCE_JIT_COMPILE
+                                  ? "jit_compile"
+                                  : "jit_exec");
+    b->trace_stream << "{\"record\":\"" << kind << "\",\"call\":"
+                    << b->call_index;
+    if (!aev::block_identity(b->program, rip, &id, &error)) {
+        b->trace_stream << ",\"rip\":\"" << aev::hex64(rip)
+                        << "\",\"error\":\"" << json_escape(error) << "\"}\n";
+    } else {
+        b->trace_stream << ",\"rip\":\"" << aev::hex64(rip)
+                        << "\",\"section_offset\":" << id.section_offset
+                        << ",\"size\":" << id.size
+                        << ",\"block_sha256\":\""
+                        << aev::hex_bytes(id.sha256, 32) << "\"}\n";
+    }
+}
+
+void trace_host_import(AevBridge *b, uint64_t import_id) {
+    if (!b->trace_open)
+        return;
+    b->trace_stream << "{\"record\":\"host_import\",\"call\":"
+                    << b->call_index << ",\"id\":" << import_id << "}\n";
+}
+
+void trace_dispatch_miss(AevBridge *b, uint64_t rip, AevBridgeStatus status) {
+    if (!b->trace_open)
+        return;
+    b->trace_stream << "{\"record\":\"dispatch_miss\",\"call\":"
+                    << b->call_index << ",\"rip\":\"" << aev::hex64(rip)
+                    << "\",\"status\":" << (unsigned)status << "}\n";
+}
+
+void trace_call_end(AevBridge *b, AevBridgeStatus status) {
+    if (!b->trace_open)
+        return;
+    b->trace_stream << "{\"record\":\"call_end\",\"call\":" << b->call_index
+                    << ",\"status\":" << (unsigned)status
+                    << ",\"error_pc\":\"" << aev::hex64(b->state.error_pc)
+                    << "\",\"guest_error\":" << b->state.error_code << "}\n";
+}
+
+extern "C" void bridge_trace_on_block(void *ctx, uint32_t source, uint64_t rip) {
+    trace_block(static_cast<AevBridge *>(ctx), source, rip);
+}
+
+void bridge_jit_trace(void *ctx, uint32_t source, uint64_t rip) {
+    trace_block(static_cast<AevBridge *>(ctx), source, rip);
 }
 
 void destroy_resources(AevBridge *b) {
@@ -150,10 +246,12 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
             b->last_failure = AEV_BRIDGE_ERR_UNKNOWN_IMPORT;
             s->error_code = AEV_ERR_BAD_TARGET;
             s->error_pc = rip;
+            trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_UNKNOWN_IMPORT);
             return -1;
         }
         const HostImport &imp = it->second;
         b->last_import_id = imp.id;
+        trace_host_import(b, imp.id);
         uint64_t ret = aev_load(s, s->rsp, 8, 0);
         if (s->error_code) {
             b->last_failure = AEV_BRIDGE_ERR_MEMORY;
@@ -187,6 +285,7 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         b->last_failure = AEV_BRIDGE_ERR_NO_BLOCK;
         s->error_code = AEV_ERR_BAD_TARGET;
         s->error_pc = rip;
+        trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_NO_BLOCK);
         return -1;
     }
     const aev::Block *block = b->program.find_block(rip);
@@ -194,18 +293,21 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         b->last_failure = AEV_BRIDGE_ERR_NO_BLOCK;
         s->error_code = AEV_ERR_BAD_TARGET;
         s->error_pc = rip;
+        trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_NO_BLOCK);
         return -1;
     }
     if (!block->jit_only) {
         b->last_failure = AEV_BRIDGE_ERR_JIT;
         s->error_code = AEV_ERR_JIT;
         s->error_pc = rip;
+        trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_JIT);
         return -1;
     }
     if (b->test_fault_mode == 1 && rip == b->test_fault_rip) {
         b->last_failure = AEV_BRIDGE_ERR_JIT;
         s->error_code = AEV_ERR_JIT;
         s->error_pc = rip;
+        trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_JIT);
         return -1;
     }
 
@@ -216,6 +318,7 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
             s->error_code = AEV_ERR_JIT;
             s->error_pc = rip;
         }
+        trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_JIT);
     }
     return rc;
 }
@@ -277,6 +380,7 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         return AEV_BRIDGE_ERR_LOAD;
     }
     b->input_hash = object.content_hash;
+    std::memcpy(b->input_sha256, object.content_sha256, sizeof(b->input_sha256));
 
     std::vector<std::string> names{b->function_name};
     std::vector<uint64_t> addresses{b->entry_addr};
@@ -295,6 +399,11 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         set_error(err, err_cap, std::string("dlopen failed: ") + dlerror());
         return AEV_BRIDGE_ERR_LOAD;
     }
+    std::string aot_hash_error;
+    if (!aev::sha256_file(b->aot_path, b->aot_sha256, &aot_hash_error)) {
+        set_error(err, err_cap, "AOT SHA-256 failed: " + aot_hash_error);
+        return AEV_BRIDGE_ERR_LOAD;
+    }
     b->aot_run = reinterpret_cast<AotRunFn>(dlsym(b->aot_handle, "aev_aot_run"));
     const uint64_t *aot_abi =
         static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_aot_abi_version"));
@@ -302,39 +411,109 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_guest_state_size"));
     const uint64_t *aot_input_hash =
         static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_input_hash"));
+    const uint8_t *aot_input_sha =
+        static_cast<const uint8_t *>(dlsym(b->aot_handle, "aev_input_sha256"));
+    const uint64_t *aot_artifact_abi =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_artifact_abi_version"));
+    const uint64_t *aot_translator_abi =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_translator_abi_version"));
+    const uint64_t *aot_entry_addr =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_entry_addr"));
+    const uint8_t *aot_function_sha =
+        static_cast<const uint8_t *>(dlsym(b->aot_handle, "aev_function_name_sha256"));
+    const char *aot_target =
+        static_cast<const char *>(dlsym(b->aot_handle, "aev_target_triple"));
     const AevBlock *aot_blocks =
         static_cast<const AevBlock *>(dlsym(b->aot_handle, "aev_blocks"));
     const uint64_t *aot_block_count =
         static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_block_count"));
+    const uint64_t *aot_all_count =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_all_block_count"));
+    const uint64_t *aot_all_blocks =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_all_blocks"));
     if (!b->aot_run || !aot_abi || !aot_guest_size || !aot_input_hash ||
-        !aot_blocks || !aot_block_count) {
+        !aot_input_sha || !aot_artifact_abi || !aot_translator_abi ||
+        !aot_entry_addr || !aot_function_sha || !aot_target || !aot_blocks ||
+        !aot_block_count || !aot_all_count || !aot_all_blocks) {
         set_error(err, err_cap, "AOT dylib is missing required ABI/identity symbols");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
     if (*aot_abi != AEV_GUEST_ABI_VERSION ||
-        *aot_guest_size != (uint64_t)sizeof(GuestState)) {
-        set_error(err, err_cap, "AOT dylib ABI/guest-state size mismatch");
+        *aot_guest_size != (uint64_t)sizeof(GuestState) ||
+        *aot_artifact_abi != AEV_ARTIFACT_ABI_VERSION ||
+        *aot_translator_abi != AEV_TRANSLATOR_ABI_VERSION) {
+        set_error(err, err_cap, "AOT dylib ABI/guest-state/artifact/translator mismatch");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
-    if (*aot_input_hash != b->input_hash) {
-        set_error(err, err_cap, "AOT dylib input hash does not match COFF bytes");
+    if (*aot_input_hash != b->input_hash ||
+        std::memcmp(aot_input_sha, b->input_sha256, 32) != 0) {
+        set_error(err, err_cap, "AOT dylib input identity does not match COFF bytes");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
+    if (*aot_entry_addr != b->entry_addr) {
+        set_error(err, err_cap, "AOT dylib entry address mismatch");
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    uint8_t expected_function_sha[32];
+    aev::sha256(b->function_name.data(), b->function_name.size(), expected_function_sha);
+    if (std::memcmp(aot_function_sha, expected_function_sha, 32) != 0) {
+        set_error(err, err_cap, "AOT dylib function-name identity mismatch");
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    if (std::string(aot_target) != AEV_AOT_TARGET_TRIPLE) {
+        set_error(err, err_cap, std::string("AOT target mismatch: ") + aot_target);
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    b->target_triple = aot_target;
 
-    std::vector<uint64_t> expected_blocks;
+    std::vector<uint64_t> expected_all;
     for (const auto &fn : b->program.functions)
         for (const auto &block : fn.blocks)
-            if (!block.jit_only)
-                expected_blocks.push_back(block.address);
-    std::sort(expected_blocks.begin(), expected_blocks.end());
-    if (*aot_block_count != expected_blocks.size()) {
-        set_error(err, err_cap, "AOT block count does not match translated program");
+            expected_all.push_back(block.address);
+    std::sort(expected_all.begin(), expected_all.end());
+    if (*aot_all_count != expected_all.size()) {
+        set_error(err, err_cap, "AOT all-block count does not match translated program");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
-    for (size_t i = 0; i < expected_blocks.size(); ++i) {
-        if (!aot_blocks[i].fn || aot_blocks[i].rip != expected_blocks[i]) {
-            set_error(err, err_cap, "AOT block table does not match translated program");
+    for (size_t i = 0; i < expected_all.size(); ++i) {
+        if (aot_all_blocks[i] != expected_all[i]) {
+            set_error(err, err_cap, "AOT all-block table does not match translated program");
             return AEV_BRIDGE_ERR_ABI_MISMATCH;
+        }
+    }
+    b->all_blocks = expected_all;
+    b->aot_selected.clear();
+    std::set<uint64_t> selected_set;
+    for (uint64_t i = 0; i < *aot_block_count; ++i) {
+        uint64_t rip = aot_blocks[i].rip;
+        if (!aot_blocks[i].fn ||
+            !std::binary_search(expected_all.begin(), expected_all.end(), rip) ||
+            (i > 0 && aot_blocks[i - 1].rip >= rip) ||
+            !selected_set.insert(rip).second) {
+            set_error(err, err_cap, "AOT selected block table is invalid or unsorted");
+            return AEV_BRIDGE_ERR_ABI_MISMATCH;
+        }
+        char symbol[64];
+        std::snprintf(symbol, sizeof(symbol), "aev_blk_%llx",
+                      (unsigned long long)rip);
+        void *expected_fn = dlsym(b->aot_handle, symbol);
+        if (!expected_fn ||
+            reinterpret_cast<void *>(aot_blocks[i].fn) != expected_fn) {
+            set_error(err, err_cap, "AOT selected block fn/table mismatch");
+            return AEV_BRIDGE_ERR_ABI_MISMATCH;
+        }
+        b->aot_selected.push_back(rip);
+    }
+    b->aot_table_count = (uint32_t)*aot_block_count;
+    for (auto &fn : b->program.functions) {
+        for (auto &block : fn.blocks) {
+            if (!selected_set.count(block.address)) {
+                block.jit_only = true;
+                block.jit_reason = "not selected in AOT coverage";
+            } else {
+                block.jit_only = false;
+                block.jit_reason.clear();
+            }
         }
     }
 
@@ -378,6 +557,8 @@ AevBridgeStatus aev_bridge_destroy(AevBridge *b) {
         return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
     if (b->in_call)
         return AEV_BRIDGE_ERR_REENTRY;
+    if (b->trace_open)
+        (void)aev_bridge_trace_close(b);
     destroy_resources(b);
     delete b;
     return AEV_BRIDGE_OK;
@@ -391,6 +572,109 @@ int aev_bridge_guest_info(const AevBridge *b, uint64_t *base, uint64_t *size,
     *size = b->mem_size;
     *stack_base = b->stack_base;
     *stack_top = b->stack_top;
+    return AEV_BRIDGE_OK;
+}
+
+AevBridgeStatus aev_bridge_artifact_info(const AevBridge *b, AevArtifactInfo *info,
+                                         char *err, size_t err_cap) {
+    if (!b || !info || info->struct_size != sizeof(AevArtifactInfo) ||
+        info->abi_version != AEV_ARTIFACT_INFO_ABI_VERSION) {
+        set_error(err, err_cap, "invalid artifact info struct");
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    std::memset(info, 0, sizeof(*info));
+    info->struct_size = sizeof(AevArtifactInfo);
+    info->abi_version = AEV_ARTIFACT_INFO_ABI_VERSION;
+    info->aot_table_count = b->aot_table_count;
+    info->all_block_count = (uint32_t)b->all_blocks.size();
+    info->artifact_abi_version = AEV_ARTIFACT_ABI_VERSION;
+    info->translator_abi_version = AEV_TRANSLATOR_ABI_VERSION;
+    info->entry_addr = b->entry_addr;
+    std::memcpy(info->input_sha256, b->input_sha256, sizeof(info->input_sha256));
+    std::memcpy(info->aot_sha256, b->aot_sha256, sizeof(info->aot_sha256));
+    std::snprintf(info->target_triple, sizeof(info->target_triple), "%s",
+                  b->target_triple.c_str());
+    return AEV_BRIDGE_OK;
+}
+
+AevBridgeStatus aev_bridge_trace_open(AevBridge *b, const char *path,
+                                      const char *scenario,
+                                      char *err, size_t err_cap) {
+    if (!b || !path || !scenario) {
+        set_error(err, err_cap, "invalid trace path/scenario");
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    if (std::this_thread::get_id() != b->owner) {
+        set_error(err, err_cap, "trace_open must run on the bridge owner thread");
+        return AEV_BRIDGE_ERR_WRONG_THREAD;
+    }
+    if (b->in_call) {
+        set_error(err, err_cap, "cannot open trace during a guest call");
+        return AEV_BRIDGE_ERR_REENTRY;
+    }
+    if (b->trace_open) {
+        set_error(err, err_cap, "trace already open");
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    b->trace_stream.open(path, std::ios::out | std::ios::trunc);
+    if (!b->trace_stream) {
+        set_error(err, err_cap, "cannot open trace file");
+        return AEV_BRIDGE_ERR_LOAD;
+    }
+    b->trace_scenario = scenario;
+    b->trace_open = true;
+    b->trace_stream << "{\"record\":\"header\",\"trace_abi\":"
+                    << AEV_TRACE_ABI_VERSION << ",\"scenario\":\""
+                    << json_escape(b->trace_scenario) << "\",\"input_sha256\":\""
+                    << aev::hex_bytes(b->input_sha256, 32)
+                    << "\",\"input_fnv\":\"" << aev::hex64(b->input_hash)
+                    << "\",\"entry\":\"" << aev::hex64(b->entry_addr)
+                    << "\",\"function\":\"" << json_escape(b->function_name)
+                    << "\",\"aot_sha256\":\""
+                    << aev::hex_bytes(b->aot_sha256, 32)
+                    << "\",\"callback_abi\":" << AEV_CALLBACK_ABI_VERSION
+                    << ",\"guest_abi\":" << AEV_GUEST_ABI_VERSION
+                    << ",\"aot_artifact_abi\":" << AEV_ARTIFACT_ABI_VERSION
+                    << ",\"translator_abi\":" << AEV_TRANSLATOR_ABI_VERSION
+                    << ",\"target\":\"" << json_escape(b->target_triple)
+                    << "\",\"translator_version\":\"aev-translate-v1\""
+                    << ",\"trace_tool_version\":\"aev-trace-sink-v1\""
+                    << ",\"all_blocks\":";
+    trace_array(b->trace_stream, b->all_blocks);
+    b->trace_stream << ",\"aot_selected\":";
+    trace_array(b->trace_stream, b->aot_selected);
+    b->trace_stream << "}\n";
+    b->trace_stream.flush();
+    if (!b->trace_stream) {
+        b->trace_stream.close();
+        b->trace_open = false;
+        set_error(err, err_cap, "cannot write trace header");
+        return AEV_BRIDGE_ERR_LOAD;
+    }
+    b->trace_sink.abi_version = AEV_TRACE_ABI_VERSION;
+    b->trace_sink.reserved = 0;
+    b->trace_sink.on_block = bridge_trace_on_block;
+    b->trace_sink.ctx = b;
+    b->jit->set_trace_hook(b, bridge_jit_trace);
+    return AEV_BRIDGE_OK;
+}
+
+AevBridgeStatus aev_bridge_trace_close(AevBridge *b) {
+    if (!b) {
+        return AEV_BRIDGE_ERR_INVALID_ARGUMENT;
+    }
+    if (b->in_call) {
+        return AEV_BRIDGE_ERR_REENTRY;
+    }
+    if (b->trace_open) {
+        b->trace_stream.flush();
+        b->trace_stream.close();
+        b->trace_open = false;
+        std::memset(&b->trace_sink, 0, sizeof(b->trace_sink));
+        if (b->jit)
+            b->jit->set_trace_hook(nullptr, nullptr);
+        b->state.reserved0 = 0;
+    }
     return AEV_BRIDGE_OK;
 }
 
@@ -493,6 +777,9 @@ int aev_bridge_call(AevBridge *b, uint64_t entry_addr,
     b->state.r8 = a2;
     b->state.r9 = a3;
     b->state.trace_enabled = b->trace_aot ? 1 : 0;
+    b->state.reserved0 = b->trace_open
+                             ? (uint64_t)(uintptr_t)&b->trace_sink
+                             : 0;
     const uint64_t sentinel = AEV_GUEST_SENTINEL;
     std::memcpy(reinterpret_cast<void *>(static_cast<uintptr_t>(b->entry_rsp)),
                 &sentinel, sizeof(sentinel));
@@ -512,6 +799,8 @@ int aev_bridge_call(AevBridge *b, uint64_t entry_addr,
         if (!b->state.error_pc)
             b->state.error_pc = b->state.rip;
     }
+    trace_call_end(b, status);
+    b->state.reserved0 = 0;
 
     result->status = (uint32_t)status;
     result->guest_error = (uint32_t)b->state.error_code;

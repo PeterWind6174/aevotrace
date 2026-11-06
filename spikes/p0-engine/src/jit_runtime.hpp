@@ -24,6 +24,8 @@ class JitRuntime {
     bool init(std::string *error);
     void set_trace(bool enabled);
     void set_dump_jit(bool enabled);
+    using TraceHook = void (*)(void *ctx, uint32_t source, uint64_t rip);
+    void set_trace_hook(void *ctx, TraceHook hook);
 
     /* Compiles/caches a jit_only block and executes it.  On failure sets
      * GuestState.error_code/error_pc and returns -1. */

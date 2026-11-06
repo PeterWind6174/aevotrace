@@ -168,4 +168,9 @@ void aev_note_aot(GuestState *s, uint64_t rip) {
     s->aot_blocks++;
     if (s->trace_enabled)
         fprintf(stderr, "AOT  rip=0x%llx\n", (unsigned long long)rip);
+    if (s->reserved0) {
+        AevTraceSink *sink = (AevTraceSink *)(uintptr_t)s->reserved0;
+        if (sink->abi_version == AEV_TRACE_ABI_VERSION && sink->on_block)
+            sink->on_block(sink->ctx, AEV_TRACE_SINK_SOURCE_AOT, rip);
+    }
 }
