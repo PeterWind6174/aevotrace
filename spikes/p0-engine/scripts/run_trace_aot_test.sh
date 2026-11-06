@@ -85,9 +85,11 @@ else
 fi
 rm -f "$OUT/.callback_bad_publish.$$.dylib"
 CALLBACK_PUBLISHED_AFTER=$(shasum -a 256 "$OUT/libcallback_aot_supplemented.dylib" | awk '{print $1}')
-[ "$CALLBACK_PUBLISHED_BEFORE" = "$CALLBACK_PUBLISHED_AFTER" ] ||
+if [ "$CALLBACK_PUBLISHED_BEFORE" = "$CALLBACK_PUBLISHED_AFTER" ]; then
+    pass "failed publish preserved the previous dylib"
+else
     fail "failed publish changed the previous dylib"
-pass "failed publish preserved the previous dylib"
+fi
 "$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$CB_COFF" \
     --aot "$OUT/libcallback_aot_supplemented.dylib" --entry 0x140001000 \
     --function aev_guest_callback --fixture callback --mode supplemented \
@@ -181,6 +183,73 @@ assert not any(e.get('record')=='jit_compile' and e.get('rip')=='0x140001015' fo
 print('TRACE_SUPP_OK', ra, rb)
 PY
 
+echo "== B-only supplement (actual executed union) =="
+"$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
+    --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
+    --base-aot "$TR_BASE" --trace "$OUT/trace_base_B.jsonl" \
+    --out-ll "$OUT/trace_B_only.ll" --out-header "$OUT/trace_B_only.h" \
+    --out-manifest "$OUT/trace_B_only.json" >"$OUT/trace_B_only.stdout"
+clang --target=arm64-apple-macos14.0 -O2 -c "$OUT/trace_B_only.ll" -o "$OUT/trace_B_only.o"
+TRACE_B_TMP="$OUT/.trace_B_only.$$.dylib"
+clang -arch arm64 -dynamiclib -o "$TRACE_B_TMP" \
+    "$OUT/trace_B_only.o" "$RT_OBJ" "$MEM_OBJ"
+"$PY" "$SRC_DIR/scripts/publish_aot.py" --dylib-tmp "$TRACE_B_TMP" \
+    --dylib-out "$OUT/libtrace_aot_B_only.dylib" \
+    --manifest-in "$OUT/trace_B_only.json" \
+    --manifest-out "$OUT/trace_B_only.json" \
+    --promoted-rip 0x140001015 --expected-table 4
+rm -f "$TRACE_B_TMP"
+"$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$TR_COFF" \
+    --aot "$OUT/libtrace_aot_B_only.dylib" --entry 0x140001000 \
+    --function aev_trace_guest --fixture trace --mode supplemented --case B \
+    --trace "$OUT/trace_B_only_run.jsonl" --scenario B \
+    --expected-aot-table 4 --promoted-rip 0x140001015 --expect-promoted-selected \
+    >"$OUT/trace_B_only_run.json" 2>"$OUT/trace_B_only_run.stderr"
+"$PY" - "$OUT/trace_B_only_run.json" "$OUT/trace_B_only_run.jsonl" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); r=d['results'][0]
+assert r['status']==0 and r['guest_rax']==45320, r
+assert r['jit_compiles']==0 and r['jit_execs']==0, r
+assert d['artifact_info']['aot_table_count']==4, d['artifact_info']
+events=[json.loads(x) for x in open(sys.argv[2]) if x.strip()]
+assert any(e.get('record')=='aot' and e.get('rip')=='0x140001015' for e in events), 'B block not AOT'
+assert not any(e.get('record')=='jit_compile' and e.get('rip')=='0x140001015' for e in events), 'B block still JIT'
+print('TRACE_B_ONLY_OK', r)
+PY
+
+echo "== no-JIT supplement (same coverage) =="
+"$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$TR_COFF" \
+    --function aev_trace_guest --entry aev_trace_guest --entry-addr 0x140001000 \
+    --base-aot "$TR_BASE" --trace "$OUT/trace_base_A.jsonl" \
+    --out-ll "$OUT/trace_nojit.ll" --out-header "$OUT/trace_nojit.h" \
+    --out-manifest "$OUT/trace_nojit.json" >"$OUT/trace_nojit.stdout"
+clang --target=arm64-apple-macos14.0 -O2 -c "$OUT/trace_nojit.ll" -o "$OUT/trace_nojit.o"
+TRACE_NJ_TMP="$OUT/.trace_nojit.$$.dylib"
+clang -arch arm64 -dynamiclib -o "$TRACE_NJ_TMP" \
+    "$OUT/trace_nojit.o" "$RT_OBJ" "$MEM_OBJ"
+"$PY" "$SRC_DIR/scripts/publish_aot.py" --dylib-tmp "$TRACE_NJ_TMP" \
+    --dylib-out "$OUT/libtrace_aot_nojit.dylib" \
+    --manifest-in "$OUT/trace_nojit.json" \
+    --manifest-out "$OUT/trace_nojit.json" \
+    --promoted-rip 0x140001026 --expected-table 4
+rm -f "$TRACE_NJ_TMP"
+"$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$TR_COFF" \
+    --aot "$OUT/libtrace_aot_nojit.dylib" --entry 0x140001000 \
+    --function aev_trace_guest --fixture trace --mode supplemented --case A \
+    --trace "$OUT/trace_nojit_run.jsonl" --scenario A \
+    --expected-aot-table 4 --promoted-rip 0x140001026 --expect-promoted-selected \
+    >"$OUT/trace_nojit_run.json" 2>"$OUT/trace_nojit_run.stderr"
+"$PY" - "$OUT/trace_nojit_run.json" "$OUT/trace_nojit.json" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); r=d['results'][0]
+m=json.load(open(sys.argv[2]))
+assert r['status']==0 and r['guest_rax']==3922, r
+assert r['jit_compiles']==0 and r['jit_execs']==0, r
+assert d['artifact_info']['aot_table_count']==4, d['artifact_info']
+assert m.get('promoted_blocks')==[], m.get('promoted_blocks')
+print('TRACE_NOJIT_OK', r)
+PY
+
 echo "== negative trace/artifact cases =="
 "$PY" - "$OUT/callback_base.jsonl" "$OUT" <<'PY'
 import json, pathlib, sys
@@ -253,6 +322,29 @@ def bad_call_end_status_string(xs):
             x["status"]="0"
             break
 write("bad_call_end_status_string.jsonl", bad_call_end_status_string)
+def bad_call_bool(xs):
+    for x in xs[1:]:
+        x["call"]=True
+        break
+write("bad_call_bool.jsonl", bad_call_bool)
+def bad_status_bool(xs):
+    for x in xs:
+        if x.get("record")=="call_end":
+            x["status"]=False
+            break
+write("bad_status_bool.jsonl", bad_status_bool)
+def bad_offset_float(xs):
+    for x in xs:
+        if x.get("record")=="aot":
+            x["offset"]=1.5
+            break
+write("bad_offset_float.jsonl", bad_offset_float)
+def bad_guest_error_bool(xs):
+    for x in xs:
+        if x.get("record")=="call_end":
+            x["guest_error"]=False
+            break
+write("bad_guest_error_bool.jsonl", bad_guest_error_bool)
 write("bad_json_array.jsonl", lambda xs: xs.append([]))
 (out/"bad_malformed.jsonl").write_text(json.dumps(header)+"\n{not json\n")
 PY
@@ -261,7 +353,8 @@ for bad in bad_sha bad_aot_sha bad_aot_missing bad_block bad_all bad_unsorted \
            bad_artifact_abi bad_callback_abi bad_guest_abi \
            bad_selected_duplicate bad_aot_unselected bad_jit_selected \
            bad_jit_identity bad_interleaved bad_host_args bad_trunc bad_failed \
-           bad_call_end_missing bad_call_end_status_string bad_json_array \
+           bad_call_end_missing bad_call_end_status_string bad_call_bool \
+           bad_status_bool bad_offset_float bad_guest_error_bool bad_json_array \
            bad_malformed; do
     rm -f "$OUT/${bad}_out.ll" "$OUT/${bad}_out.json"
     if "$PY" "$SUPPLEMENT" --translator "$TRANSLATOR" --input "$CB_COFF" \
@@ -308,14 +401,17 @@ def arr(name,text):
     return f"@{name} = constant [{len(data)} x i8] [" + ", ".join(f"i8 {b}" for b in data) + "]\n"
 wrong_target=re.sub(r"@aev_target_triple = constant \[[^\n]*\n",
                     arr("aev_target_triple","arm64-apple-macosx13.0.0"), src, count=1)
-if wrong_all==src or wrong_fn==src or wrong_duplicate==src or wrong_target==src:
+wrong_count=src.replace("@aev_block_count = constant i64 5",
+                        "@aev_block_count = constant i64 6", 1)
+if wrong_all==src or wrong_fn==src or wrong_duplicate==src or wrong_target==src or wrong_count==src:
     raise SystemExit("could not mutate AOT tables")
 (out/"wrong_all.ll").write_text(wrong_all)
 (out/"wrong_fn.ll").write_text(wrong_fn)
 (out/"wrong_duplicate.ll").write_text(wrong_duplicate)
 (out/"wrong_target.ll").write_text(wrong_target)
+(out/"wrong_count.ll").write_text(wrong_count)
 PY
-for kind in wrong_all wrong_fn wrong_duplicate wrong_target; do
+for kind in wrong_all wrong_fn wrong_duplicate wrong_target wrong_count; do
     clang --target=arm64-apple-macos14.0 -O2 -c "$OUT/${kind}.ll" -o "$OUT/${kind}.o"
     clang -arch arm64 -dynamiclib -o "$OUT/lib${kind}.dylib" "$OUT/${kind}.o" "$RT_OBJ" "$MEM_OBJ"
     if "$PY" "$TRACE_TEST" --lib "$BRIDGE" --coff "$CB_COFF" \
@@ -325,6 +421,21 @@ for kind in wrong_all wrong_fn wrong_duplicate wrong_target; do
         fail "$kind AOT table accepted"
     else
         pass "$kind AOT table rejected"
+    fi
+    PUB_OUT="$OUT/.published_${kind}.dylib"
+    PUB_MAN="$OUT/.published_${kind}.json"
+    rm -f "$PUB_OUT" "$PUB_MAN"
+    if "$PY" "$SRC_DIR/scripts/publish_aot.py" \
+        --dylib-tmp "$OUT/lib${kind}.dylib" --dylib-out "$PUB_OUT" \
+        --manifest-in "$OUT/callback_supp.json" --manifest-out "$PUB_MAN" \
+        --promoted-rip 0x140001020 --expected-table 5 \
+        >"$OUT/publish_${kind}.stdout" 2>"$OUT/publish_${kind}.stderr"; then
+        fail "$kind publisher accepted a bad dylib"
+    else
+        pass "$kind publisher rejected a bad dylib"
+    fi
+    if [ -e "$PUB_OUT" ] || [ -e "$PUB_MAN" ]; then
+        fail "$kind publisher left partial output"
     fi
 done
 
@@ -354,8 +465,11 @@ base_hash_before=$(shasum -a 256 "$CB_BASE" | awk '{print $1}')
     --entry 0x140001000 --function aev_guest_callback --fixture callback \
     --mode base --expected-aot-table 4 >"$OUT/base_recheck.json" 2>"$OUT/base_recheck.stderr"
 base_hash_after=$(shasum -a 256 "$CB_BASE" | awk '{print $1}')
-[ "$base_hash_before" = "$base_hash_after" ] || fail "base artifact was overwritten"
-pass "base artifact unchanged and re-runnable"
+if [ "$base_hash_before" = "$base_hash_after" ]; then
+    pass "base artifact unchanged and re-runnable"
+else
+    fail "base artifact was overwritten"
+fi
 
 echo
 if [ "$FAILURES" -eq 0 ]; then

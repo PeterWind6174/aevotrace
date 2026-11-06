@@ -483,6 +483,11 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
     }
     b->all_blocks = expected_all;
     b->aot_selected.clear();
+    if (*aot_block_count > expected_all.size() ||
+        *aot_block_count > *aot_all_count) {
+        set_error(err, err_cap, "AOT selected block count exceeds all-block table");
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
     std::set<uint64_t> selected_set;
     for (uint64_t i = 0; i < *aot_block_count; ++i) {
         uint64_t rip = aot_blocks[i].rip;

@@ -31,13 +31,15 @@ def sha256_file(path: Path) -> str:
 
 
 def run_translator(args, input_path, function, entry, out_ll, out_header, out_manifest,
-                   includes):
+                   includes, excludes=()):
     cmd = [str(args.translator), "--input", str(input_path),
            "--function", function, "--entry", entry,
            "--out-ll", str(out_ll), "--out-header", str(out_header),
            "--out-manifest", str(out_manifest)]
     for rip in sorted(includes):
         cmd += ["--aot-include-rip", hex(rip)]
+    for rip in sorted(excludes):
+        cmd += ["--aot-exclude-rip", hex(rip)]
     proc = subprocess.run(cmd, text=True, capture_output=True)
     if proc.returncode != 0:
         raise SystemExit(
@@ -46,11 +48,17 @@ def run_translator(args, input_path, function, entry, out_ll, out_header, out_ma
 
 
 def parse_hex(value, what):
-    if isinstance(value, int):
+    if type(value) is int:
         return value
     if not isinstance(value, str):
         raise ValueError(f"{what}: expected hex string")
     return int(value, 0)
+
+
+def parse_int(value, what):
+    if type(value) is not int:
+        raise ValueError(f"{what}: expected integer")
+    return value
 
 
 def load_manifest(path: Path):
@@ -130,7 +138,7 @@ def validate_events(path: Path, blocks, header_selected):
                               "dispatch_miss", "call_end"):
                 raise ValueError(f"{path}:{lineno}: unknown record {record!r}")
             call = ev.get("call")
-            if not isinstance(call, int) or call <= 0:
+            if type(call) is not int or call <= 0:
                 raise ValueError(f"{path}:{lineno}: invalid call id")
             if call < last_call:
                 raise ValueError(f"{path}:{lineno}: call ids are not monotonic")
@@ -147,13 +155,13 @@ def validate_events(path: Path, blocks, header_selected):
                 if call in call_end:
                     raise ValueError(f"{path}:{lineno}: duplicate call_end")
                 status = ev.get("status")
-                if not isinstance(status, int) or status != 0:
+                if type(status) is not int or status != 0:
                     raise ValueError(f"{path}:{lineno}: failed/invalid call_end status")
                 if "error_pc" not in ev or "guest_error" not in ev:
                     raise ValueError(f"{path}:{lineno}: call_end missing error fields")
                 parse_hex(ev["error_pc"], "error_pc")
                 guest_error = ev["guest_error"]
-                if not isinstance(guest_error, int) or guest_error < 0:
+                if type(guest_error) is not int or guest_error < 0:
                     raise ValueError(f"{path}:{lineno}: invalid guest_error")
                 call_end[call] = status
                 continue
@@ -167,8 +175,9 @@ def validate_events(path: Path, blocks, header_selected):
                         "block_sha256" not in ev):
                     raise ValueError(f"{path}:{lineno}: block identity missing")
                 expected = blocks[rip]
-                if int(ev["offset"]) != int(expected["section_offset"]) or \
-                        int(ev["size"]) != int(expected["size"]) or \
+                if parse_int(ev["offset"], "offset") != int(expected["section_offset"]) or \
+                        parse_int(ev["size"], "size") != int(expected["size"]) or \
+                        not isinstance(ev["block_sha256"], str) or \
                         ev["block_sha256"] != expected["sha256"]:
                     raise ValueError(f"{path}:{lineno}: block identity mismatch")
                 if record == "aot" and rip not in header_selected:
@@ -179,11 +188,11 @@ def validate_events(path: Path, blocks, header_selected):
             elif record == "host_import":
                 if any(k in ev for k in ("a0", "a1", "a2", "a3")):
                     raise ValueError(f"{path}:{lineno}: host_import must be id-only")
-                if not isinstance(ev.get("id"), int) or ev["id"] <= 0:
+                if type(ev.get("id")) is not int or ev["id"] <= 0:
                     raise ValueError(f"{path}:{lineno}: invalid host import id")
             elif record == "dispatch_miss":
                 parse_hex(ev.get("rip"), "rip")
-                if not isinstance(ev.get("status"), int):
+                if type(ev.get("status")) is not int:
                     raise ValueError(f"{path}:{lineno}: dispatch_miss missing status")
     if not seen_calls:
         raise ValueError(f"{path}: no calls")
@@ -300,21 +309,23 @@ def main() -> int:
         if not selected:
             raise SystemExit("no executed blocks selected from traces")
         selected_list = sorted(selected)
+        all_list = sorted(blocks)
+        excludes = [rip for rip in all_list if rip not in selected]
         base_selected = {int(b["rip"]) for b in blocks.values() if not b["jit_only"]}
-        if not (selected - base_selected):
-            raise SystemExit("no JIT-discovered block to supplement")
 
         final_ll = work / "final.ll"
         final_header = work / "final.h"
         final_manifest = work / "final.json"
         run_translator(args, input_path, args.function, args.entry,
-                       final_ll, final_header, final_manifest, selected_list)
+                       final_ll, final_header, final_manifest, selected_list,
+                       excludes)
         final_data, final_blocks = load_manifest(final_manifest)
         if final_data.get("input_sha256") != input_sha:
             raise SystemExit("supplement manifest input SHA mismatch")
-        for rip in selected_list:
-            if final_blocks.get(rip, {}).get("jit_only"):
-                raise SystemExit(f"selected block still jit_only: {hex(rip)}")
+        for rip in all_list:
+            expected_jit = rip not in selected
+            if final_blocks.get(rip, {}).get("jit_only") != expected_jit:
+                raise SystemExit(f"selected coverage mismatch at {hex(rip)}")
         final_data["selected_blocks"] = selected_list
         final_data["trace_files"] = [
             {"path": p, "sha256": h} for p, h in sorted(trace_hashes.items())

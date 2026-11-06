@@ -4,8 +4,10 @@ Status: **spike, not a frozen product ABI and not a support claim**.  This is th
 P0-ENGINE-01 evidence package: a real MSVC-built x86-64 COFF fixture is decoded
 from its `.text` bytes, translated to LLVM IR, compiled to an ARM64 Mach-O
 object, linked into a dylib, loaded by a fresh runner process, and executed.
-A block containing `imul` is deliberately omitted from AOT coverage and is
-compiled/executed by LLVM ORC at runtime; it returns to the AOT dispatcher.
+Default/base coverage deliberately omits the block containing `imul`, which is
+compiled/executed by LLVM ORC at runtime and returns to the AOT dispatcher.
+With explicit coverage selection the AOT emitter can emit supported `imul`
+forms; P0-TRACE-AOT-01 uses that to promote an observed JIT block.
 
 ## Layout
 
@@ -51,7 +53,7 @@ The fixture exercises:
 - array read/write through a guest pointer;
 - an indirect call through the fourth argument (`call r15`) into a second
   translated guest function;
-- a variable `imul eax, ebp`, intentionally outside the AOT subset.
+- a variable `imul eax, ebp`, outside default/base coverage but selectable for AOT.
 
 Fixed input hashes and the reference output are recorded in `REPORT.md`.
 
@@ -74,7 +76,8 @@ ctest --test-dir .local/build-core-fix --output-on-failure
 ```
 
 `ctest` runs the original closed-loop test, the P0-CORE-FIX-01
-instruction-semantics test, and the zero-AOT-block test.  The semantics test
+instruction-semantics test, the zero-AOT-block test, the callback-bridge test,
+and the P0-TRACE-AOT-01 trace/AOT test.  The semantics test
 can be run directly (it assembles the committed `.s` counterexamples with the
 same clang used by the build):
 
@@ -83,6 +86,23 @@ AEV_RESULTS_DIR="$PWD/.local/results/semantics" \
   spikes/p0-engine/scripts/run_semantics_tests.sh \
   .local/build-core-fix spikes/p0-engine
 ```
+
+Trace/AOT supplement entry point (P0-TRACE-AOT-01):
+
+```sh
+python3 spikes/p0-engine/scripts/aot_supplement.py \
+  --translator <build>/aev-translate --input <coff> \
+  --function <name> --entry <name> --entry-addr 0x140001000 \
+  --base-aot <base.dylib> --trace <trace.jsonl> \
+  --out-ll <supp.ll> --out-header <supp.h> --out-manifest <supp.json>
+python3 spikes/p0-engine/scripts/publish_aot.py --dylib-tmp <tmp.dylib> \
+  --dylib-out <supp.dylib> --manifest-in <supp.json> --manifest-out <supp.json> \
+  --promoted-rip <hex> --expected-table <N>
+```
+
+`run_trace_aot_test.sh` covers callback JIT→supplement→new process, trace
+fixture A/B and B-only/no-JIT supplement, publisher rejection, trace lifecycle,
+and the negative matrix.
 
 The semantics script exercises the ORC JIT path (`aev-jit-probe`), a separately
 loaded ARM64 AOT dylib (`aev-aot-probe`), and the IMUL helper in both the host
@@ -188,11 +208,11 @@ the AOT dispatcher (or JIT dispatcher) returns the error.
   used.  The dylib is unsigned and not distributed.
 - The JIT compiles one known block from the same translator library; there is no
   persistent JIT cache and no claim that a JIT cache equals an AOT artifact.
-- `imul` is intentionally excluded from AOT to force the hand-off; the JIT
-  implements it.  This is a coverage-boundary test, not a statement that the
-  engine cannot implement `imul`.  Consequently F5's AOT check calls the
-  `aev_flags_imul` helper exported by the AOT dylib directly; there is no
-  generated AOT `imul` block to execute.
+- Default/base coverage intentionally excludes the `imul` block to preserve the
+  original JIT hand-off regression.  The AOT emitter itself supports the
+  two-/three-operand `imul` forms; P0-TRACE-AOT-01 selects observed blocks and
+  emits AOT `imul` in the supplemented artifact.  The original F5 check still
+  calls `aev_flags_imul` directly as a helper-level check.
 - One-operand `imul` at 8/16/32/64-bit and 16-bit `pushw`/`popw` are rejected.
   They are not executed.
 - Memory faults stop the block and set `error_code`/`error_pc`; there is no

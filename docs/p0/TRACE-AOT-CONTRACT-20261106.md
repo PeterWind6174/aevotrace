@@ -197,7 +197,7 @@ aev-aot-supplement --input <coff> --function <name> --entry <name> --entry-addr 
   - supplemented：`aot_table_count=5`、`total_jit_compiles=0`、`jit_execs=0`、`jit_compiles=0`、loop `jit_cached=true`；证明 promoted 块不再 JIT。
   - 两 profile 都保持结果控件/hash/counter/错误路径断言；精确 44 项 = 42 个原有检查名称（其中 helper-after-fault 的 4 个名称保留，仅在同名检查内升级为事件驱动/`backend.get_text` 实际控件断言）+ 1 个同名位置替换（`loop_100_jit_executed` → `loop_100_jit_policy`）+ 1 个新增 `aot_table_count` = 44。 compat/native 各跑两 profile。
 - supplemented GUI 必须绑定 supplement manifest、AOT 文件 SHA-256 和 selected 表中的 promoted RIP（callback `0x140001020`）；传入 base artifact 或 SHA 不匹配必须失败，不得 JIT 回退。
-- 增加真实按钮 → helper 成功 → Guest counter 故障 → 使用 `backend.get_text(result_handle)` 读取实际控件文本不变 → 恢复的事件驱动测试；替换原直接 `_call_guest` 的 helper-after-fault 检查以保持 43 项，不使用 Host 业务重写。
+- 增加真实按钮 → helper 成功 → Guest counter 故障 → 使用 `backend.get_text(result_handle)` 读取实际控件文本不变 → 恢复的事件驱动测试；替换原直接 `_call_guest` 的 helper-after-fault 检查以保持 44 项，不使用 Host 业务重写。
 - 增加 GUI artifact 拒绝负例：mutated/truncated AOT 或错误 selected table → 进程非零退出、`success=false`、`ABI_MISMATCH`/`LOAD`、无 Guest 结果提交、无 compat 回退。
 - GUI 脚本使用 `set -euo pipefail`；supplement 构建失败不得留下 base artifact 被当作 supplemented 使用。
 

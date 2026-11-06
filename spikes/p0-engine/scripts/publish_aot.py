@@ -73,6 +73,16 @@ def main() -> int:
     input_bytes = bytes((ctypes.c_ubyte * 32).in_dll(lib, "aev_input_sha256"))
     if input_bytes.hex() != input_sha:
         raise SystemExit("dylib input SHA-256 does not match manifest")
+    entry = ctypes.c_uint64.in_dll(lib, "aev_entry_addr").value
+    if entry != int(manifest["entry_address"]):
+        raise SystemExit("dylib entry address does not match manifest")
+    function_sha = bytes(
+        (ctypes.c_ubyte * 32).in_dll(lib, "aev_function_name_sha256")
+    ).hex()
+    if function_sha != manifest.get("entry_function_sha256"):
+        raise SystemExit("dylib function-name SHA does not match manifest")
+    if not hasattr(lib, "aev_aot_run"):
+        raise SystemExit("dylib is missing aev_aot_run")
     count = ctypes.c_uint64.in_dll(lib, "aev_block_count").value
     all_block_count = ctypes.c_uint64.in_dll(lib, "aev_all_block_count").value
     if count != args.expected_table or all_block_count != all_count:
@@ -90,13 +100,26 @@ def main() -> int:
         )
     if promoted not in selected:
         raise SystemExit(f"promoted RIP {hex(promoted)} not selected")
-    try:
-        getattr(lib, f"aev_blk_{promoted:x}")
-    except AttributeError as exc:
-        raise SystemExit(f"promoted block symbol missing: {exc}") from exc
+    for i, rip in enumerate(selected):
+        try:
+            symbol = getattr(lib, f"aev_blk_{rip:x}")
+        except AttributeError as exc:
+            raise SystemExit(f"selected block symbol missing: {exc}") from exc
+        if ctypes.cast(blocks[i].fn, ctypes.c_void_p).value != ctypes.cast(
+            symbol, ctypes.c_void_p
+        ).value:
+            raise SystemExit(f"selected fn pointer mismatch at {hex(rip)}")
     all_blocks = (ctypes.c_uint64 * all_block_count).in_dll(lib, "aev_all_blocks")
-    if list(all_blocks) != sorted(set(all_blocks)):
+    actual_all = list(all_blocks)
+    if actual_all != sorted(set(actual_all)):
         raise SystemExit("dylib all-block table is not sorted/unique")
+    manifest_all = sorted(
+        int(block["rip"])
+        for fn in manifest.get("functions", [])
+        for block in fn.get("blocks", [])
+    )
+    if actual_all != manifest_all:
+        raise SystemExit("dylib all-block table does not match manifest")
     arch = subprocess.check_output(["lipo", "-archs", str(tmp)], text=True).strip()
     if "arm64" not in arch.split():
         raise SystemExit(f"dylib is not an ARM64 slice: {arch}")
