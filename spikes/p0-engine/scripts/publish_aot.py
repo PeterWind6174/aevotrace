@@ -33,7 +33,7 @@ REQUIRED_MANIFEST = (
     "target", "artifact_abi", "translator_abi", "all_block_count",
     "module_kind", "module_file_size", "preferred_base", "load_base",
     "image_size", "image_sha256", "import_binding_sha256",
-    "host_binding_sha256", "entry_exports_sha256", "thunk_base",
+    "host_binding_sha256", "entry_exports_sha256", "entry_exports", "thunk_base",
     "import_count", "imports", "relocs_stripped",
     "base_aot_sha256", "base_selected_blocks", "selected_blocks",
     "promoted_blocks", "demoted_blocks",

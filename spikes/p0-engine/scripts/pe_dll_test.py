@@ -324,6 +324,9 @@ def run(driver: Driver) -> int:
     driver.check(m["thunk_base"] == hex(PREFERRED + 0x6000), "thunk base")
     driver.check(len(info_pref["exports"]) == 9, "export count")
     driver.check(len(info_pref["sections"]) == 5, "section count")
+    driver.check(info_pref["host_imports"][0]["id"] == 1, "host import id")
+    driver.check(info_pref["relocations"]["count"] == 1 and
+                 info_pref["relocations"]["delta"] == "0x0", "relocation summary")
     info_non = driver.info(NON_PREFERRED, "info-nonpreferred")
     driver.check(info_non["module"]["load_base"] == hex(NON_PREFERRED), "non-preferred load base")
     driver.check(info_non["module"]["thunk_base"] == hex(NON_PREFERRED + 0x6000), "non-preferred thunk base")
@@ -510,9 +513,9 @@ def run(driver: Driver) -> int:
 
     # 5. Negative paths.
     expect_load_error(driver, "neg-wrong-base-a", pe_dir / "aevguest.dll",
-                      contains="module identity", aot=base_dylib, load_base=NON_PREFERRED)
+                      contains="load_base", aot=base_dylib, load_base=NON_PREFERRED)
     expect_load_error(driver, "neg-wrong-base-b", pe_dir / "aevguest.dll",
-                      contains="module identity", aot=dylib190, load_base=PREFERRED)
+                      contains="load_base", aot=dylib190, load_base=PREFERRED)
     bad_registry = driver.art / "empty.aevimports"
     bad_registry.write_text("# empty\n")
     rc, data = driver.runner_json(
@@ -537,6 +540,17 @@ def run(driver: Driver) -> int:
         entry = int.from_bytes(d[raw_ptr + 8:raw_ptr + 10], "little")
         entry = (3 << 12) | (entry & 0x0FFF)
         d[raw_ptr + 8:raw_ptr + 10] = entry.to_bytes(2, "little")
+    def bad_reloc_size(d):
+        hdr = pe_headers(bytes(d))
+        data_dir = hdr["opt"] + 112
+        d[data_dir + 5 * 8 + 4:data_dir + 5 * 8 + 8] = (20).to_bytes(4, "little")
+        va, _, raw_ptr, _ = hdr["sections"][".reloc"]
+        d[raw_ptr + 12:raw_ptr + 16] = (0x3000).to_bytes(4, "little")
+        d[raw_ptr + 16:raw_ptr + 20] = (0xFFFFFFF8).to_bytes(4, "little")
+    bad_reloc_size_dll = make_variant(driver, "badrelocsize.dll", bad_reloc_size)
+    expect_load_error(driver, "neg-bad-reloc-size", bad_reloc_size_dll,
+                      contains="relocation")
+
     bad_reloc_dll = make_variant(driver, "badreloc.dll", bad_reloc)
     expect_load_error(driver, "neg-bad-reloc", bad_reloc_dll, contains="relocation")
 
@@ -625,7 +639,8 @@ def run(driver: Driver) -> int:
          "--load-base", hex(PREFERRED), "--entry-export", "AevDllCompute",
          "--reload", "3", "--call", f"AevDllReset:{reset_ref['seed']}",
          "--call", "AevDllState", "--call", "AevDllCalls"], "reload-state")
-    driver.check(reload.get("stale_handle_status") == 9, "stale handle rejected")
+    driver.check(reload.get("stale_handle") == 9 and
+                 reload.get("stale_handle_status") == 9, "stale handle rejected")
     for i in range(3):
         it = reload.get(f"iteration_{i}", {})
         vals = [c["rax"] for c in it.get("calls", [])]

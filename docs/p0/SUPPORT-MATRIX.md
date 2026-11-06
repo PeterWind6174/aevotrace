@@ -6,12 +6,12 @@
 
 | 项 | P0 实测 | 未覆盖/风险 |
 | --- | --- | --- |
-| 输入格式 | MSVC x64 COFF `.text`（ENGINE fixture）；PE32+ x64 DLL（UI fixture，宏观映射） | 完整 PE 装载、重定位、导入/导出、资源、TLS、delay import、API set/forwarder、`.pdata/.xdata`、load config/CFG |
+| 输入格式 | MSVC x64 COFF `.text`；有界 PE32+ x64 DLL（映射/零填充/DIR64/普通命名导入导出/.pdata 代码发现）；另一个 UI DLL 仍为宏观映射 | 通用 EXE/资源/完整依赖图、TLS/delay import/API set/forwarder/ordinal import、load config/CFG、异常展开 |
 | 输入身份 | COFF `a12fa7ff...`；UI DLL `c5b89e83...`；Windows/macOS 同 pinned 哈希 | 运行时输入/代码版本校验与失效（V-1）未实现 |
-| x64 指令子集 | `mov/lea/push/pop/add/sub/and/or/xor/cmp/test/inc/dec/neg/jmp/jcc/call/ret/cmov/nop/endbr64`；`imul` 仅 JIT | `cdq/idiv`、`lock/xadd`、SSE/AVX/x87/string/syscall 拒绝；AVX/SHA 真实候选路径未执行 |
-| AOT | Capstone 解码 → LLVM IR → ARM64 Mach-O dylib → 独立 runner `dlopen`；9 个 `aev_blk_*`；ASLR 两次不同基址 | PE 重定位/动态加载 schema；签名/分发；代码失效 |
-| JIT | ORC LLJIT 运行时编译 `imul`，`mul w20,w8,w9`；返回 AOT `0x140001047` | 持久化 JIT 缓存；JIT-only 对照；未支持指令的通用回退策略 |
-| 内存 | 线性区域 `memcpy`；未对齐/单区域 host page 跨界通过 | Guest 页表/权限/跨页 fault；TSO/原子（原子拒绝）；错误路径立即 fault 未实现 |
+| x64 指令子集 | `mov/lea/push/pop/add/sub/and/or/xor/cmp/test/inc/dec/neg/jmp/jcc/call/ret/cmov/nop/endbr64/shl/shr/sar/cdqe`；`imul` 仅 JIT | `cdq/idiv`、`lock/xadd`、SSE/AVX/x87/string/syscall 拒绝；AVX/SHA 真实候选路径未执行；8/16 位移语义仅按共享核心现状 |
+| AOT | COFF 与有界 PE DLL：Capstone 解码 → LLVM IR → ARM64 Mach-O dylib → 独立 runner；PE artifact 绑定 module/file/load/image/import/host/entry/thunk/all/selected；首选与非首选 base 各独立进程 | 同一 artifact 跨 base 复用、签名/分发、运行中代码失效 |
+| JIT | ORC LLJIT 运行时编译未覆盖合法块/`imul`；PE hidden 块 JIT→Trace→supplement→新进程 AOT | 持久化 JIT 缓存；JIT-only 性能对照；未知间接目标按需建函数 |
+| 内存 | COFF identity 兼容区；PE `AevMemRegion` R/W/X 检查、跨边界/未映射/只读写/非执行取指 fault 字段；未对齐/单区域跨界通过 | TSO/原子（原子拒绝）；页级 Host 保护；更大范围 PE/线程内存语义 |
 
 ## 2. Win32 / GUI 子集（P0 UI harness）
 

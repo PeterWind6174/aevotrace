@@ -214,6 +214,7 @@ struct ModuleInstance {
     AevTraceSink trace_sink{};
     std::string entry_export;
     uint8_t artifact_sha[32] = {};
+    bool in_call = false;
 
     ~ModuleInstance() {
         jit.reset();
@@ -384,6 +385,27 @@ void print_module_json(std::ostringstream &os, const ModuleInstance &inst,
            << ",\"abi\":\"" << json_escape(imp.abi) << "\"}";
     }
     os << "]";
+
+    os << ",\"host_imports\":[";
+    for (size_t i = 0; i < m.unique_imports.size(); ++i) {
+        const auto &imp = m.unique_imports[i];
+        if (i) os << ",";
+        os << "{\"id\":" << imp.host_import_id
+           << ",\"thunk_index\":" << imp.thunk_index
+           << ",\"module\":\"" << json_escape(imp.module)
+           << "\",\"symbol\":\"" << json_escape(imp.symbol) << "\"}";
+    }
+    os << "]";
+    os << ",\"relocations\":{\"count\":" << m.relocations.size()
+       << ",\"delta\":\"" << hex(m.load_base - m.preferred_base)
+       << "\",\"stripped\":" << (m.relocs_stripped ? 1 : 0);
+    if (m.relocations.empty()) {
+        os << ",\"first\":null,\"last\":null}";
+    } else {
+        os << ",\"first\":\"" << hex(m.load_base + m.relocations.front().rva)
+           << "\",\"last\":\"" << hex(m.load_base + m.relocations.back().rva)
+           << "\"}";
+    }
 
     os << ",\"regions\":[";
     for (size_t i = 0; i < m.regions.size(); ++i) {
@@ -588,8 +610,26 @@ bool load_aot_file(ModuleInstance *inst, const std::string &path,
         }
     }
     inst->selected_blocks.assign(selected.begin(), selected.end());
-    aev::sha256_file(path, inst->artifact_sha, error);
+    if (!aev::sha256_file(path, inst->artifact_sha, error)) {
+        if (error && error->empty()) *error = "cannot hash AOT artifact";
+        return false;
+    }
     return true;
+}
+
+bool peek_aot_kind(const std::string &path, std::string *kind,
+                   std::string *error) {
+    void *handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        if (error) *error = std::string("dlopen AOT failed: ") + dlerror();
+        return false;
+    }
+    const char *value = static_cast<const char *>(dlsym(handle, "aev_module_kind"));
+    bool ok = value != nullptr;
+    if (ok && kind) *kind = value;
+    if (!ok && error) *error = "AOT dylib missing aev_module_kind";
+    dlclose(handle);
+    return ok;
 }
 
 bool peek_aot_load_base(const std::string &path, uint64_t *out,
@@ -621,8 +661,24 @@ bool prepare_instance(const Options &opt, ModuleInstance *inst,
         if (error) *error = "--load-base is required without --aot";
         return false;
     }
+    if (!opt.aot.empty()) {
+        std::string kind;
+        if (!peek_aot_kind(opt.aot, &kind, error)) return false;
+        if (kind != AEV_MODULE_KIND_PE64) {
+            if (error) *error = "AOT module kind is not PE: " + kind;
+            return false;
+        }
+    }
     if (load_base == 0 && !opt.aot.empty()) {
         if (!peek_aot_load_base(opt.aot, &load_base, error)) return false;
+    }
+    if (!opt.aot.empty() && !opt.load_base.empty()) {
+        uint64_t artifact_base = 0;
+        if (!peek_aot_load_base(opt.aot, &artifact_base, error)) return false;
+        if (artifact_base != load_base) {
+            if (error) *error = "artifact load_base does not match requested load_base";
+            return false;
+        }
     }
     aev::pe::LoadOptions load_options;
     load_options.load_base = load_base;
@@ -813,7 +869,12 @@ int64_t dispatch(void *opaque, GuestState *s, uint64_t rip) {
             return -1;
         }
         uint64_t out_rax = 0;
-        int status = hit->second.fn(s->rcx, s->rdx, s->r8, s->r9, &out_rax);
+        int status = 1;
+        try {
+            status = hit->second.fn(s->rcx, s->rdx, s->r8, s->r9, &out_rax);
+        } catch (...) {
+            status = 1;
+        }
         hit->second.calls++;
         inst->trace.host_import(it->second->host_import_id,
                                 it->second->thunk_index);
@@ -861,6 +922,15 @@ CallResult run_call(ModuleInstance *inst, const CallSpec &spec) {
         result.status = PE_INVALID_ARGUMENT;
         return result;
     }
+    if (inst->in_call) {
+        result.status = PE_REENTRY;
+        return result;
+    }
+    struct InCallGuard {
+        bool &flag;
+        explicit InCallGuard(bool &f) : flag(f) { flag = true; }
+        ~InCallGuard() { flag = false; }
+    } guard(inst->in_call);
     GuestState state{};
     state.reserved1 = (uint64_t)(uintptr_t)inst->module.regions.data();
     state.reserved2 = inst->module.regions.size();
@@ -910,12 +980,15 @@ CallResult run_call(ModuleInstance *inst, const CallSpec &spec) {
                 if (rc == 0 && state.rip != AEV_RETURN_SENTINEL)
                     rc = (int)AEV_ERR_STEP_LIMIT;
             }
-            if (rc == 0 &&
-                (!(state.rip == AEV_RETURN_SENTINEL &&
-                   state.rsp == inst->module.entry_rsp + 8 && state.error_code == 0)))
-                result.status = PE_INTERNAL;
-            else
-                result.status = rc == 0 ? PE_OK : map_guest_status(state);
+            if (rc == 0) {
+                result.status =
+                    (state.rip == AEV_RETURN_SENTINEL &&
+                     state.rsp == inst->module.entry_rsp + 8 &&
+                     state.error_code == 0) ? PE_OK : PE_INTERNAL;
+            } else {
+                result.status = state.error_code ? map_guest_status(state)
+                                                 : PE_INTERNAL;
+            }
         }
     }
     inst->trace.call_end(state, result.status);
@@ -1039,6 +1112,10 @@ int main(int argc, char **argv) {
     }
     if (!opt.info && opt.calls.empty()) {
         std::fprintf(stderr, "at least one --call is required unless --info\n");
+        return 2;
+    }
+    if (opt.info && (opt.expect_error || opt.reload != 1)) {
+        std::fprintf(stderr, "--info cannot be combined with --expect-error/--reload\n");
         return 2;
     }
     if (opt.aot.empty() && opt.load_base.empty()) {
@@ -1168,7 +1245,9 @@ int main(int argc, char **argv) {
         if (iteration == 0 && opt.reload > 1) {
             // Expose the stale-token check after the first destroy.
             ModuleInstance *stale = table.get(first_token);
-            out << ",\"stale_handle_status\":"
+            out << ",\"stale_handle\":"
+                << (stale ? PE_OK : PE_STALE_HANDLE)
+                << ",\"stale_handle_status\":"
                 << (stale ? PE_OK : PE_STALE_HANDLE);
         }
     }

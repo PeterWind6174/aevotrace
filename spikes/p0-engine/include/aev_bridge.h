@@ -2,7 +2,7 @@
 #define AEV_BRIDGE_H
 
 /*
- * P0 callback bridge C ABI (trial v2).
+ * P0 callback bridge C ABI (trial v3).
  *
  * This is deliberately not the frozen P1 ABI.  It supports one single-level
  * Host->Guest->Host call on the process main thread, four integer/pointer

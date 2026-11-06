@@ -150,8 +150,13 @@ int aev_guest_require_exec(GuestState *s, uint64_t rip, uint64_t len) {
     /* Legacy COFF identity mode has synthetic Guest PCs outside the Host
      * mapping; keep the historical regressions working.  PE modules always
      * use a region table and get the real check. */
-    if (!s->reserved1 || !s->reserved2)
-        return 1;
+    if (!s->reserved1 || !s->reserved2) {
+        if (s->mem_base && s->mem_size)
+            return 1;
+        mem_fault(s, AEV_MEM_FAULT_UNMAPPED, rip, len ? len : 1,
+                  AEV_MEM_ACCESS_EXEC);
+        return 0;
+    }
     uint64_t host = 0;
     uint64_t kind = locate_range(s, rip, len ? len : 1, AEV_MEM_PROT_EXEC, &host);
     if (kind == AEV_MEM_FAULT_NONE)
@@ -245,8 +250,7 @@ void aev_flags_shift(GuestState *s, uint32_t width, uint64_t value,
                      uint64_t count, uint64_t result, uint32_t kind) {
     uint32_t bits = width * 8;
     uint64_t mask = width_mask(width);
-    uint64_t count_mask = bits - 1;
-    uint64_t n = count & count_mask;
+    uint64_t n = count & 31;
     if (n == 0)
         return;
     uint64_t v = value & mask;

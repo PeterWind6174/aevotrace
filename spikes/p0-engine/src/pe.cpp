@@ -404,6 +404,10 @@ bool parse_exports(Module *module, uint32_t dir_rva, uint32_t dir_size,
             if (error) *error = "ordinal export RVA outside image";
             return false;
         }
+        if (func_rva >= dir_rva && func_rva < (uint64_t)dir_rva + dir_size) {
+            if (error) *error = "forwarder ordinal export is not supported";
+            return false;
+        }
         if ((uint64_t)base + index > UINT32_MAX) {
             if (error) *error = "ordinal export ordinal overflows";
             return false;
@@ -415,8 +419,13 @@ bool parse_exports(Module *module, uint32_t dir_rva, uint32_t dir_size,
 
 bool parse_imports(Module *module, uint32_t dir_rva, uint32_t dir_size,
                    std::string *error) {
-    if (dir_size == 0)
+    if (dir_size == 0) {
+        if (dir_rva != 0) {
+            if (error) *error = "import directory RVA is non-zero with zero size";
+            return false;
+        }
         return true;
+    }
     if (dir_size < 20) {
         if (error) *error = "import directory is too small";
         return false;
@@ -427,6 +436,7 @@ bool parse_imports(Module *module, uint32_t dir_rva, uint32_t dir_size,
     std::map<std::string, uint32_t> seen;
     uint32_t iat_slots = 0;
     std::vector<Import> slots;
+    bool terminated = false;
     for (uint32_t d = 0; d < kMaxImportDescriptors; ++d) {
         uint64_t desc_rva64 = (uint64_t)dir_rva + (uint64_t)d * 20;
         if (d * 20 + 20 > dir_size || desc_rva64 > UINT32_MAX) {
@@ -440,8 +450,10 @@ bool parse_imports(Module *module, uint32_t dir_rva, uint32_t dir_size,
         uint32_t original_first = rd32(desc);
         uint32_t name_rva = rd32(desc + 12);
         uint32_t first_thunk = rd32(desc + 16);
-        if (original_first == 0 && name_rva == 0 && first_thunk == 0)
+        if (original_first == 0 && name_rva == 0 && first_thunk == 0) {
+            terminated = true;
             break;
+        }
         if (name_rva == 0 || first_thunk == 0) {
             if (error) *error = "invalid import descriptor";
             return false;
@@ -523,6 +535,10 @@ bool parse_imports(Module *module, uint32_t dir_rva, uint32_t dir_size,
             }
         }
     }
+    if (!terminated) {
+        if (error) *error = "import descriptor table is not terminated";
+        return false;
+    }
     module->imports = std::move(slots);
     return true;
 }
@@ -540,18 +556,30 @@ bool parse_relocations(Module *module, uint32_t dir_rva, uint32_t dir_size,
     uint32_t off = 0;
     if (!rva_to_file(*module, dir_rva, dir_size, &off, error))
         return false;
-    uint32_t pos = 0;
-    while (pos + 8 <= dir_size) {
+    const uint64_t dir_end = dir_size;
+    uint64_t pos = 0;
+    uint64_t total_entries = 0;
+    while (dir_end - pos >= 8) {
         const uint8_t *block = module->file.data() + off + pos;
         uint32_t page = rd32(block);
-        uint32_t size = rd32(block + 4);
-        if (size < 8 || (size - 8) % 2 != 0 || pos + size > dir_size) {
+        uint64_t size = rd32(block + 4);
+        if (size < 8 || (size - 8) % 2 != 0 || size > dir_end - pos) {
             if (error) *error = "invalid relocation block";
             return false;
         }
-        uint32_t entries = (size - 8) / 2;
-        for (uint32_t i = 0; i < entries; ++i) {
-            uint16_t entry = rd16(module->file.data() + off + pos + 8 + i * 2);
+        uint64_t entries = (size - 8) / 2;
+        total_entries += entries;
+        if (total_entries > 2ULL * kMaxRelocations) {
+            if (error) *error = "too many relocation entries";
+            return false;
+        }
+        for (uint64_t i = 0; i < entries; ++i) {
+            uint64_t entry_offset = (uint64_t)off + pos + 8 + i * 2;
+            if (entry_offset + 2 > (uint64_t)off + dir_end) {
+                if (error) *error = "relocation entry outside directory";
+                return false;
+            }
+            uint16_t entry = rd16(module->file.data() + entry_offset);
             uint16_t type = entry >> 12;
             uint16_t offset = entry & 0x0fff;
             if (type == 0)
@@ -562,7 +590,7 @@ bool parse_relocations(Module *module, uint32_t dir_rva, uint32_t dir_size,
                 return false;
             }
             uint64_t site = (uint64_t)page + offset;
-            if (site + 8 > module->size_of_image) {
+            if (site > UINT32_MAX || site + 8 > module->size_of_image) {
                 if (error) *error = "relocation site outside image";
                 return false;
             }
@@ -578,7 +606,7 @@ bool parse_relocations(Module *module, uint32_t dir_rva, uint32_t dir_size,
         }
         pos += size;
     }
-    if (pos != dir_size) {
+    if (pos != dir_end) {
         if (error) *error = "relocation directory has trailing bytes";
         return false;
     }
@@ -742,6 +770,7 @@ bool ImportRegistry::load(const std::string &path, std::string *error) {
     std::string text = buffer.str();
     entries_.clear();
     std::set<std::pair<std::string, std::string>> seen;
+    std::set<unsigned long long> seen_ids;
     size_t line_no = 0;
     std::istringstream lines(text);
     std::string line;
@@ -795,6 +824,11 @@ bool ImportRegistry::load(const std::string &path, std::string *error) {
         if (!seen.insert({module, symbol}).second) {
             if (error) *error = "registry line " + std::to_string(line_no) +
                                  ": duplicate import";
+            return false;
+        }
+        if (!seen_ids.insert(id).second) {
+            if (error) *error = "registry line " + std::to_string(line_no) +
+                                 ": duplicate host_import_id";
             return false;
         }
         entries_.push_back({{module, symbol},

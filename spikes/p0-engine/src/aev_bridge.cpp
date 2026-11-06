@@ -43,6 +43,7 @@ struct AevBridge {
     std::string aot_path;
     uint64_t entry_addr = 0;
     uint64_t input_hash = 0;
+    uint64_t input_size = 0;
 
     aev::Program program;
     std::unique_ptr<aev::JitRuntime> jit;
@@ -251,6 +252,13 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
             trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_UNKNOWN_IMPORT);
             return -1;
         }
+        if (s->pending_transfer != AEV_TRANSFER_CALL) {
+            b->last_failure = AEV_BRIDGE_ERR_NO_BLOCK;
+            s->error_code = AEV_ERR_BAD_TARGET;
+            s->error_pc = rip;
+            trace_dispatch_miss(b, rip, AEV_BRIDGE_ERR_NO_BLOCK);
+            return -1;
+        }
         const HostImport &imp = it->second;
         b->last_import_id = imp.id;
         uint64_t ret = aev_load(s, s->rsp, 8, 0);
@@ -279,6 +287,7 @@ int64_t bridge_jit_dispatch(void *opaque, GuestState *s, uint64_t rip) {
         }
         s->rip = ret;
         s->rax = out_rax;
+        s->pending_transfer = AEV_TRANSFER_NONE;
         return 0;
     }
 
@@ -382,6 +391,7 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         return AEV_BRIDGE_ERR_LOAD;
     }
     b->input_hash = object.content_hash;
+    b->input_size = object.content_size;
     std::memcpy(b->input_sha256, object.content_sha256, sizeof(b->input_sha256));
 
     std::vector<std::string> names{b->function_name};
@@ -427,6 +437,18 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
         static_cast<const char *>(dlsym(b->aot_handle, "aev_target_triple"));
     const char *aot_module_kind =
         static_cast<const char *>(dlsym(b->aot_handle, "aev_module_kind"));
+    const uint64_t *aot_module_file_size =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_module_file_size"));
+    const uint64_t *aot_preferred_base =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_preferred_base"));
+    const uint64_t *aot_load_base =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_load_base"));
+    const uint64_t *aot_image_size =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_image_size"));
+    const uint64_t *aot_thunk_base =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_thunk_base"));
+    const uint64_t *aot_import_count =
+        static_cast<const uint64_t *>(dlsym(b->aot_handle, "aev_import_count"));
     const AevBlock *aot_blocks =
         static_cast<const AevBlock *>(dlsym(b->aot_handle, "aev_blocks"));
     const uint64_t *aot_block_count =
@@ -438,12 +460,24 @@ AevBridgeStatus aev_bridge_create(const AevBridgeConfig *cfg,
     if (!b->aot_run || !aot_abi || !aot_guest_size || !aot_input_hash ||
         !aot_input_sha || !aot_artifact_abi || !aot_translator_abi ||
         !aot_entry_addr || !aot_function_sha || !aot_target || !aot_blocks ||
-        !aot_block_count || !aot_all_count || !aot_all_blocks || !aot_module_kind) {
+        !aot_block_count || !aot_all_count || !aot_all_blocks || !aot_module_kind ||
+        !aot_module_file_size || !aot_preferred_base || !aot_load_base ||
+        !aot_image_size || !aot_thunk_base || !aot_import_count) {
         set_error(err, err_cap, "AOT dylib is missing required ABI/identity symbols");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
     if (std::string(aot_module_kind) != AEV_MODULE_KIND_COFF) {
         set_error(err, err_cap, std::string("AOT module kind is not COFF: ") + aot_module_kind);
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    if (*aot_module_file_size != b->input_size) {
+        set_error(err, err_cap, "COFF artifact module_file_size mismatch");
+        return AEV_BRIDGE_ERR_ABI_MISMATCH;
+    }
+    if (*aot_preferred_base != 0 ||
+        *aot_load_base != 0 || *aot_image_size != 0 || *aot_thunk_base != 0 ||
+        *aot_import_count != 0) {
+        set_error(err, err_cap, "COFF artifact has non-zero PE module identity");
         return AEV_BRIDGE_ERR_ABI_MISMATCH;
     }
     if (*aot_abi != AEV_GUEST_ABI_VERSION ||

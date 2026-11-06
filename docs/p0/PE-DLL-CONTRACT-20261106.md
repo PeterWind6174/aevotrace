@@ -349,7 +349,7 @@ const uint64_t aev_relocs_stripped;
 
 ## 10. PE AOT/JIT coverage 与反替代
 
-- PE translator 默认所有已发现块 AOT；`--aot-include-rip`/`--aot-exclude-rip` 按 Guest RIP 显式选择。测试基线必须至少排除一个合法块，实际运行产生 `jit_compile`/`jit_exec`；supplement 后该块进入 selected，新进程只产生 `aot` 事件、零 JIT。
+- PE translator 默认可 AOT 的已发现块（含 `imul` 的块仍按现有 coverage 边界 JIT）；`--aot-include-rip`/`--aot-exclude-rip` 按 Guest RIP 显式选择。测试基线必须至少排除一个合法块，实际运行产生 `jit_compile`/`jit_exec`；supplement 后该块进入 selected，新进程只产生 `aot` 事件、零 JIT。
 - 转换输入只依赖最终 DLL + registry/load base；不得要求原 COFF/PDB/C 源码，不得用 Host 重写业务函数、Unicorn/Rosetta 或预置机器码替代 DLL 实际字节。
 - 测试必须核对 DLL/helper SHA、PE headers/sections/imports/exports/relocations、实际 image/relocation 字节、AOT/JIT 事件、HostImport 参数/返回值、全局状态与副作用；不能用实现者自述代替。
 - Windows 系统 loader 跑同一固定 DLL；Mac 用同一 DLL 字节。Windows 参考不提供指令 Trace。
