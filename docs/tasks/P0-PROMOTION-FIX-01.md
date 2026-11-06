@@ -1,6 +1,6 @@
 # P0-PROMOTION-FIX-01：修正 AOT 提升来源与 promoted_blocks 语义
 
-状态：进行中（F1 已复现；来源契约 v1.1 已获 compiler/binary/platform/reviewer 会签；compiler 实施中）。
+状态：完成（source `66a63fb`；QA PASS、reviewer SIGN-OFF；物理 GUI/IME 待人工验收；P0 整体未通过）。
 
 ## 输入与责任
 
@@ -8,7 +8,7 @@
 - owner / reviewer / QA：coordinator / reviewer / qa；compiler（实施 lead）、binary（基线身份会签）、platform（GUI 消费者会签）。
 - 基线 commit 或源码包哈希：`d0ddff8fbdf846798a034df78a675e5eca2d6444`（源码 `9c2aafe9fe93369bf18679c0a4407bebded3af0a`）；已接受 callback 基线 `4bb69ab`；main `c91a3f7` 未合入。
 - 分支 / worktree / Windows 工作目录：`p0/promotion-fix-01` / `.worktrees/p0-promotion-fix`；Windows 目录仅在 fixture/机器码/ABI 变化时使用。
-- 公共 ABI / artifact / 平台接口版本：callback ABU v2、Guest ABI v1 不变；trace/artifact ABI v1 的 provenance 最小修订（v1.1），不引入 live invalidation 或新 artifact 格式。
+- 公共 ABI / artifact / 平台接口版本：callback ABI v2、Guest ABI v1 不变；trace/artifact ABI v1 的 provenance 最小修订（v1.1），不引入 live invalidation 或新 artifact 格式。
 
 ## 目标与范围
 
@@ -38,5 +38,10 @@
 
 ## 完成报告
 
-- 提交或 diff、命令/退出码、输入/Trace/base/new AOT/manifest SHA-256、真实 base/new/promoted 集合、5 ctest、四组 GUI、负例、旧产物保留、QA/reviewer、未测项、分支状态。
-- 不宣称 P0/首版完成；不自动合入 main/push/删除 worktree。
+- 提交或 diff：基线 `d0ddff8`/源码 `9c2aafe`；契约 `22bc429`/`ce4431a`/`f3b4260`；实现 `2b9587c`、`17ec718`、`fc39482`、`b88cadf`、`66a63fb`（最终源码 HEAD）。阶段报告 `docs/p0/PROMOTION-FIX-REPORT-20261106.md`。
+- 命令、退出码、环境及配置：实现侧 build rc 0（46/46）、CTest 5/5、trace/AOT 78 PASS/0 FAIL；独立 QA 全新 `.local/build-promotion-fix-qa` configure/build rc 0、CTest 5/5（35.91s）、trace/AOT 78 PASS/0 FAIL、36/36 对抗负例；GUI base/supplemented/空 promoted × compat/native 各 44/44；Windows 固定参考复用 A=3922/B=45320/EXIT=0。
+- 二进制哈希、日志和报告位置：输入 callback `4f6929f7…`、trace `145800f4…`；QA 独立 build bridge `61fb1c04…`；实际 base/new artifact 哈希与集合见阶段报告 §5；QA 报告 `.local/results/P0-PROMOTION-FIX-01/QA/REPORT.md`；实现证据 `.local/results/P0-PROMOTION-FIX-01/impl/final2/`。
+- 正确性/性能结果：callback 默认 promoted `[0x140001020]`；trace 首次 B `[0x140001015]`；B-only→A+B promoted 仅 `[0x140001026]`；全 AOT 再补充 promoted/demoted `[]`；demoted 场景 `[0x140001015]`；新进程业务/counter/helper 正确、零 JIT。未做性能测量。
+- 审查问题及修复：F1 由外部审查发现并在基线复现；v1.1 经 compiler/binary/platform/reviewer 会签，修复后再经独立 QA PASS 与 reviewer accepted。
+- 未测项、已知限制、需要用户操作的具体步骤：见阶段报告 §7；物理键鼠/焦点/IME、真实应用、PE/Win32、打包/签名、live invalidation、性能未做。
+- 后续任务与接口变更：trace/artifact ABI 1 字段布局不变；manifest 增加 base/new/promoted/demoted provenance；`--base-aot` 成为 supplement/publisher/GUI supplemented 必需；callback ABI v2、Guest ABI v1 不变。不自动合入 main/push/删除 worktree。

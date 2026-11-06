@@ -191,7 +191,7 @@ python3 spikes/p0-engine/scripts/aot_supplement.py \
   --function <name> --entry <name> --entry-addr 0x140001000 \
   --base-aot <base.dylib> --trace <trace.jsonl> \
   --out-ll <supp.ll> --out-header <supp.h> --out-manifest <supp.json>
-# 链接临时 dylib 后用实际导出符号校验并原子发布：
+# 链接临时 dylib 后用实际导出符号校验并带备份/回滚发布（处理异常安全，不是崩溃原子）：
 python3 spikes/p0-engine/scripts/publish_aot.py --dylib-tmp <tmp.dylib> \
   --dylib-out <supp.dylib> --base-aot <base.dylib> \
   --manifest-in <supp.json> --manifest-out <supp.json> --expected-table 5 \

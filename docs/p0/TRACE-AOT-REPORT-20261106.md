@@ -1,6 +1,6 @@
 # P0-TRACE-AOT-01 阶段报告：实际执行 Trace → 离线补充 AOT → 新进程验证
 
-日期：2026-11-06（Asia/Shanghai）。状态：**实现、reviewer/QA 阻断修复与独立 QA/reviewer 复核通过（source `9c2aafe` / docs `adf9a95`）；物理 GUI/IME 待人工验收；P0 整体与首版仍未通过。**
+日期：2026-11-06（Asia/Shanghai）。**外部复核发现 F1（promoted provenance）已由 P0-PROMOTION-FIX-01（source `66a63fb`）修复；见 `docs/p0/PROMOTION-FIX-REPORT-20261106.md`。** 状态：**实现、reviewer/QA 阻断修复与独立 QA/reviewer 复核通过（source `9c2aafe` / docs `adf9a95`）；物理 GUI/IME 待人工验收；P0 整体与首版仍未通过。**
 
 本轮是从已接受的 callback 集成分支继续的有界实验，不是通用转换器、完整 PE/Win32 支持、完整运行中代码失效或性能结论。
 

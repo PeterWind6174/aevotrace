@@ -16,8 +16,8 @@
 | P0-TRACE-SPIKE-01 | 自建核心 Guest PC/基本块/间接目标记录 | compiler + binary | 是（隔离 worktree） | 完成（块级记录/新进程验证由 P0-TRACE-AOT-01 实现并经 QA/reviewer 复核；非完整指令 Trace） |
 | P0-CALLBACK-ABI-01 | 最小 Host↔Guest 回调契约与固定 fixture | coordinator + compiler/platform | 是（隔离 worktree） | 完成（v2 会签；QA/reviewer PASS） |
 | P0-CORE-BRIDGE-01 | 共享 JIT/回调 bridge、AOT 身份与无 GUI 测试 | compiler + binary | 是（隔离 worktree） | 完成（4 ctest/77 checks；QA PASS） |
-| P0-TRACE-AOT-01 | 实际 Trace → 补充 AOT → 新进程验证 | compiler + binary + platform | 是（隔离 worktree） | 外部复核 F1，修复中（原 `adf9a95` QA/reviewer PASS 为历史；见 P0-PROMOTION-FIX-01） |
-| P0-PROMOTION-FIX-01 | 修正 promoted_blocks 来源为实际 base artifact | compiler + binary + platform | 是（隔离 worktree） | 进行中（F1 已复现；v1.1 会签；compiler 实施中） |
+| P0-TRACE-AOT-01 | 实际 Trace → 补充 AOT → 新进程验证 | compiler + binary + platform | 是（隔离 worktree） | 完成（原 `adf9a95` QA/reviewer PASS 为历史；F1 已由 `66a63fb` 修复并通过独立 QA/reviewer；物理 GUI/IME 待人工验收） |
+| P0-PROMOTION-FIX-01 | 修正 promoted_blocks 来源为实际 base artifact | compiler + binary + platform | 是（隔离 worktree） | 完成（source `66a63fb`；QA PASS/reviewer accepted；物理 GUI/IME 待人工验收） |
 | P0-APP-RUN-01 | 7-Zip 26.05 Windows 参考工作流 | qa | 否 | 未开始 |
 | P0-PKG-01 | 最小 ARM64 `.app`/随包依赖/签名探针 | platform + qa | 是（隔离 worktree） | 未开始 |
 | P0-BUILD-REPRO-01 | ENGINE/UI 构建可复现口径 | compiler + qa | 是（隔离 worktree） | 未开始 |
@@ -41,7 +41,7 @@
 - `P0-CORE-FIX-02` + `P0-ENGINE-AOT-EMPTY-01`：分支 `p0/core-fix-02`，worktree `.worktrees/p0-core-fix-02`（基线 `8c0fc15`，HEAD `b4052dd`）；已 fast-forward 集成到 `p0/engine-spike`。QA worktree `.worktrees/p0-core-fix-02-qa`（detached `b4052dd`）。
 - `P0-UI-01`：分支 `p0/ui-spike`，worktree `.worktrees/p0-ui`。
 - `P0-TRACE-AOT-01`：分支 `p0/trace-aot-01`，worktree `.worktrees/p0-trace-aot`（基线 `4bb69ab`；契约 `1f1fe00`、实现 `8325b64`、阻断修复 `823ede4`/`603a246`/`9c2aafe`；外部复核 F1 后由 P0-PROMOTION-FIX-01 修复）；未合入 main、未 push。
-- `P0-PROMOTION-FIX-01`：分支 `p0/promotion-fix-01`，worktree `.worktrees/p0-promotion-fix`（基线 `d0ddff8`/源码 `9c2aafe`；契约 `docs/p0/PROMOTION-PROVENANCE-20261106.md`）；未合入 main、未 push。
+- `P0-PROMOTION-FIX-01`：分支 `p0/promotion-fix-01`，worktree `.worktrees/p0-promotion-fix`（基线 `d0ddff8`/源码 `9c2aafe`；最终源码 `66a63fb`；契约 `docs/p0/PROMOTION-PROVENANCE-20261106.md`）；QA worktree `.worktrees/p0-promotion-fix-qa`（integration 分支）；未合入 main、未 push。
 - `P0-TRACE-01`：分支 `p0/trace-investigation`，worktree `.worktrees/p0-trace`（CLI worker，cwd 为该 worktree）。
 - 调查/QA 任务不修改产品源码；报告写入 `.local/results/<TASK-ID>/`（被 `.gitignore` 排除），由 coordinator 汇总。原始日志可留 `.local`，但完成报告必须给出可定位路径、哈希和复跑命令。
 - Windows 工作目录：`C:\Users\PeterWind\AevotraceP0\<TASK-ID>`（首轮由 P0-ENV-01 实际创建并记录）。
