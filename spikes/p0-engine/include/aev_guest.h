@@ -116,6 +116,8 @@ void aev_flags_inc(GuestState *s, uint32_t width, uint64_t a, uint64_t r);
 void aev_flags_dec(GuestState *s, uint32_t width, uint64_t a, uint64_t r);
 void aev_flags_neg(GuestState *s, uint32_t width, uint64_t a, uint64_t r);
 void aev_flags_imul(GuestState *s, uint32_t width, uint64_t a, uint64_t b, uint64_t r);
+void aev_flags_shift(GuestState *s, uint32_t width, uint64_t value, uint64_t count,
+                     uint64_t result, uint32_t kind);
 void aev_note_aot(GuestState *s, uint64_t rip);
 
 /* Checked instruction-fetch permission.  Returns 1 when [rip,rip+len) is

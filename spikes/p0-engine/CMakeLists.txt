@@ -38,6 +38,7 @@ file(MAKE_DIRECTORY ${AEV_GEN_DIR})
 
 add_library(aev_translator STATIC
   src/coff.cpp
+  src/pe.cpp
   src/x64.cpp
   src/translator.cpp
   src/ir_emitter.cpp
@@ -66,6 +67,13 @@ target_include_directories(aev-runner PRIVATE
   ${AEV_GEN_DIR}
 )
 target_link_libraries(aev-runner PRIVATE aev_jit_runtime)
+
+# P0-PE-DLL-01: bounded PE32+ DLL runner using the shared Program/emitter/JIT/
+# AOT core.  It is not a general EXE loader and not the GUI path.
+add_executable(aev-pe-runner src/pe_runner.cpp src/aev_mem.c)
+target_include_directories(aev-pe-runner PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev-pe-runner PRIVATE
+  aev_jit_runtime ${CMAKE_DL_LIBS})
 
 # Reusable C ABI for the GUI path.  The shared library exports only the
 # aev_bridge_* API; all Guest execution still goes through the same AOT/JIT

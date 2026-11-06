@@ -1,0 +1,21 @@
+== tools ==
+Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64
+Microsoft (R) Incremental Linker Version 14.51.36260.0
+== helper ==
+aevhost.c
+  正在创建库 aevhost.lib 和对象 aevhost.exp
+== guest ==
+aevguest.c
+  正在创建库 aevguest.lib 和对象 aevguest.exp
+== reference ==
+aevguest_ref.c
+== inspection ==
+== run reference ==
+reference exit=0
+== hashes ==
+1f82b67978dc13e1e31c1262497a9fe186d39f637949b94408c646d4b11152b0  aevguest.dll
+0eabd013127ef5cc4e73c149aa0988b3d88dbb009d491c0c895e7a0d479757d1  aevhost.dll
+0b30d8ea7ce3bfb8b528857d9b1398e0d4f786ca5cf9a8666262e09f9ca96b7f  aevguest_ref.exe
+f8ea927c14598089da6a911a5efc86dff3ab1fd86fcadc352edd48d676274e5b  aevguest.obj
+a3757231c17336241ff648931607e76ef702638191b3b7cc6ed69a955b85ab02  aevhost.obj
+BUILD_OK

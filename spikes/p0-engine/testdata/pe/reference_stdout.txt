@@ -1,0 +1,5 @@
+reset seed=4660 cursor_value=1515866136 cursor_addr=0x7ffb2412300c state=0 calls=0 helper=0
+case=prep a=11 b=4 n=8 result=-940722 state=-1515459203 cursor_value=1515866136 cursor_addr=0x7ffb2412300c calls=1 helper=1
+case=hidden a=-9 b=2 n=17 result=861539472 state=1761625201 cursor_value=1515866136 cursor_addr=0x7ffb2412300c calls=1 helper=2
+case=empty a=100 b=101 n=0 result=4677 state=1515871214 cursor_value=1515866136 cursor_addr=0x7ffb2412300c calls=1 helper=3
+case=wrap a=2147483647 b=1 n=3 result=1431572309 state=-1894889651 cursor_value=1515866136 cursor_addr=0x7ffb2412300c calls=1 helper=4

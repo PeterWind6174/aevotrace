@@ -1,0 +1,11 @@
+LIBRARY aevguest
+EXPORTS
+    AevDllReset
+    AevDllCompute
+    AevDllState
+    AevDllCursorValue
+    AevDllCursorAddress
+    AevDllCalls
+    AevDllReadAt
+    AevDllWriteAt
+    AevDllCallPtr

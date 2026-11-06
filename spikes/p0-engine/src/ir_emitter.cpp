@@ -740,6 +740,65 @@ class Emitter {
                 emit_flags_call("aev_flags_imul", width, a, b, r);
                 return;
             }
+            case X86_INS_SHL:
+            case X86_INS_SHR:
+            case X86_INS_SAR: {
+                if (insn.operands.empty() || insn.operands.size() > 2)
+                    throw Unsupported("shift form in " + format_insn(insn));
+                const X64Operand &dst = insn.operands[0];
+                int width = dst.size;
+                std::string a = read_operand(insn, dst, width);
+                std::string count;
+                if (insn.operands.size() == 1) {
+                    count = "1";
+                } else {
+                    const X64Operand &cop = insn.operands[1];
+                    if (cop.kind == OperandKind::Immediate)
+                        count = u64((uint64_t)cop.imm & 0xffULL);
+                    else if (cop.kind == OperandKind::Register &&
+                             cop.reg == X86_REG_CL)
+                        count = read_reg(X86_REG_CL, 1);
+                    else
+                        throw Unsupported("unsupported shift count in " +
+                                          format_insn(insn));
+                }
+                std::string bits = fresh("shc");
+                emit(bits + " = and i64 " + count + ", " +
+                     std::to_string(width * 8 - 1));
+                std::string zero = fresh("shz");
+                emit(zero + " = icmp eq i64 " + bits + ", 0");
+                std::string shifted;
+                if (insn.id == X86_INS_SHL) {
+                    shifted = fresh("shv");
+                    emit(shifted + " = shl i64 " + a + ", " + bits);
+                } else if (insn.id == X86_INS_SHR) {
+                    shifted = fresh("shv");
+                    emit(shifted + " = lshr i64 " + a + ", " + bits);
+                } else {
+                    std::string sa = sign_extend(a, width);
+                    shifted = fresh("shv");
+                    emit(shifted + " = ashr i64 " + sa + ", " + bits);
+                }
+                std::string r = and_mask(shifted, width);
+                std::string sel = fresh("shr");
+                emit(sel + " = select i1 " + zero + ", i64 " + a + ", i64 " + r);
+                write_operand(insn, dst, width, sel);
+                int kind = insn.id == X86_INS_SHL ? 0
+                           : (insn.id == X86_INS_SHR ? 1 : 2);
+                emit("call void @aev_flags_shift(ptr %s, i32 " +
+                     std::to_string(width) + ", i64 " + a + ", i64 " + bits +
+                     ", i64 " + sel + ", i32 " + std::to_string(kind) + ")");
+                return;
+            }
+            case X86_INS_CDQE: {
+                std::string v = load_field(GF_rax);
+                std::string sh = fresh("cdq");
+                emit(sh + " = shl i64 " + v + ", 32");
+                std::string as = fresh("cdq");
+                emit(as + " = ashr i64 " + sh + ", 32");
+                store_field(GF_rax, as);
+                return;
+            }
             case X86_INS_MOVZX:
             case X86_INS_MOVSX:
             case X86_INS_MOVSXD: {
@@ -801,6 +860,7 @@ std::string module_prefix() {
     os << "declare void @aev_flags_dec(ptr, i32, i64, i64)\n";
     os << "declare void @aev_flags_neg(ptr, i32, i64, i64)\n";
     os << "declare void @aev_flags_imul(ptr, i32, i64, i64, i64)\n";
+    os << "declare void @aev_flags_shift(ptr, i32, i64, i64, i64, i32)\n";
     os << "declare void @aev_note_aot(ptr, i64)\n\n";
     return os.str();
 }

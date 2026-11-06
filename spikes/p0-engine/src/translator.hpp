@@ -17,6 +17,8 @@ struct FunctionSpec {
     uint64_t guest_va = 0;
     uint32_t rva = 0; /* section-relative offset; PE uses image RVA */
     uint32_t size = 0;
+    uint32_t pdata_begin = 0;
+    uint32_t pdata_end = 0;
 };
 
 struct Block {

@@ -99,6 +99,7 @@ bool register_absolute_symbols(LLVMOrcLLJITRef jit, LLVMOrcJITDylibRef jd) {
         {"aev_flags_dec", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_dec))},
         {"aev_flags_neg", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_neg))},
         {"aev_flags_imul", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_imul))},
+        {"aev_flags_shift", reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&aev_flags_shift))},
     };
     const size_t n = sizeof(syms) / sizeof(syms[0]);
     std::vector<LLVMOrcCSymbolMapPair> pairs(n);

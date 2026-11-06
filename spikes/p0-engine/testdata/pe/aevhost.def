@@ -1,0 +1,4 @@
+LIBRARY aevhost
+EXPORTS
+    AevUpdate
+    AevHelperCalls

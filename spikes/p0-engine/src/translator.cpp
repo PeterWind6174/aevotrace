@@ -82,6 +82,10 @@ bool supported_insn(uint16_t id) {
         case X86_INS_MOVZX:
         case X86_INS_MOVSX:
         case X86_INS_MOVSXD:
+        case X86_INS_SHL:
+        case X86_INS_SHR:
+        case X86_INS_SAR:
+        case X86_INS_CDQE:
             return true;
         default:
             return is_jcc(id) || is_cmov(id);
@@ -179,7 +183,7 @@ bool build_program(CoffObject &&object,
             return false;
         }
         specs.push_back(FunctionSpec{name, sym->section_number, addresses[fi],
-                                     sym->value, (uint32_t)remaining});
+                                     sym->value, (uint32_t)remaining, 0, 0});
     }
     return build_program_from_specs(std::move(object), specs, nullptr, program, error);
 }

@@ -110,10 +110,12 @@ def validate_header(header, manifest, blocks, input_sha, trace_path,
             raise ValueError(f"{trace_path}: entry export mismatch")
         if parse_hex(header["entry_addr"], "entry_addr") != int(manifest["entry_address"]):
             raise ValueError(f"{trace_path}: entry address mismatch")
-        for key in ("module_kind", "module_file_size", "preferred_base",
-                    "load_base", "image_size", "image_sha256",
-                    "import_binding_sha256", "host_binding_sha256",
-                    "entry_exports_sha256", "thunk_base", "import_count"):
+        for key in ("module_file_size", "preferred_base", "load_base",
+                    "image_size", "thunk_base", "import_count"):
+            if parse_hex(header[key], key) != parse_hex(manifest.get(key), key):
+                raise ValueError(f"{trace_path}: {key} does not match manifest")
+        for key in ("module_kind", "image_sha256", "import_binding_sha256",
+                    "host_binding_sha256", "entry_exports_sha256"):
             if header[key] != manifest.get(key):
                 raise ValueError(f"{trace_path}: {key} does not match manifest")
         if header["offset_kind"] != "rva":

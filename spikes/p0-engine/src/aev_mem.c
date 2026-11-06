@@ -76,8 +76,10 @@ static uint64_t locate_range(const GuestState *s, uint64_t addr, uint64_t len,
             if (addr < r->guest_base)
                 continue;
             uint64_t off = addr - r->guest_base;
-            if (off > r->size || r->size - off < len)
+            if (off >= r->size)
                 continue;
+            if (r->size - off < len)
+                return AEV_MEM_FAULT_RANGE;
             uint32_t prot = r->prot;
             if ((need & AEV_MEM_PROT_READ) && !(prot & AEV_MEM_PROT_READ))
                 return AEV_MEM_FAULT_READ;
@@ -237,6 +239,36 @@ void aev_flags_imul(GuestState *s, uint32_t width, uint64_t a, uint64_t b, uint6
     set_flag(s, AEV_ZF, 0);
     set_flag(s, AEV_SF, 0);
     set_flag(s, AEV_PF, 0);
+}
+
+void aev_flags_shift(GuestState *s, uint32_t width, uint64_t value,
+                     uint64_t count, uint64_t result, uint32_t kind) {
+    uint32_t bits = width * 8;
+    uint64_t mask = width_mask(width);
+    uint64_t count_mask = bits - 1;
+    uint64_t n = count & count_mask;
+    if (n == 0)
+        return;
+    uint64_t v = value & mask;
+    uint64_t r = result & mask;
+    uint64_t cf = 0;
+    uint64_t of = 0;
+    if (kind == 0) { /* shl */
+        cf = n < bits ? ((v >> (bits - n)) & 1) : 0;
+        if (n == 1)
+            of = ((r >> (bits - 1)) & 1) ^ cf;
+    } else if (kind == 1) { /* shr */
+        cf = n <= bits ? ((v >> (n - 1)) & 1) : 0;
+        if (n == 1)
+            of = (v >> (bits - 1)) & 1;
+    } else { /* sar */
+        cf = n <= bits ? ((v >> (n - 1)) & 1) : 0;
+        of = 0;
+    }
+    set_flag(s, AEV_CF, cf != 0);
+    set_flag(s, AEV_OF, of != 0);
+    set_flag(s, AEV_AF, 0);
+    set_zsp(s, width, r);
 }
 
 void aev_note_aot(GuestState *s, uint64_t rip) {
