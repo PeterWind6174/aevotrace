@@ -9,7 +9,6 @@ recompiles Guest C source and does not link or copy the ORC JIT.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -19,15 +18,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+from aot_artifact import (
+    ArtifactError,
+    load_artifact,
+    manifest_identity,
+    require_identity,
+    sha256_file,
+)
+
 TARGET = "arm64-apple-macosx14.0.0"
-
-
-def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def run_translator(args, input_path, function, entry, out_ll, out_header, out_manifest,
@@ -73,7 +72,8 @@ def load_manifest(path: Path):
     return data, blocks
 
 
-def validate_header(header, manifest, blocks, input_sha, trace_path, expected_aot_sha=None):
+def validate_header(header, manifest, blocks, input_sha, trace_path,
+                    base_sha, base_selected):
     required = ("trace_abi", "scenario", "input_sha256", "input_fnv", "entry",
                 "function", "callback_abi", "guest_abi", "aot_artifact_abi",
                 "translator_abi", "target", "translator_version",
@@ -104,14 +104,18 @@ def validate_header(header, manifest, blocks, input_sha, trace_path, expected_ao
     if not isinstance(aot_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", aot_sha) or \
             aot_sha == "0" * 64:
         raise ValueError(f"{trace_path}: invalid aot_sha256")
-    if expected_aot_sha is not None and aot_sha != expected_aot_sha:
-        raise ValueError(f"{trace_path}: aot_sha256 does not match base AOT")
+    if aot_sha != base_sha:
+        raise ValueError(f"{trace_path}: aot_sha256 does not match actual base AOT")
     all_blocks = [parse_hex(x, "all_blocks") for x in header["all_blocks"]]
     if all_blocks != sorted(blocks):
         raise ValueError(f"{trace_path}: header all_blocks does not match COFF")
     selected = [parse_hex(x, "aot_selected") for x in header["aot_selected"]]
-    if selected != sorted(set(selected)) or any(x not in blocks for x in selected):
-        raise ValueError(f"{trace_path}: header aot_selected is not a sorted subset")
+    if selected != sorted(set(selected)):
+        raise ValueError(f"{trace_path}: header aot_selected is not sorted/unique")
+    if selected != list(base_selected):
+        raise ValueError(
+            f"{trace_path}: header aot_selected does not exactly match actual base "
+            f"({[hex(x) for x in selected]} != {[hex(x) for x in base_selected]})")
     return set(selected)
 
 
@@ -251,7 +255,7 @@ def main() -> int:
     ap.add_argument("--function", required=True)
     ap.add_argument("--entry", required=True)
     ap.add_argument("--entry-addr", required=True)
-    ap.add_argument("--base-aot", default="")
+    ap.add_argument("--base-aot", required=True)
     ap.add_argument("--trace", action="append", required=True)
     ap.add_argument("--out-ll", required=True)
     ap.add_argument("--out-header", required=True)
@@ -264,9 +268,10 @@ def main() -> int:
     out_manifest = Path(args.out_manifest).resolve()
     input_sha = sha256_file(input_path)
     entry_addr = int(args.entry_addr, 0)
-    expected_aot_sha = None
-    if args.base_aot:
-        expected_aot_sha = sha256_file(Path(args.base_aot).resolve())
+    try:
+        base = load_artifact(Path(args.base_aot))
+    except ArtifactError as exc:
+        raise SystemExit(f"invalid base AOT: {exc}") from exc
 
     out_ll.parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="aev-supplement-", dir=str(out_ll.parent)))
@@ -281,6 +286,14 @@ def main() -> int:
             raise SystemExit("translator input SHA does not match input file")
         if int(manifest.get("entry_address", -1)) != entry_addr:
             raise SystemExit("entry-addr does not match translator entry")
+        try:
+            expected = manifest_identity(manifest)
+            expected["entry_addr"] = entry_addr
+            expected["guest_state_size"] = 256
+            expected["all_blocks"] = sorted(blocks)
+            require_identity(base, expected)
+        except (ArtifactError, KeyError, TypeError, ValueError) as exc:
+            raise SystemExit(f"base AOT does not match input/translator: {exc}") from exc
         selected = set()
         trace_hashes = {}
         for trace_name in args.trace:
@@ -300,7 +313,7 @@ def main() -> int:
             try:
                 header_selected = validate_header(
                     headers[0], manifest, blocks, input_sha, trace_path,
-                    expected_aot_sha,
+                    base.sha256, base.selected_blocks,
                 )
                 selected_here, _ = validate_events(trace_path, blocks, header_selected)
             except (ValueError, TypeError, KeyError) as exc:
@@ -311,7 +324,9 @@ def main() -> int:
         selected_list = sorted(selected)
         all_list = sorted(blocks)
         excludes = [rip for rip in all_list if rip not in selected]
-        base_selected = {int(b["rip"]) for b in blocks.values() if not b["jit_only"]}
+        base_selected = set(base.selected_blocks)
+        promoted = sorted(selected - base_selected)
+        demoted = sorted(base_selected - selected)
 
         final_ll = work / "final.ll"
         final_header = work / "final.h"
@@ -326,15 +341,16 @@ def main() -> int:
             expected_jit = rip not in selected
             if final_blocks.get(rip, {}).get("jit_only") != expected_jit:
                 raise SystemExit(f"selected coverage mismatch at {hex(rip)}")
+        final_data["base_aot_sha256"] = base.sha256
+        final_data["base_selected_blocks"] = sorted(base_selected)
         final_data["selected_blocks"] = selected_list
         final_data["trace_files"] = [
             {"path": p, "sha256": h} for p, h in sorted(trace_hashes.items())
         ]
         final_data["trace_abi"] = 1
         final_data["supplement_tool"] = "aev-aot-supplement-v1"
-        final_data["promoted_blocks"] = [
-            rip for rip in selected_list if rip not in base_selected
-        ]
+        final_data["promoted_blocks"] = promoted
+        final_data["demoted_blocks"] = demoted
         final_manifest.write_text(json.dumps(final_data, indent=2) + "\n")
         publish_outputs([
             (out_ll, final_ll),
@@ -345,8 +361,11 @@ def main() -> int:
             "success": True,
             "input_sha256": input_sha,
             "entry_address": entry_addr,
+            "base_aot_sha256": base.sha256,
+            "base_selected_blocks": [hex(x) for x in sorted(base_selected)],
             "selected_blocks": [hex(x) for x in selected_list],
-            "promoted_blocks": [hex(x) for x in final_data["promoted_blocks"]],
+            "promoted_blocks": [hex(x) for x in promoted],
+            "demoted_blocks": [hex(x) for x in demoted],
             "all_block_count": final_data.get("all_block_count"),
             "trace_count": len(args.trace),
         }, indent=2))
