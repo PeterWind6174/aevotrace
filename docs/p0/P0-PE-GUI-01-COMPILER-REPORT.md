@@ -4,6 +4,8 @@
 
 本报告只覆盖 compiler owner 范围：共享 PE session core、`libaev_pe_session.dylib` C ABI、`aev-pe-runner` 薄 CLI、engine CMake 与 headless C ABI 测试。GUI/platform、Windows stateful reference、最终 QA/reviewer 不在本 worker 完成范围内。
 
+> **协调者注（2026-11-07，最终集成）**：本文件是 compiler `a37c836` 时的历史实施报告。最终集成在 `73fbeb3`/`c5adf4f` 将第 9 个活动 session 改为 `INVALID_ARGUMENT/2`（与冻结契约和旧 runner 一致），并修复 JIT step budget→`STEP_LIMIT=8`；`p0_pe_session` 最终 **233/233**。最终结论以 `docs/p0/P0-PE-GUI-01-REPORT-20261107.md` 为准。
+
 ## 1. 修改文件
 
 | 文件 | 内容 |

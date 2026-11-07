@@ -107,13 +107,14 @@ Windows：`ssh win`，VS 18 Community，MSVC 19.51.36260 x64；`build_msvc.ps1` 
 ## 8. 独立 QA/reviewer
 
 - QA-behavior/Windows（`ses_e4c6748b9ffew03RnttZFc3UhD`）：**PASS（c18eeec 原始 + c5adf4f 最终复验；人工待验收）**，报告 `.local/results/P0-PE-GUI-01/qa-behavior/REPORT.md`（§12 为最终源码复验）。最终 ctest 7/7、`p0_pe_session` 233/233、PE DLL 149/149、语义 791、Trace/AOT 78；base 560/561、supplemented 596/597（重新生成 supp，selected 21/promoted 21/demoted 0，零 JIT/2534 AOT）；自己的 AppKit 新输入（Reset 0x0BADF00D、Compute 13579/2468/11、100 次不同输入）942/943 checks、0 failure；Windows stateful 106 行除 ASLR 外逐行一致，QA-only Windows 新序列 **1624/1624** 与 Mac/oracle 一致；旧六组 COFF GUI **264/264**；independent step-limit 复核 `STEP_LIMIT/8`+恢复；`libaev_pe_session.dylib` 进程内出现一次，无 runner/Unicorn；无阻断。
-- QA-artifact/lifecycle（`ses_e4c6748b7ffeLPzoowFPhq4RcR`）：**PASS（无阻断）**，报告 `.local/results/P0-PE-GUI-01/qa-artifact/REPORT.md`。最终 c5adf4f 独立构建 ctest 7/7；独立 C ABI/lifecycle **455/455**（struct/offset、create/info、双 session、8 slot/第 9、stale/double/illegal、wrong-thread、observer 重入/清除、部分加载失败、missing/unloadable AOT、wrong base/ABI/COFF、append/同尺寸变异失效、权限/MEMORY、trace、step-limit、AOT hybrid）；provenance **359/359**；observer C++ 异常 **17/17**；ASAN 辅助构建 C ABI 455/455、observer 17/17、无 ASAN 报告（`detect_leaks=0`，只证明已执行路径无 UAF）。它发现并促成 step-limit 真实缺陷修复；确认 trace 文件 reopen 后 `call=1/2`，而 `result.call_index` 为 session 累计 4/5。
+- QA-artifact/lifecycle（`ses_e4c6748b7ffeLPzoowFPhq4RcR`）：**PASS（无阻断）**，报告 `.local/results/P0-PE-GUI-01/qa-artifact/REPORT.md`。最终 c5adf4f 独立构建 ctest 7/7；独立 C ABI/lifecycle **455/455**（struct/offset、create/info、双 session、8 slot/第 9、stale/double/illegal、wrong-thread、observer 重入/清除、部分加载失败、missing/unloadable AOT、wrong base/ABI/COFF、append/同尺寸变异失效、权限/MEMORY、trace、step-limit、AOT hybrid）；provenance **359/359**（独立 GUI trace 生成 selected 19/promoted 4/demoted 1，新 AOT 零 JIT，4 个 promoted 块实际 `aot`，publisher 与伪造 base SHA/selected/promoted 负例）；observer C++ 异常 **17/17**；ASAN 辅助构建 C ABI 455/455、observer 17/17、无 ASAN 报告（`detect_leaks=0`，只证明已执行路径无 UAF）。它发现并促成 step-limit 真实缺陷修复；确认 trace 文件 reopen 后 `call=1/2`，而 `result.call_index` 为 session 累计 4/5。
 - 最终 reviewer（`ses_e4c388f23ffe1VV6V0hVDaksY5`）：**待填写**（只读最终源码/证据；首轮基于 c18eeec，需按 c5adf4f/QA 最终版复审）。
 
 ## 9. 未测/限制与风险
 
 - 人工物理键盘/焦点/IME/窗口缩放/观感未验收；自动 AppKit 事件/截图不等于人工观感。
 - 未实现/未验证：通用 EXE/进程启动、完整 Win32/消息泵、任意嵌套/线程/模态、TLS/CRT/SEH/COM、通用依赖图、真实第三方应用、运行中代码失效/重装、同一 artifact 跨 base、持久 JIT 缓存产品化、独立 app 分发/签名/公证、性能结论。
+- `compat` 仍是 P0 语义 harness（自绘控件/命中测试），不是最终兼容运行库；D3 兼容运行库选择仍未决。本轮只证明 compat/native 两个后端与同一 PE session 的真实控件接线，不把 compat 外观/控件当作最终产品兼容层。
 - base profile 使用 empty AOT（全 JIT）；这是有界验证，不是性能测量；未把 hybrid 22 AOT/3 JIT 写成 full-AOT 零 JIT（`p0_pe_dll` 已覆盖混合）。
 - Windows reference 的 `cursor_addr` 是 Host 地址、ASLR 高 bits 可变；比较低 16 位/relocation 关系，不绑定绝对地址。
 - `build.log` 为 GBK/CRLF 原样证据；`git diff --check` 可能把 CR 报为 trailing whitespace，属预期。
