@@ -1,21 +1,69 @@
+== build environment ==
+OutDir=C:\Users\PeterWind\AevotraceP0\P0-PE-GUI-01
+Src=C:\Users\PeterWind\AevotraceP0\P0-PE-GUI-01\src
+PSVersion=5.1.26100.9843
+vcvars=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat
 == tools ==
+CMD cl 2>&1 | findstr /C:"Version"
 Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64
+EXIT 0  cl version
+CMD link 2>&1 | findstr /C:"Linker"
 Microsoft (R) Incremental Linker Version 14.51.36260.0
+EXIT 0  link version
+== fixed input identity (repository SHA256SUMS) ==
+declared 1f82b67978dc13e1e31c1262497a9fe186d39f637949b94408c646d4b11152b0  aevguest.dll
+declared 0eabd013127ef5cc4e73c149aa0988b3d88dbb009d491c0c895e7a0d479757d1  aevhost.dll
 == helper ==
+CMD cl /nologo /c /Od /GS- /Zl /W4 /Brepro aevhost.c
 aevhost.c
+EXIT 0  cl aevhost
+CMD link /nologo /DLL /NOENTRY /MACHINE:X64 /NODEFAULTLIB /DYNAMICBASE /FIXED:NO /Brepro /OUT:aevhost.dll /IMPLIB:aevhost.lib /DEF:aevhost.def aevhost.obj
   正在创建库 aevhost.lib 和对象 aevhost.exp
+EXIT 0  link aevhost
 == guest ==
+CMD cl /nologo /c /Od /GS- /Zl /W4 /Brepro aevguest.c
 aevguest.c
+EXIT 0  cl aevguest
+CMD link /nologo /DLL /NOENTRY /MACHINE:X64 /NODEFAULTLIB /DYNAMICBASE /FIXED:NO /Brepro /OUT:aevguest.dll /DEF:aevguest.def aevguest.obj aevhost.lib
   正在创建库 aevguest.lib 和对象 aevguest.exp
+EXIT 0  link aevguest
+== verify fixed input bytes ==
+1f82b67978dc13e1e31c1262497a9fe186d39f637949b94408c646d4b11152b0  aevguest.dll
+0eabd013127ef5cc4e73c149aa0988b3d88dbb009d491c0c895e7a0d479757d1  aevhost.dll
+fixed DLL identity OK
 == reference ==
+CMD cl /nologo /Od /W4 /Brepro aevguest_ref.c /link /OUT:aevguest_ref.exe
 aevguest_ref.c
+EXIT 0  cl reference
 == inspection ==
-== run reference ==
+CMD dumpbin /headers aevguest.dll > aevguest.headers.txt
+EXIT 0  dumpbin headers
+CMD dumpbin /sections aevguest.dll > aevguest.sections.txt
+EXIT 0  dumpbin sections
+CMD dumpbin /imports aevguest.dll > aevguest.imports.txt
+EXIT 0  dumpbin imports
+CMD dumpbin /exports aevguest.dll > aevguest.exports.txt
+EXIT 0  dumpbin exports
+CMD dumpbin /relocations aevguest.dll > aevguest.relocations.txt
+EXIT 0  dumpbin relocations
+CMD dumpbin /headers aevhost.dll > aevhost.headers.txt
+EXIT 0  dumpbin helper headers
+CMD dumpbin /exports aevhost.dll > aevhost.exports.txt
+EXIT 0  dumpbin helper exports
+== run reference (legacy no-arg mode) ==
+CMD .\aevguest_ref.exe > reference_stdout.txt
+EXIT 0  reference run
 reference exit=0
+== run reference (stateful mode) ==
+CMD .\aevguest_ref.exe stateful > reference_stateful_stdout.txt
+EXIT 0  stateful reference run
+stateful reference exit=0
 == hashes ==
 1f82b67978dc13e1e31c1262497a9fe186d39f637949b94408c646d4b11152b0  aevguest.dll
 0eabd013127ef5cc4e73c149aa0988b3d88dbb009d491c0c895e7a0d479757d1  aevhost.dll
-0b30d8ea7ce3bfb8b528857d9b1398e0d4f786ca5cf9a8666262e09f9ca96b7f  aevguest_ref.exe
-f8ea927c14598089da6a911a5efc86dff3ab1fd86fcadc352edd48d676274e5b  aevguest.obj
-a3757231c17336241ff648931607e76ef702638191b3b7cc6ed69a955b85ab02  aevhost.obj
+f7f7c7434313c8c32c5c876e3b8d0a808d304c6b9cba8d909bf5fe2f622a9fe8  aevguest_ref.exe
+ac38babd15e2864307b929f0d53091ff2c0af1c61f6e109bf65e5abb1a4da289  aevguest.obj
+dc5651980909c98f841fcdf058d492c4dcfad24cd6313e2810bf9b8a5afd7842  aevhost.obj
+156e581fbd4ebc4c8bb7cfce28ee4900eb1f1ef64c2dec4cd87578754855ba71  reference_stdout.txt
+5c74e0f8d0bacbdf20f2ecf905de3416797e34583db50d1435fc9bacae551b48  reference_stateful_stdout.txt
 BUILD_OK
