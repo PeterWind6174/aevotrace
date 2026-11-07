@@ -40,7 +40,7 @@
 ## 完成报告
 
 - 报告：[P0-PE-CORE-FIX-01-REPORT-20261106](../p0/P0-PE-CORE-FIX-01-REPORT-20261106.md)。
-- 独立 QA：[qa-perm](../../.local/results/P0-PE-CORE-FIX-01/qa-perm/REPORT.md)、[qa-sar](../../.local/results/P0-PE-CORE-FIX-01/qa-sar/REPORT.md)、[qa-final](../../.local/results/P0-PE-CORE-FIX-01/qa-final/REPORT.md)。
+- 独立 QA 原始报告位于当时工作树的 `.local/results/P0-PE-CORE-FIX-01/{qa-perm,qa-sar,qa-final}/REPORT.md`，已随 `p0-pe-core-fix.tar.gz` 归档；当前跟踪摘要见 [核心修复报告](../p0/P0-PE-CORE-FIX-01-REPORT-20261106.md)，恢复见 [收尾记录](../p0/INTEGRATION-20261107.md)。
 - reviewer：ACCEPT WITH NON-BLOCKING NOTES（无阻断）。
 
 - 最终代码/集成分支、契约版本、输入/产物 SHA-256。

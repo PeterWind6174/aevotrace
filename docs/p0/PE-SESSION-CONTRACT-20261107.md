@@ -1,6 +1,6 @@
 # P0-PE-GUI-01 最小 PE session 契约（v1）
 
-日期：2026-11-07。状态：实施冻结候选；rev1 吸收契约只读审查 B1–B7 的 ABI/语义澄清；rev2（P0-PE-SESSION-FIX-01）补充 HostImport 实现签名匹配与 Python wrapper observer 失败路径生命周期约束（不改变结构尺寸/状态码编号/既有 ABI）。适用范围：一个固定 Windows x86-64 PE32+ DLL（含已声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的持续存活调用会话，供 `aev-pe-runner` 与 compat/native GUI 共同使用。不是 P1 全量 ABI，也不覆盖 EXE 启动、DllMain/CRT/TLS、SEH、完整 Win32、通用依赖或并发重装。
+日期：2026-11-07。状态：本批有界实验契约已实施并通过独立 QA/外部复核；rev1 吸收契约只读审查 B1–B7 的 ABI/语义澄清；rev2（P0-PE-SESSION-FIX-01）补充 HostImport 实现签名匹配与 Python wrapper observer 失败路径生命周期约束（不改变结构尺寸/状态码编号/既有 ABI）。适用范围：一个固定 Windows x86-64 PE32+ DLL（含已声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的持续存活调用会话，供 `aev-pe-runner` 与 compat/native GUI 共同使用。不是 P1 全量 ABI，也不覆盖 EXE 启动、DllMain/CRT/TLS、SEH、完整 Win32、通用依赖或并发重装。
 
 本契约只新增 session 层；既有 Guest ABI 2 / 296、callback ABI 3、artifact/translator ABI 2、trace sink ABI 1、PE trace file ABI 4 与 [PE-DLL v3](PE-DLL-CONTRACT-20261106.md) 的模块身份、内存、HostImport、artifact 校验保持不变。
 

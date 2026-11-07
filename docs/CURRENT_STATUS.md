@@ -1,6 +1,6 @@
 # 当前状态（2026-11-07）
 
-本批已完成实施、独立 QA、外部复核与 main 集成，正在同一收尾操作内完成最终主工作树验证和归档；执行结果以 [收尾记录](p0/INTEGRATION-20261107.md) 为准。下一阶段尚未启动。需求仍是 Windows x64 EXE/DLL → macOS ARM64 独立 GUI 应用，AOT 优先、真实 JIT 回退，保留 compat/native 两种输出。
+本批已完成实施、独立 QA、外部复核、main 集成、最终主工作树验证及归档清理；执行结果见 [收尾记录](p0/INTEGRATION-20261107.md)。下一阶段尚未启动。需求仍是 Windows x64 EXE/DLL → macOS ARM64 独立 GUI 应用，AOT 优先、真实 JIT 回退，保留 compat/native 两种输出。
 
 ## 当前代码基线
 
@@ -21,7 +21,7 @@ main 已快进至集成提交 `ce9c11b0282375aec79ca7fcf01f4bf1f0c097eb`，包�
 - 双 PE GUI QA：base compat/native 560/561；同次实际 Trace 补充后 596/597。每后端 100 次按钮、load_count=1；supplemented 各 2534 AOT 块、零 JIT compile/exec。
 - 原六组 COFF GUI：每组 44/44，共 264；native 强制失败不静默转 compat。
 - Windows 固定输入/reference 有哈希绑定；session-fix 仅改 Host 绑定与 wrapper，按任务约定复用参考，未重新远程执行。
-- 本批收尾将在主工作树从空目录重新构建，并用 main 入口复跑双 GUI；具体命令、退出码和哈希见收尾记录。
+- 本批主工作树从空目录重建：8/8 CTest；main 提交 `034eef4`（与 `47b2b7a` 产品源码一致）的双 PE GUI 和六组 COFF GUI 均重新通过。所有源码/产物/构建路径来自根目录，具体命令、退出码和哈希见收尾记录。旧目录移除后实际 PE Reset+Compute 再次执行成功。
 
 计数仅代表固定样例和断言，不是完整兼容率或加速比。原始证据被忽略；跟踪报告见 [证据索引](p0/EVIDENCE-INDEX.md)，本地归档恢复方式见收尾记录。
 
