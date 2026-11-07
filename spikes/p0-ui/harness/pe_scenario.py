@@ -539,6 +539,33 @@ class PeScenario:
                     f"captured={captured}")
         self.logger.event("pe.wrong_thread_probe", captured=captured)
 
+    def _prepare_valid_read(self) -> dict:
+        """Exercise the ReadAt block successfully for the supplement trace.
+
+        The negative button intentionally faults; a trace containing a failed
+        call_end cannot be fed to the offline supplement validator.  Before
+        closing the trace we read the real cursor address exported by the DLL,
+        so the same ReadAt block is AOT-selected and the later negative fault
+        path does not require JIT.
+        """
+        if self.host.session is None:
+            return {}
+        address_result = self.host.session.call("AevDllCursorAddress")
+        address = int(address_result["rax"])
+        read_result = self.host.session.call("AevDllReadAt", [address])
+        record = {
+            "address": f"0x{address:x}",
+            "value": read_result["rax_i32"],
+            "value_raw": read_result["rax"],
+            "address_call_index": address_result["call_index"],
+            "read_call_index": read_result["call_index"],
+        }
+        self._check("valid_read_for_supplement",
+                    read_result["status"] == 0 and address != 0,
+                    f"address=0x{address:x} status={read_result['status']}")
+        self.logger.event("pe.valid_read_for_supplement", **record)
+        return record
+
     # -- run -----------------------------------------------------------
     def run(self) -> dict:
         self.logger.event(
@@ -770,6 +797,13 @@ class PeScenario:
                     f"{loop_end['calls_text']} != {oracle.calls}")
         self._screenshot(f"03-after-100-{self.backend.name}.png")
 
+        # Successful ReadAt for trace/AOT coverage (the fault path uses the
+        # same block later).  Close the trace before the intentional MEMORY
+        # fault so the supplement tool never sees a failed call_end record.
+        valid_read = self._prepare_valid_read()
+        self.negative["valid_read"] = valid_read
+        trace_proof = self._analyze_trace()
+
         # Negative real-button path: AevDllReadAt(0xDEAD0000) -> MEMORY.
         before = self.host.read_state()
         self.backend.set_edit_text(self.host.bad_addr_handle, "0xDEAD0000")
@@ -855,7 +889,6 @@ class PeScenario:
                         str(info.get("aot_present")))
             self._validate_manifest()
 
-        trace_proof = self._analyze_trace()
         self._wrong_thread_check()
 
         # Anti-substitution / backend proof.
