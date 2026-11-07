@@ -383,3 +383,16 @@ add_test(NAME p0_pe_session
 set_tests_properties(p0_pe_session PROPERTIES
   ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
   TIMEOUT 900)
+
+# P0-PE-SESSION-FIX-01: the C ABI tests above cannot cover the Python
+# wrapper's own reference rules.  This runs the real harness.pe_session
+# wrapper against the same built dylib and the fixed PE fixture; a rejected
+# set_observer/clear_observer must keep the C-registered callbacks alive.
+add_test(NAME p0_pe_session_wrapper
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../p0-ui/scripts/run_pe_session_wrapper_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_BINARY_DIR}/results-pe-session-wrapper
+)
+set_tests_properties(p0_pe_session_wrapper PROPERTIES
+  ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+  TIMEOUT 300)

@@ -93,6 +93,8 @@
 
 ## P0-PE-GUI-01（实现/集成、独立 QA 与 reviewer 审查完成；P0 整体未通过）
 
+后续状态（2026-11-07）：外部复核 `CODEX-PE-GUI-REVIEW-20261107` 独立复跑主链路通过，但发现 F1/P1 observer 生命周期（Python wrapper 在 C ABI 拒绝后释放仍注册的回调）与 F2/P2 HostImport arity 缺口。原“reviewer 无阻断”只是该轮 reviewer 结论，**不能继续视为最终验收通过**；修复、独立 QA 与复审由 `P0-PE-SESSION-FIX-01` 承接（见下文）。以下历史结果保留，不抹除。
+
 - 分支/工作树：`p0/pe-gui-01` / `.worktrees/p0-pe-gui-01`；最终源码提交 `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + step-limit 修复）；基线 `de67e2b`；main 仍 `c91a3f7`。
 - 契约：`docs/p0/PE-SESSION-CONTRACT-20261107.md` v1 rev1；header `spikes/p0-engine/include/aev_pe_session.h`。
 - 报告：`docs/p0/P0-PE-GUI-01-REPORT-20261107.md`；compiler 报告 `docs/p0/P0-PE-GUI-01-COMPILER-REPORT.md`。

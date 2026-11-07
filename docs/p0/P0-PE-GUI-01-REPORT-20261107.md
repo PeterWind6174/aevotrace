@@ -1,5 +1,7 @@
 # P0-PE-GUI-01 报告：持久 PE session 与双 GUI 集成
 
+后续状态（2026-11-07）：外部复核 `CODEX-PE-GUI-REVIEW-20261107` 独立复跑主链路通过，但发现 F1/P1 observer 生命周期与 F2/P2 HostImport arity 缺口。本报告状态/“reviewer 无阻断”只记录该轮结论，不再是最终验收通过；修复与复审见 `P0-PE-SESSION-FIX-01`。历史内容保留。
+
 日期：2026-11-07。状态：**有界任务实现/集成与独立 QA 完成（QA-behavior/Windows、QA-artifact/lifecycle PASS）；最终 reviewer 无阻断、建议进入外部复核；P0 整体与首版仍未完成。** 分支 `p0/pe-gui-01`，基线 `de67e2be2ea2252bb0e2b522ba52aa5d208e5d21`；本轮最终源码提交 `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + JIT step-budget→STEP_LIMIT=8 修复及 session 测试加强）。main 仍 `c91a3f7`，未合并、未 push、未清理工作树。
 
 本报告只证明：一个固定 Windows x64 PE32+ DLL（含全局数据、DIR64 relocation、一个声明 HostImport）通过版本化 C ABI 的持久 session，在同一 macOS ARM64 进程内由 compat/native GUI 真实控件事件调用；共享 AOT/JIT 核心、实际 DLL State/Calls、100 次连续调用、base JIT→GUI Trace→离线补充→新进程零 JIT AOT、Windows 同序列对照。不证明通用 EXE、完整 Win32/消息泵、TLS/CRT/SEH/COM/线程、真实第三方应用、运行中代码失效、独立 app 分发或性能。
