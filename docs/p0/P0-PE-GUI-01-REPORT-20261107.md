@@ -10,6 +10,7 @@
 | --- | --- |
 | 实现/集成分支 | `p0/pe-gui-01`（`.worktrees/p0-pe-gui-01`） |
 | 最终源码 HEAD | `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a` |
+| 集成分支 | `p0/pe-gui-01`（最终 HEAD 以 `git rev-parse` 为准；源码/测试为 `c5adf4f`；GUI 干净证据 HEAD `38cfaba`） |
 | 基线 | `de67e2b`（`p0/pe-core-fix-01` / `p0/pe-core-fix-integration`） |
 | 契约 | [PE-SESSION-CONTRACT-20261107](PE-SESSION-CONTRACT-20261107.md) v1 rev1 |
 | C ABI | `include/aev_pe_session.h`，`AEV_PE_SESSION_ABI_VERSION=1` |
