@@ -1,6 +1,6 @@
 # P0-PE-SESSION-FIX-01：PE session observer 生命周期与 HostImport arity 修复
 
-状态：完成（F1/F2 实施、顺序集成、独立 QA PASS、reviewer 无阻断；停在集成分支待外部复核）。
+状态：完成（F1/F2 实施、独立 QA、reviewer 与外部复核均通过；源码 `47b2b7a` 已经 `ce9c11b` 统一到 main）。收口与历史工作树归档见 [合并记录](../p0/INTEGRATION-20261107.md)。下文派发/实施过程中的分支和“停在集成分支”约定为历史记录，已由用户本次统一合并授权取代。
 
 ## 输入与责任
 

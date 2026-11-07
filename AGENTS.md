@@ -2,11 +2,11 @@
 
 ## 先读
 
-读取 `docs/需求规格.md`、`docs/项目构想与技术路线.md`、`docs/开发计划.md` 和 `docs/OpenCode协作方案.md`。产品需求以用户最新指示和需求规格为准；旧 AArch64/Switch 首版设定已经被替换。
+读取 `docs/需求规格.md`、`docs/项目构想与技术路线.md`、`docs/开发计划.md`、`docs/OpenCode协作方案.md` 和 `docs/CURRENT_STATUS.md`。产品需求以用户最新指示和需求规格为准；旧 AArch64/Switch 首版设定已经被替换。
 
 ## 当前目标
 
-Windows x86-64 EXE/DLL → macOS ARM64 桌面 GUI 应用；AOT 优先且允许 JIT；同时保留 `compat` 与 `native` 两种可选输出。main 已包含 `spikes/p0-engine` 和 `spikes/p0-ui` 两套实验，尚未连通为产品转换器，不能写成已支持真实应用或已提速。
+Windows x86-64 EXE/DLL → macOS ARM64 桌面 GUI 应用；AOT 优先且允许 JIT；同时保留 `compat` 与 `native` 两种可选输出。main 已连通固定 PE DLL、共享 AOT/JIT 核心、持久 session、双 GUI 与 Trace→补充 AOT，并合入 P0-PE-SESSION-FIX-01。窗口仍由 Host 测试框架建立；不是通用 EXE/Win32 GUI 转换器，不得写成已支持真实应用、独立 `.app` 或已提速。本批已收口，下一阶段尚未启动；已归档工作树路径不能当作现有工作区，按最新 main 建新任务。
 
 ## 开发与协作
 

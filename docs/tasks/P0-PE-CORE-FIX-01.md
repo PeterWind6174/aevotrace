@@ -1,6 +1,8 @@
 # P0-PE-CORE-FIX-01：PE 段权限与 SAR 标志位聚焦修复
 
-状态：完成，独立 QA PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES，待外部复核。基线：`p0/pe-dll-01` / `p0/pe-dll-integration` HEAD `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`（上一轮源码 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`）。本轮分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`；本轮代码 `987692be19fdc1057f8bdd4be3ada87d2047e280`；最终测试/文档 `ac84ae3bf8662f2041096bf9b71d909d587c2dab`。main 仍 `c91a3f7`。
+2026-11-07 收口：外部复核已通过，相关修复全部包含在 main 集成 `ce9c11b`（最终产品源码 `47b2b7a`）。历史工作树已归档，见 [合并记录](../p0/INTEGRATION-20261107.md)。
+
+执行时状态（历史）：完成，独立 QA PASS，reviewer ACCEPT WITH NON-BLOCKING NOTES，待外部复核。基线：`p0/pe-dll-01` / `p0/pe-dll-integration` HEAD `00ee8d3a20fc68507adcfe5d7fc1e1007a1b2fe2`（上一轮源码 `f864d97aa1b3bd58c678744f17f1ffb4e254fedb`）。本轮分支 `p0/pe-core-fix-01`，工作树 `.worktrees/p0-pe-core-fix`；本轮代码 `987692be19fdc1057f8bdd4be3ada87d2047e280`；最终测试/文档 `ac84ae3bf8662f2041096bf9b71d909d587c2dab`。main 仍 `c91a3f7`。
 
 ## 输入与责任
 

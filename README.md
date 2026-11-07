@@ -6,22 +6,22 @@ Aevotrace is a developer-oriented cross-architecture, cross-OS binary conversion
 
 Aevotrace 面向开发者，将已有程序的机器代码与平台依赖转换、适配并构建为目标平台应用。源码不是必需输入；有源码、调试符号或适配提示时可以额外利用。通过静态分析、受控执行、多轮记录与动态代码版本捕获补充代码发现，正式运行优先执行 AOT 产物，允许 JIT 回退，将新增记录用于后续离线构建。
 
-**当前状态：P0 证据阶段（2026-11-05）。已有 Windows 双机 smoke、x64→ARM64 AOT/JIT 最小闭环、compat/native GUI 语义 spike 与真实应用候选调查；P0 整体未通过，尚无可运行产品转换器、兼容性清单或性能测量。spike 不等于支持。**
+**当前状态：已验证的原型阶段（2026-11-07）。main 已统一固定 x64 PE DLL → ARM64 AOT/真实 JIT → 持久 session → compat/native GUI → 实际 Trace → 补充 AOT 的实验闭环，并包含已复核的正确性修复。P0 总体验收和首版产品仍未完成；尚无通用 EXE 转换器、独立 `.app`、真实应用转换验收或性能结论。** 当前能力与未完成项见 [当前状态](docs/CURRENT_STATUS.md)，本批收尾见 [统一合并记录](docs/p0/INTEGRATION-20261107.md)。
 
 公开仓库：[PeterWind6174/aevotrace](https://github.com/PeterWind6174/aevotrace)。
 
 ## 已合入 main 的实验
 
-- [执行核心实验](spikes/p0-engine/README.md)：x64 COFF → ARM64 AOT/JIT，含 F1–F5 正确性修复、空 AOT 表及回归测试。
-- [双 GUI 后端实验](spikes/p0-ui/README.md)：`compat` 自绘与 `native` AppKit 语义验证，仍使用 Unicorn 临时桥接，尚未与执行核心集成。
-- [合并与工作树整理记录](docs/p0/INTEGRATION-20261105.md)：主工作树验证、历史证据归档和工作树移除范围。
+- [执行核心实验](spikes/p0-engine/README.md)：有界 COFF/PE 装载、AOT/JIT、Host↔Guest 回调、Trace/产物身份及 PE session C ABI。
+- [双 GUI 后端实验](spikes/p0-ui/README.md)：当前 `run_engine` / `run_pe_gui` 入口共用实际 AOT/JIT 核心；`compat` 为自绘语义实验，`native` 使用 AppKit。早期 Unicorn 入口仅保留作历史实验，不是当前集成链。
+- [本批合并与归档记录](docs/p0/INTEGRATION-20261107.md)、[首轮合并历史](docs/p0/INTEGRATION-20261105.md)：代码版本、验证口径、工作树归档和恢复方式。
 
 执行核心可在项目根目录构建验证（需其 README 列出的本地工具链与依赖）：
 
 ```sh
-cmake -S spikes/p0-engine -B .local/build-p0-engine -G Ninja
-cmake --build .local/build-p0-engine
-ctest --test-dir .local/build-p0-engine --output-on-failure
+cmake -S spikes/p0-engine -B .local/build-main -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build .local/build-main -j 4
+ctest --test-dir .local/build-main --output-on-failure
 ```
 
 ## 首个版本

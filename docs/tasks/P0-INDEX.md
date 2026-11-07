@@ -3,12 +3,14 @@
 阶段：P0 范围、选型和高风险验证。权威任务基线：`586662a4ff09465d7d3aa453fb44e5aa6e880c79`（P0 任务记录提交；任务开始前的产品基线为 `373becbd`）。每个任务必须在完成报告中记录实际 `git rev-parse HEAD` 与输入/二进制哈希，不把索引基线当成唯一身份。
 本索引只登记任务与状态，不把计划当成已实现能力。
 
+2026-11-07 收口：本批所有已实施分支已统一到 main（集成 `ce9c11b`，产品源码 `47b2b7a`），独立外部复核通过。旧分支/worktree 为历史执行位置，归档和恢复见 [收尾记录](../p0/INTEGRATION-20261107.md)；未开始与人工未验收项目转入 [待办清单](../BACKLOG.md)，下一阶段未启动。
+
 | 任务 | 目标 | owner（lead） | 写代码 | 状态 |
 | --- | --- | --- | --- | --- |
 | P0-ENV-01 | 双机工具链编译/运行/回传 smoke（Windows → Mac） | qa | 否 | 完成 |
 | P0-SCOPE-01 | Win32 GUI 测试族、真实应用候选、API/依赖/许可矩阵 | binary（lead）+ platform | 否 | 完成（静态调查；未运行应用） |
 | P0-ABI-01 | x64 Windows ABI、TLS、异常、回调、内存模型与依赖许可调查 | binary（lead）+ platform | 否 | 完成（调查；运行时未验证） |
-| P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary（lead）+ compiler | 否 | 待审查（仅调查/方案）；实际 Guest Trace 由 P0-TRACE-AOT-01 实现，P0-05 未整体关闭 |
+| P0-TRACE-01 | 准备执行、动态发现与记录可移植性方案 | binary（lead）+ compiler | 否 | 调查归档；有界块级记录由 P0-TRACE-AOT-01 验证，完整失效/采集契约转待办，P0-05 未整体关闭 |
 | P0-ENGINE-01 | x64→ARM64 AOT/JIT 最小闭环与执行引擎选型 spike | compiler | 是（隔离 worktree） | 完成（QA 功能 PASS；F1–F5 + 零 AOT 修复集成 `b4052dd`） |
 | P0-UI-01 | `compat` / `native` GUI 回调与窗口最小 spike | platform | 是（隔离 worktree） | 待人工验证（自动部分完成；W-1/W-2 PASS） |
 | P0-QA-01 | 对 ENV/ENGINE/UI 指定提交和产物做独立复跑与反伪证检查 | qa | 否 | 完成（功能 + W-1/W-2 PASS；整体 P0 不通过） |
@@ -18,6 +20,10 @@
 | P0-CORE-BRIDGE-01 | 共享 JIT/回调 bridge、AOT 身份与无 GUI 测试 | compiler + binary | 是（隔离 worktree） | 完成（4 ctest/77 checks；QA PASS） |
 | P0-TRACE-AOT-01 | 实际 Trace → 补充 AOT → 新进程验证 | compiler + binary + platform | 是（隔离 worktree） | 完成（原 `adf9a95` QA/reviewer PASS 为历史；F1 已由 `66a63fb` 修复并通过独立 QA/reviewer；物理 GUI/IME 待人工验收） |
 | P0-PROMOTION-FIX-01 | 修正 promoted_blocks 来源为实际 base artifact | compiler + binary + platform | 是（隔离 worktree） | 完成（source `66a63fb`；QA PASS/reviewer accepted；物理 GUI/IME 待人工验收） |
+| P0-PE-DLL-01 | 固定 PE32+ DLL 装载、导入导出与共享核心执行 | binary + compiler | 是（隔离 worktree） | 完成并合 main；权限/SAR 缺陷由 PE-CORE-FIX 修复并经外部复核 |
+| P0-PE-CORE-FIX-01 | 无权限节与 SAR CF 聚焦修复 | compiler + qa | 是（隔离 worktree） | 完成并合 main（`de67e2b`），外部复核通过 |
+| P0-PE-GUI-01 | 持久 PE session 与双 GUI、实际 Trace 补充 | compiler + platform + binary | 是（隔离 worktree） | 自动链完成并合 main；observer/arity 由 SESSION-FIX 修复；人工 GUI 待验收 |
+| P0-PE-SESSION-FIX-01 | observer 生命周期与 HostImport arity | platform + compiler | 是（隔离 worktree） | 完成并合 main（源码 `47b2b7a`），QA/外部复核通过，8/8 ctest |
 | P0-APP-RUN-01 | 7-Zip 26.05 Windows 参考工作流 | qa | 否 | 未开始 |
 | P0-PKG-01 | 最小 ARM64 `.app`/随包依赖/签名探针 | platform + qa | 是（隔离 worktree） | 未开始 |
 | P0-BUILD-REPRO-01 | ENGINE/UI 构建可复现口径 | compiler + qa | 是（隔离 worktree） | 未开始 |
@@ -35,16 +41,11 @@
 
 ## 工作区
 
-- `main` 工作目录：`/Users/peterwind/Script/Systems/Aevotrace`。coordinator 独占文档与集成。
-- `P0-ENGINE-01`：分支 `p0/engine-spike`，worktree `.worktrees/p0-engine`；已集成 F1–F5 与零 AOT 表修复，HEAD `b4052dd`。
-- `P0-CORE-FIX-01`：分支 `p0/core-fix-01`，worktree `.worktrees/p0-core-fix`；已 fast-forward 集成到 `p0/engine-spike`。
-- `P0-CORE-FIX-02` + `P0-ENGINE-AOT-EMPTY-01`：分支 `p0/core-fix-02`，worktree `.worktrees/p0-core-fix-02`（基线 `8c0fc15`，HEAD `b4052dd`）；已 fast-forward 集成到 `p0/engine-spike`。QA worktree `.worktrees/p0-core-fix-02-qa`（detached `b4052dd`）。
-- `P0-UI-01`：分支 `p0/ui-spike`，worktree `.worktrees/p0-ui`。
-- `P0-TRACE-AOT-01`：分支 `p0/trace-aot-01`，worktree `.worktrees/p0-trace-aot`（基线 `4bb69ab`；契约 `1f1fe00`、实现 `8325b64`、阻断修复 `823ede4`/`603a246`/`9c2aafe`；外部复核 F1 后由 P0-PROMOTION-FIX-01 修复）；未合入 main、未 push。
-- `P0-PROMOTION-FIX-01`：分支 `p0/promotion-fix-01`，worktree `.worktrees/p0-promotion-fix`（基线 `d0ddff8`/源码 `9c2aafe`；最终源码 `66a63fb`；契约 `docs/p0/PROMOTION-PROVENANCE-20261106.md`）；QA worktree `.worktrees/p0-promotion-fix-qa`（integration 分支）；未合入 main、未 push。
-- `P0-TRACE-01`：分支 `p0/trace-investigation`，worktree `.worktrees/p0-trace`（CLI worker，cwd 为该 worktree）。
-- 调查/QA 任务不修改产品源码；报告写入 `.local/results/<TASK-ID>/`（被 `.gitignore` 排除），由 coordinator 汇总。原始日志可留 `.local`，但完成报告必须给出可定位路径、哈希和复跑命令。
-- Windows 工作目录：`C:\Users\PeterWind\AevotraceP0\<TASK-ID>`（首轮由 P0-ENV-01 实际创建并记录）。
+- 当前唯一开发入口为根目录 main；本批源码、契约和跟踪报告已集中在该工作树。
+- 旧 worktree/分支→提交→归档的完整对应表见本地 `.local/cleanup-audits/20261107-closeout/worktrees-before.json`、`branches-before.txt` 和 [收尾记录](../p0/INTEGRATION-20261107.md)。旧相对路径在归档内保持；可按原提交恢复，不能把它当成当前工作区。
+- 本地构建使用 `.local/build-main`，GUI 环境 `.local/venv-callback`；原始证据保留在 `.local/results/`。
+- Windows 历史目录为 `C:\Users\PeterWind\AevotraceP0\<TASK-ID>`；本次收尾不修改远程机器。
+- 下一阶段没有派发任务；新任务必须基于当时最新 main 创建隔离工作树。
 
 ## 状态口径
 

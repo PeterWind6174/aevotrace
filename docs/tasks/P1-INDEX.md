@@ -1,6 +1,6 @@
 # P1 任务草案（待 P0 证据确认，尚未派发）
 
-状态：草案。P0-ADR-01 完成后由 coordinator 修订；不得把本表当成已承诺排期。2026-11-05 的下一轮限定为 [共同回调 ABI 与双 GUI 最小集成](../plans/P0-CALLBACK-INTEGRATION-01.md)，尚未派发；下文 P1 全量契约不作为该最小实验的前置循环依赖。
+状态：草案，下一阶段尚未启动。2026-11-07 已收口本批回调、Trace/AOT、PE DLL/session、双 GUI 与修复，见 [当前状态](../CURRENT_STATUS.md)；早期 [共同回调 ABI 与双 GUI 最小集成](../plans/P0-CALLBACK-INTEGRATION-01.md) 已执行，不再重复派发。下文只作规划输入，需以最新 main/支持矩阵/待办重新收敛，不是已承诺排期或已冻结全量契约。
 
 ## 进入 P1 的门槛
 

@@ -2,6 +2,8 @@
 
 状态：spike 完成，边界明确。**不是产品实现，不能写成已支持 Win32 GUI 或已完成 D3。**
 
+2026-11-07 当前入口：`harness.run_engine` 与 `harness.run_pe_gui` 已通过共享 AOT/JIT 核心贯通双后端，后者使用持久 PE session，包含 observer/HostImport 修复。当前验证见 [状态入口](../../docs/CURRENT_STATUS.md) 和 [收尾记录](../../docs/p0/INTEGRATION-20261107.md)。下面的 Unicorn 结论及其构建/运行说明属于原 P0-UI-01 历史实验；后文追加的共享核心/PE 入口才是本批集成路径。请勿重新运行早期入口并把结果当作当前产品能力。
+
 ## 结论摘要
 
 - Windows x64 测试 DLL 使用 MSVC 14.51 编译，`/Brepro` 可复现；固定 SHA-256

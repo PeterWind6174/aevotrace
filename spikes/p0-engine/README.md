@@ -1,5 +1,13 @@
 # P0-ENGINE-01 spike: x86-64 → ARM64 AOT/JIT closed loop
 
+2026-11-07 integration: main now also contains bounded PE DLL loading, a shared
+persistent PE session C ABI, GUI callbacks, actual block traces and offline AOT
+supplementation. The current baseline and remaining limits are documented in
+[CURRENT_STATUS](../../docs/CURRENT_STATUS.md) and the
+[closeout record](../../docs/p0/INTEGRATION-20261107.md). The canonical local
+build is `.local/build-main` from the repository root; historical build/worktree
+paths in reports are archived execution locations.
+
 Status: **spike, not a frozen product ABI and not a support claim**.  This is the
 P0-ENGINE-01 evidence package: a real MSVC-built x86-64 COFF fixture is decoded
 from its `.text` bytes, translated to LLVM IR, compiled to an ARM64 Mach-O

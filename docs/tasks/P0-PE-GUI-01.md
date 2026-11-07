@@ -1,6 +1,6 @@
 # P0-PE-GUI-01：持久 PE session 与双 GUI 集成
 
-状态：进行中（契约冻结候选，待实施/QA/审查）。
+状态：自动链路完成并统一到 main；外部发现的 observer/HostImport 问题由 P0-PE-SESSION-FIX-01（源码 `47b2b7a`）修复并复核通过；物理输入/IME/焦点仍待人工验收。收口见 [合并记录](../p0/INTEGRATION-20261107.md)。
 日期：2026-11-07。
 
 ## 输入与责任
@@ -20,14 +20,14 @@
   - reviewer（契约只读）`ses_e4cba4b71ffeVeld29oUOOSto8`，目录为集成分支 worktree（只读，不写源码）。
 - 并发说明：契约冻结后，compiler/platform/binary 的文件 owner 不重叠、各自独立 worktree/分支/构建目录；实际并发为 3 个实施会话，低于弹性调度上限 4。任何会话若无法保持 worktree 边界，立即串行化。
 
-## 并行隔离
+## 并行隔离（历史执行位置，收口后已归档）
 
 | 任务 | 分支/worktree | 构建/缓存 | 文件 owner | 状态 |
 | --- | --- | --- | --- | --- |
-| contract/integration | `p0/pe-gui-01` / `.worktrees/p0-pe-gui-01` | `.local/build-pe-gui-int` | 契约/任务/报告/根文档 | 进行中 |
-| compiler core | `p0/pe-session-01` / `.worktrees/p0-pe-session` | `.local/build-pe-session` | `include/aev_pe_session.h`（已冻结）、`src/pe_session_core.*`、`src/pe_session.cpp`、`src/pe_runner.cpp`、engine `CMakeLists.txt`、session headless scripts | 待派发 |
-| platform GUI | `p0/pe-gui-platform-01` / `.worktrees/p0-pe-gui-platform` | `.local/build-pe-gui-platform`、venv 复用只读 | `spikes/p0-ui/harness/pe_session.py`、`pe_host.py`、`pe_scenario.py`、`run_pe_gui.py`、`scripts/run_pe_gui_test.sh`、`native_backend.py`（仅多 edit handle 修复） | 待派发 |
-| binary Windows ref | `p0/pe-gui-binary-01` / `.worktrees/p0-pe-gui-binary` | Windows `C:/Users/PeterWind/AevotraceP0/P0-PE-GUI-01` | `testdata/pe/aevguest_ref.c`、`build_msvc.ps1`、`reference_stateful_stdout.txt`、`SHA256SUMS`、`build.log` | 待派发 |
+| contract/integration | `p0/pe-gui-01` / `.worktrees/p0-pe-gui-01` | `.local/build-pe-gui-int` | 契约/任务/报告/根文档 | 完成，已包含在 main |
+| compiler core | `p0/pe-session-01` / `.worktrees/p0-pe-session` | `.local/build-pe-session` | `include/aev_pe_session.h`（已冻结）、`src/pe_session_core.*`、`src/pe_session.cpp`、`src/pe_runner.cpp`、engine `CMakeLists.txt`、session headless scripts | 完成，后续 session-fix 已集成 |
+| platform GUI | `p0/pe-gui-platform-01` / `.worktrees/p0-pe-gui-platform` | `.local/build-pe-gui-platform`、venv 复用只读 | `spikes/p0-ui/harness/pe_session.py`、`pe_host.py`、`pe_scenario.py`、`run_pe_gui.py`、`scripts/run_pe_gui_test.sh`、`native_backend.py`（仅多 edit handle 修复） | 完成，后续 session-fix 已集成 |
+| binary Windows ref | `p0/pe-gui-binary-01` / `.worktrees/p0-pe-gui-binary` | Windows `C:/Users/PeterWind/AevotraceP0/P0-PE-GUI-01` | `testdata/pe/aevguest_ref.c`、`build_msvc.ps1`、`reference_stateful_stdout.txt`、`SHA256SUMS`、`build.log` | 完成，DLL 未变，stateful reference 已绑定 |
 | QA behavior/Windows | `p0/pe-gui-qa-behavior` / `.worktrees/p0-pe-gui-qa-behavior` | 独立最终构建/结果 | 只读最终源码 + `.local/results/P0-PE-GUI-01/qa-behavior` | PASS（最终 c5adf4f 复验） |
 | QA artifact/lifecycle | `p0/pe-gui-qa-artifact` / `.worktrees/p0-pe-gui-qa-artifact` | 独立最终构建/结果 | 只读最终源码 + `.local/results/P0-PE-GUI-01/qa-artifact` | PASS（C ABI 455/455、provenance 359/359） |
 | reviewer | 只读会话 | 无 | 只读最终提交 | 无阻断、可进入外部复核（非阻断 6 项见报告 §8） |
