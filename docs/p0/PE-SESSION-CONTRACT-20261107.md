@@ -1,6 +1,6 @@
 # P0-PE-GUI-01 最小 PE session 契约（v1）
 
-日期：2026-11-07。状态：实施冻结候选；rev1 吸收契约只读审查 B1–B7 的 ABI/语义澄清（不改变结构尺寸/状态码编号）。适用范围：一个固定 Windows x86-64 PE32+ DLL（含已声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的持续存活调用会话，供 `aev-pe-runner` 与 compat/native GUI 共同使用。不是 P1 全量 ABI，也不覆盖 EXE 启动、DllMain/CRT/TLS、SEH、完整 Win32、通用依赖或并发重装。
+日期：2026-11-07。状态：实施冻结候选；rev1 吸收契约只读审查 B1–B7 的 ABI/语义澄清；rev2（P0-PE-SESSION-FIX-01）补充 HostImport 实现签名匹配与 Python wrapper observer 失败路径生命周期约束（不改变结构尺寸/状态码编号/既有 ABI）。适用范围：一个固定 Windows x86-64 PE32+ DLL（含已声明 HostImport）在 macOS ARM64 共享 AOT/JIT 核心中的持续存活调用会话，供 `aev-pe-runner` 与 compat/native GUI 共同使用。不是 P1 全量 ABI，也不覆盖 EXE 启动、DllMain/CRT/TLS、SEH、完整 Win32、通用依赖或并发重装。
 
 本契约只新增 session 层；既有 Guest ABI 2 / 296、callback ABI 3、artifact/translator ABI 2、trace sink ABI 1、PE trace file ABI 4 与 [PE-DLL v3](PE-DLL-CONTRACT-20261106.md) 的模块身份、内存、HostImport、artifact 校验保持不变。
 
@@ -52,7 +52,7 @@
 | DLL 读取、PE 解析、映射、重定位、节权限、registry 文件、导出/`.pdata`/函数发现、Program 构建失败 | `LOAD` |
 | AOT 文件缺失/不可读/`dlopen` 失败、文件哈希读取失败 | `LOAD` |
 | AOT 已加载但 module kind/base/file/image/import/host/entry exports/thunk/all-selected 表/ABI/guest state 任一不匹配、旧 ABI、AOT 必需符号缺失 | `ABI_MISMATCH` |
-| PE import 未在 registry 声明、registry 声明了无 Host 实现的 ID | `UNKNOWN_IMPORT` |
+| PE import 未在 registry 声明、registry 声明了无 Host 实现的 ID、registry 签名解析合法但与实际实现描述不匹配（id/参数个数/ABI） | `UNKNOWN_IMPORT` |
 | JIT runtime 初始化失败 | `JIT` |
 | create 时 trace 文件无法打开/写 header 失败 | `TRACE` |
 
@@ -68,7 +68,7 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 2. 每个 session 固定 owner 线程（create 调用线程；GUI 为 AppKit 主线程）。`info/counts/export/selected/block/call/trace/destroy/set_observer` 在非 owner 线程调用返回 `WRONG_THREAD`。
 3. handle 为 `(slot+1) | (generation << 32)`，slot 0..7；generation 从 1 开始、回绕跳过 0。destroy 后旧 token 返回 `STALE_HANDLE`，不解引用已释放对象；不得使用裸指针作为 handle。slot 满时 `create` 返回 `INVALID_ARGUMENT`。`create` 的进程级 slot 表线程安全；每个 session 的后续 API 限 owner 线程。
 4. 活动 call 中，同一 owner 线程再次 `call`、`destroy`、`trace_*`、`set_observer` 返回 `REENTRY`；只读查询（`info/counts/export/selected/all/block`）允许并读取快照/稳定元数据。HostImport/observer 重入同样如此。不同线程的调用先返回 `WRONG_THREAD`。
-5. `set_observer` 拷贝 `struct_size/abi_version/两个函数指针/ctx`；调用方结构可临时，但函数指针和 ctx 必须保持到 `set_observer(NULL)` 或 destroy。`on_call_end` 的 result 指针仅在回调期间有效；`in_call` 持续到两个回调返回，因此回调内 destroy/call/trace/set_observer 均为 `REENTRY`。C++ 异常由库捕获；其他语言回调不得把自身异常传播过 C ABI。
+5. `set_observer` 拷贝 `struct_size/abi_version/两个函数指针/ctx`；调用方结构可临时，但函数指针和 ctx 必须保持到 `set_observer(NULL)` 或 destroy。`on_call_end` 的 result 指针仅在回调期间有效；`in_call` 持续到两个回调返回，因此回调内 destroy/call/trace/set_observer 均为 `REENTRY`。C++ 异常由库捕获；其他语言回调不得把自身异常传播过 C ABI。Python wrapper 等消费者在 C ABI 成功之前必须保留 C 仍注册的旧 Python 回调强引用：失败（如 `WRONG_THREAD=13`、`REENTRY=10`、ABI/参数错误）不得清空或替换旧绑定；只有 C ABI 明确成功替换、清除或成功 destroy 后才能释放旧资源。`WRONG_THREAD`/`REENTRY` 必须原样抛出，不得吞掉或禁用 observer。
 6. 两个 session 相互隔离：独立模块镜像、Region、JIT cache、HostImport 计数和 trace；销毁一个不影响另一个。
 7. 部分初始化失败不产生半 session；所有本次 Host backing/dylib/JIT/registry/trace 在失败路径释放。destroy 关闭 trace、释放模块/JIT/AOT dylib；重复 destroy 返回 `STALE_HANDLE`。
 8. 不承诺运行中 reload/reset。GUI 的 Reset 是显式调用 `AevDllReset` 业务导出，不是 session reload；新窗口/新进程创建新 session，按 DLL 静态初始化状态开始。
@@ -81,7 +81,7 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 - `AevPeCallResult` 的 `mem_fault_*`、`error_pc`、`guest_error`、`steps`、JIT/AOT 计数与既有 runner 语义一致；`call_index` 是该 session 的累计 Guest 调用序号（1 起，成功进入 Guest 才增加；未进入为 0），**不因 trace open/close 重置**。trace 文件的 `call` 字段是独立序号，在每次 `trace_open` 后从 1 起。`total_*` 包含当前调用；失败调用不写 `rax` 语义（结果字段只作诊断）。
 - `info.entry_export`/`export_info.name` 是 NUL 终止字符串；`AEV_PE_SESSION_MAX_NAME=512` 包含 NUL，超过 511 字节的 PE 名称在查询输出中截断，`create` 的 `entry_export` 必须能在 511 字节内表示。`module_kind`/`target_triple` 同样 NUL 终止并在固定缓冲内截断；当前固定模块类型/目标均远小于上限。
 - 累计计数在 session 内：`calls_total` 只统计进入 Guest 的调用；`host_import_calls` 统计实际 HostImport 调用；`aot/jit_blocks/compiles/execs` 为累计值。`load_count` 每个 session 成功 load 后为 1，GUI 用它证明按钮操作没有偷偷重载。
-- HostImport 继续使用 registry 声明的固定实现（当前 `aevhost.dll!AevUpdate`，id=1，args=2），不扩展为任意 Windows API。observer 只观察，不改变参数/返回值。
+- HostImport 继续使用固定的实现描述（当前 `aevhost.dll!AevUpdate`：id=1、args=2、ABI=`win64-u64`），不扩展为任意 Windows API。绑定时必须验证 registry 声明的 id/参数个数/ABI 与该实现描述完全一致；registry 解析合法但签名不匹配时 fail closed，`create` 返回 `UNKNOWN_IMPORT=5`，诊断包含声明签名与期望签名（runner 仍按 §2 映射 `status=3 LOAD`）。不得忽略多余参数、补默认值、伪造返回值或改写 DLL 业务来接受不匹配声明。observer 只观察，不改变参数/返回值。
 
 ## 5. Trace 语义
 
