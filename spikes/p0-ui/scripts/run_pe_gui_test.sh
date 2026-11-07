@@ -39,6 +39,12 @@ MANIFEST=${AEV_PE_SUPPLEMENT_MANIFEST:-}
 FAILURES=0
 mkdir -p "$OUT_ROOT"
 
+if ! "$PYTHON" -c 'import AppKit' >/dev/null 2>&1; then
+    echo "FAIL: $PYTHON cannot import AppKit/pyobjc"
+    echo "Set PYTHON to the project venv interpreter, e.g. .local/venv-callback/bin/python"
+    exit 2
+fi
+
 if [ -z "${AEV_PE_AOT:-}" ]; then
     for candidate in "$BUILD_DIR/generated/libpe_aot.dylib" \
                      "$BUILD_DIR/libpe_aot.dylib"; do
