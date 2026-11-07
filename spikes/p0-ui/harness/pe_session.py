@@ -850,9 +850,16 @@ class PeSession:
     # -- observer (diagnostic; not used by the GUI business path) ------
     def set_observer(self, on_call_end=None, on_host_import=None,
                      ctx: Optional[int] = None) -> None:
-        self._observer_callbacks = []
+        # Build the candidate binding locally and keep the old observer and
+        # callback objects strongly referenced until the C ABI confirms that
+        # it replaced/cleared the registration.  A rejected call
+        # (WRONG_THREAD/REENTRY/ABI/invalid argument) or a local construction
+        # failure must leave the wrapper state matching the C registration;
+        # otherwise the C ABI keeps a pointer to a freed ctypes callback.
+        handle = self._require_handle()
         if on_call_end is None and on_host_import is None:
             observer = None
+            callbacks: list = []
         else:
             if on_call_end is not None:
                 def _call_end(_ctx, result_ptr, _cb=on_call_end):
@@ -864,22 +871,24 @@ class PeSession:
                 cb_import = OnHostImport(on_host_import)
             else:
                 cb_import = OnHostImport()
-            self._observer_callbacks = [cb_end, cb_import]
+            callbacks = [cb_end, cb_import]
             observer = AevPeSessionObserver()
             observer.struct_size = ctypes.sizeof(AevPeSessionObserver)
             observer.abi_version = AEV_PE_SESSION_ABI_VERSION
             observer.on_call_end = cb_end
             observer.on_host_import = cb_import
-        self._observer = observer
         err = self._errbuf()
         rc = self.lib.aev_pe_session_set_observer(
-            self._require_handle(),
+            handle,
             ctypes.byref(observer) if observer is not None else None,
             ctypes.c_void_p(ctx) if ctx is not None else None,
             err, ctypes.sizeof(err),
         )
         if rc != AEV_PE_SESSION_OK:
             raise PeSessionError(rc, self._errmsg(err) or "set_observer failed")
+        # The C ABI now owns the new registration; release the old binding.
+        self._observer = observer
+        self._observer_callbacks = callbacks
 
     def clear_observer(self) -> None:
         self.set_observer(None, None, None)
