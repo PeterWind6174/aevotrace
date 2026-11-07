@@ -112,7 +112,9 @@ typedef struct AevPeCallResult {
     uint64_t jit_blocks;        /* per-call delta */
     uint64_t jit_compiles;      /* per-call delta */
     uint64_t jit_execs;         /* per-call delta */
-    uint64_t call_index;        /* 1-based; 0 if Guest was not entered */
+    uint64_t call_index;        /* session cumulative, 1-based; 0 if not
+                                   entered; trace file "call" restarts on
+                                   trace_open independently */
     uint64_t total_calls;
     uint64_t total_aot_blocks;
     uint64_t total_jit_blocks;

@@ -78,7 +78,7 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 - `args[4]` 是 RCX/RDX/R8/R9 原始 64 位寄存器值。调用方对 `int` 参数按低 32 位零扩展到 64 位；Guest 的 32 位运算只使用低 32 位。
 - `rax` 是原始 64 位 RAX；`rax_i32` 是低 32 位按有符号 `int32_t` 解释。GUI 业务结果显示以 `rax_i32` 为准，不能把 `0xFFFFFFFF...` 的高位当作不同业务结果。需要指针/64 位结果时使用 `rax` 并明确标注。
 - Guest VA / Host backing / Host 函数地址继续分离。GUI 只能通过 session 导出调用访问 Guest 状态，不直接解引用 Guest 数值；`AevDllReadAt/WriteAt/CallPtr` 等导出仍经同一 PE 内存模型。
-- `AevPeCallResult` 的 `mem_fault_*`、`error_pc`、`guest_error`、`steps`、JIT/AOT 计数与既有 runner 语义一致；`call_index` 在成功进入 Guest 时从 1 开始（trace open 后随 trace 重新从 1 起），未进入 Guest 为 0。`total_*` 包含当前调用；失败调用不写 `rax` 语义（结果字段只作诊断）。
+- `AevPeCallResult` 的 `mem_fault_*`、`error_pc`、`guest_error`、`steps`、JIT/AOT 计数与既有 runner 语义一致；`call_index` 是该 session 的累计 Guest 调用序号（1 起，成功进入 Guest 才增加；未进入为 0），**不因 trace open/close 重置**。trace 文件的 `call` 字段是独立序号，在每次 `trace_open` 后从 1 起。`total_*` 包含当前调用；失败调用不写 `rax` 语义（结果字段只作诊断）。
 - `info.entry_export`/`export_info.name` 是 NUL 终止字符串；`AEV_PE_SESSION_MAX_NAME=512` 包含 NUL，超过 511 字节的 PE 名称在查询输出中截断，`create` 的 `entry_export` 必须能在 511 字节内表示。`module_kind`/`target_triple` 同样 NUL 终止并在固定缓冲内截断；当前固定模块类型/目标均远小于上限。
 - 累计计数在 session 内：`calls_total` 只统计进入 Guest 的调用；`host_import_calls` 统计实际 HostImport 调用；`aot/jit_blocks/compiles/execs` 为累计值。`load_count` 每个 session 成功 load 后为 1，GUI 用它证明按钮操作没有偷偷重载。
 - HostImport 继续使用 registry 声明的固定实现（当前 `aevhost.dll!AevUpdate`，id=1，args=2），不扩展为任意 Windows API。observer 只观察，不改变参数/返回值。
@@ -101,7 +101,7 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 
 `selected_count/selected_rip` 读实际加载的 AOT dylib selected 表；`all_block_count/all_block_rip` 读实际 Program 块；`block_info` 按 Guest RIP 返回 `block_identity` 的 RVA/size/SHA 与 selected 标志。所有查询只读，不改变调用计数。
 
-`counts` 返回 §4 的累计计数和 trace 状态；`trace_records` 为当前/最近一次 trace 已写**事件**数（不含 header；关闭后保留最近值，重新 open 清零）。这些计数由 session 核心维护，不是 GUI 影子计数。活动 call 中的只读查询返回当时快照；不得在 GUI 中用 `calls_total`/`call_index` 代替 DLL 的 `AevDllCalls` 业务计数。
+`counts` 返回 §4 的累计计数和 trace 状态；`trace_records` 为当前/最近一次 trace 已写**事件**数（不含 header；关闭后保留最近值，重新 open 清零）。这些计数由 session 核心维护，不是 GUI 影子计数。`trace_records` 是 stream 写入计数，文件可能仍在缓冲；比较文件行数前必须 `trace_close`/flush。活动 call 中的只读查询返回当时快照；不得在 GUI 中用 `calls_total`/`call_index` 代替 DLL 的 `AevDllCalls` 业务计数。
 
 ## 7. 共享执行组件边界
 
@@ -140,8 +140,8 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 
 | 角色 | 结论 | 证据 |
 | --- | --- | --- |
-| coordinator | 冻结候选 rev1（吸收审查 B1–B7 澄清），待实现/复核 | 本文件与 `docs/tasks/P0-PE-GUI-01.md` |
-| compiler | 实施中；按 rev1 分类/语义复核 |  |
-| binary | 模块身份/装载语义会签通过（`ee468f2`，见实施报告） | `reference_stateful_stdout.txt`、Windows 构建 |
-| platform | 实施中；按 rev1 trace 分离/输出结构规则复核 |  |
-| reviewer | 只读契约审查：CONDITIONAL（B1–B7）；rev1 后需复审实现落地 | `ses_e4cba4b71ffeVeld29oUOOSto8` |
+| coordinator | 冻结候选 rev1（吸收审查 B1–B7 澄清）并完成集成 | 本文件、`docs/tasks/P0-PE-GUI-01.md`、`73fbeb3`/`c18eeec` |
+| compiler | 实现 `a37c836`/报告 `4f467b3`；rev1 的 AOT IO/ABI 分类、slot full 由 coordinator 修正并 229/229 复测 | `.local/results/P0-PE-GUI-01/compiler/`、ctest |
+| binary | 模块身份/装载语义会签通过（`ee468f2`） | `reference_stateful_stdout.txt`、Windows 构建 |
+| platform | 实现 `3ee254a`/`950e38f`/`9fd4a67`；rev1 的 trace/negative 分离、实际 artifact 校验由 coordinator 补充 | `.local/results/P0-PE-GUI-01/gui-*` |
+| reviewer | 只读契约审查：CONDITIONAL（B1–B7）；最终实现审查待本轮末 | `ses_e4cba4b71ffeVeld29oUOOSto8` |

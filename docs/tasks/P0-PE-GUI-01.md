@@ -34,6 +34,18 @@
 
 同一 ABI/CMake/dispatcher 单 owner；compiler 先冻结 core/header 实现，platform 不修改 engine 公共文件。QA/reviewer 不修改源码。
 
+## 实施与集成记录
+
+| 部分 | 提交/分支 | 结果 |
+| --- | --- | --- |
+| 契约/任务/header | `b181260`（`p0/pe-gui-01`） | 冻结候选；rev1 吸收只读审查 B1–B7 |
+| compiler core/C ABI/runner | `a37c836`、`4f467b3`（`p0/pe-session-01`） | 共享 `pe_session_core`、`libaev_pe_session.dylib`、薄 runner、229 项 session 测试 |
+| platform GUI | `3ee254a`、`950e38f`、`9fd4a67`（`p0/pe-gui-platform-01`） | compat/native 持久 PE GUI、独立 Oracle、100 次按钮、负例、trace 覆盖、AppKit fail-fast |
+| binary Windows ref | `ee468f2`（`p0/pe-gui-binary-01`） | 固定 DLL 不变；stateful reference 106 行；构建脚本 SHA/退出码校验 |
+| coordinator 审查修正/集成 | `73fbeb3`、`c1b9a95`、`c18eeec`（`p0/pe-gui-01`） | B1–B7 澄清、AOT IO/ABI 分类、slot full、trace/negative 分离、严格 manifest/base-new artifact 校验；顺序合并 |
+
+最终待 QA/reviewer 版本：`c18eeec0054cd2921f083a1ac5fb192ce0b60672`（若后续只追加报告/证据文档，绑定源码保持该提交）。主控实际会话 `ses_e4ccea16bffeuIPAGBKgge0zXo`；子会话记录见 `.local/results/P0-PE-GUI-01/models.json`（均 `opencode-go / deepseek-v4.1-flash / variant=max`）。
+
 ## 目标与范围
 
 可观察结果：

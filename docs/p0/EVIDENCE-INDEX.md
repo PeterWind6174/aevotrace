@@ -90,3 +90,17 @@
 - 独立 QA：`qa-perm/REPORT.md`（F1 PASS，343/343，Windows PAGE_NOACCESS）、`qa-sar/REPORT.md`（F2 PASS，312 矩阵/52 Windows 对照）、`qa-final/REPORT.md`（最终提交 6/6、PE 147、语义 791、Trace 78、GUI 44×6）。
 - 结果：ctest 6/6、PE 147/147、语义 715（代码提交）/791（测试加强后）、Trace/AOT 78、六组 GUI 44/44、旧 PE AOT 可加载。
 - 未测：PE 驱动 GUI、人工输入/IME、打包/签名/性能、真实应用、TLS/CRT/SEH/COM/线程。
+
+## P0-PE-GUI-01（实现/集成完成，待独立 QA/reviewer 最终复核；P0 整体未通过）
+
+- 分支/工作树：`p0/pe-gui-01` / `.worktrees/p0-pe-gui-01`；最终源码提交 `c18eeec0054cd2921f083a1ac5fb192ce0b60672`；基线 `de67e2b`；main 仍 `c91a3f7`。
+- 契约：`docs/p0/PE-SESSION-CONTRACT-20261107.md` v1 rev1；header `spikes/p0-engine/include/aev_pe_session.h`。
+- 报告：`docs/p0/P0-PE-GUI-01-REPORT-20261107.md`；compiler 报告 `docs/p0/P0-PE-GUI-01-COMPILER-REPORT.md`。
+- 实现：共享 `pe_session_core`、`libaev_pe_session.dylib`、薄 `aev-pe-runner`、compat/native `pe_host.py`/`pe_scenario.py`、Windows stateful reference。
+- 构建：`.local/build-pe-gui-int`；ctest **7/7**（原 6 + `p0_pe_session`）；session **233/233**；PE **149/149**（147 核心 + 2 新 fixture hash）；语义 **791/0**；Trace/AOT **78/0**；旧六组 COFF GUI 各 **44/44**、4 截图（`.local/results/P0-PE-GUI-01/oldgui-final/`）。
+- 新 PE GUI base（empty AOT）：compat **560/560**、native **561/561**；load_count=1、calls_total=323、host_imports=105、JIT 21/2534、AOT 0；supplemented：compat **596/596**、native **597/597**；load_count=1、JIT **0**、AOT 2534；跨后端状态一致；forced native failure 无 compat 回退。
+- Trace/AOT：base GUI trace → `aot_supplement.py --input-kind pe` → selected 21/promoted 21/demoted 0/all 25；supp AOT `libpe_gui_supp.dylib` `0fc358a0…`；新进程 trace `aot=21`、JIT=0；`publish_aot.py` 接受。
+- Windows：固定 `aevguest.dll` `1f82b679…`、`aevhost.dll` `0eabd013…`；stateful reference 106 行；Windows vs 独立 Oracle **106/106**；GUI vs Windows reset/4 Compute/repeat100 **6/6**（base/supp 各）。
+- 原始证据：`.local/results/P0-PE-GUI-01/{gui-base,gui-supp,oldgui-final,artifacts,windows-stateful-compare.log,gui-vs-windows.log,models.json,evidence-manifest.json}`。
+- 独立 QA/reviewer：QA-behavior `ses_e4c6748b9ffew03RnttZFc3UhD`、QA-artifact `ses_e4c6748b7ffeLPzoowFPhq4RcR`；结论待填。
+- 未测：人工键鼠/焦点/IME/观感、性能、通用 EXE/Win32/TLS/CRT/SEH/COM/线程、真实应用、运行中失效、分发/公证。

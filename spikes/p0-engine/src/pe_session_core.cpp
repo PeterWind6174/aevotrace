@@ -954,8 +954,15 @@ SessionStatus SessionImpl::call(const std::string &export_name,
                         break;
                     }
                 }
-                if (rc == 0 && state.rip != AEV_RETURN_SENTINEL)
+                if (rc == 0 && state.rip != AEV_RETURN_SENTINEL) {
+                    /* The dispatcher loop itself hit the step budget.  Record
+                     * the Guest error so the session maps it to STEP_LIMIT=8
+                     * instead of INTERNAL (the AOT dispatcher normally sets
+                     * error_code itself). */
+                    state.error_code = AEV_ERR_STEP_LIMIT;
+                    state.error_pc = state.rip;
                     rc = (int)AEV_ERR_STEP_LIMIT;
+                }
             }
             if (rc == 0) {
                 status = (state.rip == AEV_RETURN_SENTINEL &&

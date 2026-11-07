@@ -818,6 +818,28 @@ def main() -> int:
                   c.host_import_calls == before_host + 1,
                   "memory fault counts only entered Guest calls")
 
+        # ---------------------------------------- JIT dispatcher step budget
+        # Use a fresh no-trace session: a 1M-step limit would otherwise emit
+        # a very large trace.  The session must map the dispatcher budget to
+        # STEP_LIMIT (8), not INTERNAL (12).
+        step_session = drv.require_session()
+        st, step_counts, _ = drv.counts(step_session)
+        step_before = step_counts.calls_total
+        st, r, _ = drv.call(step_session, "AevDllCompute", (1, 2, 2000000))
+        drv.check(st == 8 and r.status == 8 and r.guest_error == 4 and
+                  r.steps >= 1000000,
+                  "step limit -> STEP_LIMIT/8 (status=%u guest_error=%u "
+                  "steps=%u)" % (st, r.guest_error, r.steps))
+        st, r, _ = drv.call(step_session, "AevDllCompute", (5, 7, 3))
+        drv.check(st == 0 and r.status == 0,
+                  "Compute recovers after step limit")
+        st, step_counts, _ = drv.counts(step_session)
+        drv.check(step_counts.load_count == 1 and
+                  step_counts.calls_total == step_before + 2,
+                  "step limit counts entered calls; load_count stays 1")
+        drv.check(lib.aev_pe_session_destroy(step_session) == 0,
+                  "destroy step-limit session")
+
         # --------------------------------------------------------- observer
         observed = {"call_end": [], "host": [], "reentry_call": [],
                     "reentry_destroy": [], "reentry_trace": []}
