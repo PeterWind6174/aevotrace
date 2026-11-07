@@ -91,7 +91,7 @@
 - 结果：ctest 6/6、PE 147/147、语义 715（代码提交）/791（测试加强后）、Trace/AOT 78、六组 GUI 44/44、旧 PE AOT 可加载。
 - 未测：PE 驱动 GUI、人工输入/IME、打包/签名/性能、真实应用、TLS/CRT/SEH/COM/线程。
 
-## P0-PE-GUI-01（实现/集成与独立 QA 完成；reviewer 最终复审待补；P0 整体未通过）
+## P0-PE-GUI-01（实现/集成、独立 QA 与 reviewer 审查完成；P0 整体未通过）
 
 - 分支/工作树：`p0/pe-gui-01` / `.worktrees/p0-pe-gui-01`；最终源码提交 `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + step-limit 修复）；基线 `de67e2b`；main 仍 `c91a3f7`。
 - 契约：`docs/p0/PE-SESSION-CONTRACT-20261107.md` v1 rev1；header `spikes/p0-engine/include/aev_pe_session.h`。
@@ -102,5 +102,5 @@
 - Trace/AOT：base GUI trace → `aot_supplement.py --input-kind pe` → selected 21/promoted 21/demoted 0/all 25；supp AOT `libpe_gui_supp.dylib` `0fc358a0…`；新进程 trace `aot=21`、JIT=0；`publish_aot.py` 接受。
 - Windows：固定 `aevguest.dll` `1f82b679…`、`aevhost.dll` `0eabd013…`；stateful reference 106 行；Windows vs 独立 Oracle **106/106**；GUI vs Windows reset/4 Compute/repeat100 **6/6**（base/supp 各）。
 - 原始证据：`.local/results/P0-PE-GUI-01/{gui-base,gui-supp,oldgui-final,artifacts,windows-stateful-compare.log,gui-vs-windows.log,models.json,evidence-manifest.json}`。
-- 独立 QA：QA-behavior/Windows PASS（c18eeec 原始 + c5adf4f 复验，报告 `qa-behavior/REPORT.md`）；QA-artifact/lifecycle PASS（C ABI 455/455、provenance 359/359、observer 17/17、ASAN 已执行路径无报告；报告 `qa-artifact/REPORT.md`）。reviewer 最终复审待补。
+- 独立 QA：QA-behavior/Windows PASS（c18eeec 原始 + c5adf4f 复验，报告 `qa-behavior/REPORT.md`）；QA-artifact/lifecycle PASS（C ABI 455/455、provenance 359/359、observer 17/17、ASAN 已执行路径无报告；报告 `qa-artifact/REPORT.md`）。reviewer 无阻断、建议进入外部复核（非阻断 6 项见主报告 §8）。
 - 未测：人工键鼠/焦点/IME/观感、性能、通用 EXE/Win32/TLS/CRT/SEH/COM/线程、真实应用、运行中失效、分发/公证。

@@ -1,6 +1,6 @@
 # P0-PE-GUI-01 报告：持久 PE session 与双 GUI 集成
 
-日期：2026-11-07。状态：**有界任务实现/集成与独立 QA 完成（QA-behavior/Windows、QA-artifact/lifecycle PASS；最终 reviewer 待补）；P0 整体与首版仍未完成。** 分支 `p0/pe-gui-01`，基线 `de67e2be2ea2252bb0e2b522ba52aa5d208e5d21`；本轮最终源码提交 `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + JIT step-budget→STEP_LIMIT=8 修复及 session 测试加强）。main 仍 `c91a3f7`，未合并、未 push、未清理工作树。
+日期：2026-11-07。状态：**有界任务实现/集成与独立 QA 完成（QA-behavior/Windows、QA-artifact/lifecycle PASS）；最终 reviewer 无阻断、建议进入外部复核；P0 整体与首版仍未完成。** 分支 `p0/pe-gui-01`，基线 `de67e2be2ea2252bb0e2b522ba52aa5d208e5d21`；本轮最终源码提交 `c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + JIT step-budget→STEP_LIMIT=8 修复及 session 测试加强）。main 仍 `c91a3f7`，未合并、未 push、未清理工作树。
 
 本报告只证明：一个固定 Windows x64 PE32+ DLL（含全局数据、DIR64 relocation、一个声明 HostImport）通过版本化 C ABI 的持久 session，在同一 macOS ARM64 进程内由 compat/native GUI 真实控件事件调用；共享 AOT/JIT 核心、实际 DLL State/Calls、100 次连续调用、base JIT→GUI Trace→离线补充→新进程零 JIT AOT、Windows 同序列对照。不证明通用 EXE、完整 Win32/消息泵、TLS/CRT/SEH/COM/线程、真实第三方应用、运行中代码失效、独立 app 分发或性能。
 
@@ -71,7 +71,7 @@ Windows：`ssh win`，VS 18 Community，MSVC 19.51.36260 x64；`build_msvc.ps1` 
 
 ## 5. 持久 PE GUI：base（空 AOT，真实 JIT）
 
-构建产物：`libaev_pe_session.dylib` SHA `ecf6fcce...`，`aev-pe-runner` `3ac30d70...`，base AOT `libpe_empty.dylib` `2931e696...`。
+构建产物：`libaev_pe_session.dylib` SHA `ecf6fcce...`，`aev-pe-runner` `3ac30d70...`，base AOT `libpe_empty.dylib` `2931e696...`。本节与 §6 的 GUI summary 已在最终文档 HEAD `38cfaba`（源码 c5adf4f）干净工作树重跑，summary `git_head=38cfaba`、library SHA `ecf6fcce...`；独立 QA 最终报告绑定 c5adf4f。
 
 | backend | checks | 截图 | load_count | calls_total | host_imports | aot_blocks | jit_compiles/execs |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -108,7 +108,14 @@ Windows：`ssh win`，VS 18 Community，MSVC 19.51.36260 x64；`build_msvc.ps1` 
 
 - QA-behavior/Windows（`ses_e4c6748b9ffew03RnttZFc3UhD`）：**PASS（c18eeec 原始 + c5adf4f 最终复验；人工待验收）**，报告 `.local/results/P0-PE-GUI-01/qa-behavior/REPORT.md`（§12 为最终源码复验）。最终 ctest 7/7、`p0_pe_session` 233/233、PE DLL 149/149、语义 791、Trace/AOT 78；base 560/561、supplemented 596/597（重新生成 supp，selected 21/promoted 21/demoted 0，零 JIT/2534 AOT）；自己的 AppKit 新输入（Reset 0x0BADF00D、Compute 13579/2468/11、100 次不同输入）942/943 checks、0 failure；Windows stateful 106 行除 ASLR 外逐行一致，QA-only Windows 新序列 **1624/1624** 与 Mac/oracle 一致；旧六组 COFF GUI **264/264**；independent step-limit 复核 `STEP_LIMIT/8`+恢复；`libaev_pe_session.dylib` 进程内出现一次，无 runner/Unicorn；无阻断。
 - QA-artifact/lifecycle（`ses_e4c6748b7ffeLPzoowFPhq4RcR`）：**PASS（无阻断）**，报告 `.local/results/P0-PE-GUI-01/qa-artifact/REPORT.md`。最终 c5adf4f 独立构建 ctest 7/7；独立 C ABI/lifecycle **455/455**（struct/offset、create/info、双 session、8 slot/第 9、stale/double/illegal、wrong-thread、observer 重入/清除、部分加载失败、missing/unloadable AOT、wrong base/ABI/COFF、append/同尺寸变异失效、权限/MEMORY、trace、step-limit、AOT hybrid）；provenance **359/359**（独立 GUI trace 生成 selected 19/promoted 4/demoted 1，新 AOT 零 JIT，4 个 promoted 块实际 `aot`，publisher 与伪造 base SHA/selected/promoted 负例）；observer C++ 异常 **17/17**；ASAN 辅助构建 C ABI 455/455、observer 17/17、无 ASAN 报告（`detect_leaks=0`，只证明已执行路径无 UAF）。它发现并促成 step-limit 真实缺陷修复；确认 trace 文件 reopen 后 `call=1/2`，而 `result.call_index` 为 session 累计 4/5。
-- 最终 reviewer（`ses_e4c388f23ffe1VV6V0hVDaksY5`）：**待填写**（只读最终源码/证据；首轮基于 c18eeec，需按 c5adf4f/QA 最终版复审）。
+- 最终 reviewer（`ses_e4c388f23ffe1VV6V0hVDaksY5`）：**无阻断，可进入外部复核**；只读审查最终源码 c5adf4f/文档，未亲自运行测试，引用 QA 最终报告。它确认 B1–B7 的实现覆盖、共享 core/薄 runner、GUI 进程内/双后端、trace→supplement→AOT、回归/证据；未发现 UAF/半 session 阻断。非阻断问题（下一轮处理）：
+  1. `create` 未拒绝超过 511 字节的 `entry_export`（查询侧 NUL 截断；固定 fixture 不触发）。
+  2. 部分 C ABI 入口先校验 NULL/尺寸再 `resolve`，极端情况下 wrong-thread/reentry 可能被 `INVALID_ARGUMENT/ABI_MISMATCH` 掩盖（正常有效参数测试不触发）。
+  3. Python `pe_session.set_observer` 在 C ABI 失败时提前清空旧 callback 列表，可能导致旧 observer 悬空（GUI 业务路径未使用 observer；C ABI/QA C 测试不触发）。
+  4. trace header `entry_exports` 按 `module.exports` 顺序写，而 supplement 要求与排序 manifest 精确相等；固定 fixture 恰好有序。
+  5. runner 的 table-full/handle-lost 仍为 2/12 而非 LOAD=3（正常 `--reload` 不可达；契约措辞可再收紧）。
+  6. HostImport 只校验 id=1，尚未拒绝 registry 声明 `args!=2`/不同 ABI 的固定实现。
+  评审还提示：集成 `.local` GUI summary 原先绑定 c18eeec dirty 构建；本轮已在 HEAD `38cfaba`（源码 c5adf4f）重跑 base/supp，summary `git_head=38cfaba`、library `ecf6fcce…`，QA 最终报告绑定 c5adf4f。结论：可进入外部复核；人工 GUI/打包/性能仍未验收。
 
 ## 9. 未测/限制与风险
 
@@ -121,6 +128,7 @@ Windows：`ssh win`，VS 18 Community，MSVC 19.51.36260 x64；`build_msvc.ps1` 
 - QA-behavior 在 macOS `DYLD_PRINT_LIBRARIES` 日志中观察到系统加载 `/usr/lib/libRosetta.dylib`；该进程 `sysctl.proc_translated=0`，Python 与所有 Aevotrace 组件均为 arm64，没有 x86 翻译执行证据。按“系统库存在”记录，不作为 Rosetta 路径通过。
 - base trace 的合法 ReadAt 覆盖调用是测试/覆盖设置，不是业务结果；负例仍通过真实按钮并独立记录。
 - 未在磁盘满/写入中途失败、generation 2^32 回绕、并发非 owner destroy 与 owner get 的极端竞争下验证。
+- reviewer 的 6 项非阻断（长 `entry_export` 拒绝、C ABI 错误优先级、Python observer 失败路径、trace `entry_exports` 排序、runner table-full/handle-lost 状态、HostImport registry args/ABI 校验）未在本轮修改，固定 fixture 不触发；列入外部复核/下一轮，不把它们当作已修。
 
 ## 10. 结束状态
 

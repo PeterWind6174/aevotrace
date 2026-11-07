@@ -30,7 +30,7 @@
 | binary Windows ref | `p0/pe-gui-binary-01` / `.worktrees/p0-pe-gui-binary` | Windows `C:/Users/PeterWind/AevotraceP0/P0-PE-GUI-01` | `testdata/pe/aevguest_ref.c`、`build_msvc.ps1`、`reference_stateful_stdout.txt`、`SHA256SUMS`、`build.log` | 待派发 |
 | QA behavior/Windows | `p0/pe-gui-qa-behavior` / `.worktrees/p0-pe-gui-qa-behavior` | 独立最终构建/结果 | 只读最终源码 + `.local/results/P0-PE-GUI-01/qa-behavior` | PASS（最终 c5adf4f 复验） |
 | QA artifact/lifecycle | `p0/pe-gui-qa-artifact` / `.worktrees/p0-pe-gui-qa-artifact` | 独立最终构建/结果 | 只读最终源码 + `.local/results/P0-PE-GUI-01/qa-artifact` | PASS（C ABI 455/455、provenance 359/359） |
-| reviewer | 只读会话 | 无 | 只读最终提交 | 进行中（首轮 c18eeec；需按 c5adf4f/QA 复审） |
+| reviewer | 只读会话 | 无 | 只读最终提交 | 无阻断、可进入外部复核（非阻断 6 项见报告 §8） |
 
 同一 ABI/CMake/dispatcher 单 owner；compiler 先冻结 core/header 实现，platform 不修改 engine 公共文件。QA/reviewer 不修改源码。
 
@@ -44,7 +44,7 @@
 | binary Windows ref | `ee468f2`（`p0/pe-gui-binary-01`） | 固定 DLL 不变；stateful reference 106 行；构建脚本 SHA/退出码校验 |
 | coordinator 审查修正/集成 | `73fbeb3`、`c1b9a95`、`c18eeec`（`p0/pe-gui-01`） | B1–B7 澄清、AOT IO/ABI 分类、slot full、trace/negative 分离、严格 manifest/base-new artifact 校验；顺序合并 |
 
-最终源码版本：`c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + step-limit 修复/测试加强；QA-behavior 首轮在 c18eeec，最终复验在 c5adf4f）。主控实际会话 `ses_e4ccea16bffeuIPAGBKgge0zXo`；子会话记录见 `.local/results/P0-PE-GUI-01/models.json`（均 `opencode-go / deepseek-v4.1-flash / variant=max`）。
+最终源码版本：`c5adf4fc26c3f360c9931d3833aa45d96eedcd7a`（`c18eeec` + step-limit 修复/测试加强；QA-behavior 首轮在 c18eeec，最终复验在 c5adf4f；reviewer 无阻断）。主控实际会话 `ses_e4ccea16bffeuIPAGBKgge0zXo`；子会话记录见 `.local/results/P0-PE-GUI-01/models.json`（均 `opencode-go / deepseek-v4.1-flash / variant=max`）。
 
 ## 目标与范围
 
