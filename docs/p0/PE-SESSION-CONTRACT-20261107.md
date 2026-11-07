@@ -140,8 +140,8 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 
 | 角色 | 结论 | 证据 |
 | --- | --- | --- |
-| coordinator | 冻结候选 rev1（吸收审查 B1–B7 澄清）并完成集成 | 本文件、`docs/tasks/P0-PE-GUI-01.md`、`73fbeb3`/`c18eeec` |
-| compiler | 实现 `a37c836`/报告 `4f467b3`；rev1 的 AOT IO/ABI 分类、slot full 由 coordinator 修正并 229/229 复测 | `.local/results/P0-PE-GUI-01/compiler/`、ctest |
+| coordinator | 冻结 rev1（吸收审查 B1–B7 澄清）并完成集成；最终源码 `c5adf4f` | 本文件、`docs/tasks/P0-PE-GUI-01.md`、`docs/p0/P0-PE-GUI-01-REPORT-20261107.md` |
+| compiler | 实现 `a37c836`/报告 `4f467b3`；coordinator 修正 AOT IO/ABI、slot full、step-limit，最终 `p0_pe_session` 233/233 | `.local/results/P0-PE-GUI-01/compiler/`、ctest |
 | binary | 模块身份/装载语义会签通过（`ee468f2`） | `reference_stateful_stdout.txt`、Windows 构建 |
-| platform | 实现 `3ee254a`/`950e38f`/`9fd4a67`；rev1 的 trace/negative 分离、实际 artifact 校验由 coordinator 补充 | `.local/results/P0-PE-GUI-01/gui-*` |
-| reviewer | 只读契约审查：CONDITIONAL（B1–B7）；最终实现审查待本轮末 | `ses_e4cba4b71ffeVeld29oUOOSto8` |
+| platform | 实现 `3ee254a`/`950e38f`/`9fd4a67`；coordinator 补充 trace/negative 分离与实际 artifact 校验；最终 GUI QA PASS | `.local/results/P0-PE-GUI-01/gui-*`、QA 报告 |
+| reviewer | 契约审查 CONDITIONAL（B1–B7）；最终实现审查**无阻断、可进入外部复核**（6 项非阻断见主报告） | `ses_e4cba4b71ffeVeld29oUOOSto8`、`ses_e4c388f23ffe1VV6V0hVDaksY5` |
