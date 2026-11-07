@@ -68,12 +68,31 @@ target_include_directories(aev-runner PRIVATE
 )
 target_link_libraries(aev-runner PRIVATE aev_jit_runtime)
 
-# P0-PE-DLL-01: bounded PE32+ DLL runner using the shared Program/emitter/JIT/
-# AOT core.  It is not a general EXE loader and not the GUI path.
-add_executable(aev-pe-runner src/pe_runner.cpp src/aev_mem.c)
-target_include_directories(aev-pe-runner PRIVATE ${AEV_INCLUDE_DIR})
-target_link_libraries(aev-pe-runner PRIVATE
+# P0-PE-GUI-01: shared persistent PE session core.  The runner and the
+# versioned C ABI both consume this single loader/Program/AOT/JIT/HostImport/
+# trace implementation; neither keeps a private execution path.
+add_library(aev_pe_session_core STATIC src/pe_session_core.cpp src/aev_mem.c)
+target_include_directories(aev_pe_session_core PUBLIC ${AEV_INCLUDE_DIR})
+target_link_libraries(aev_pe_session_core PUBLIC
   aev_jit_runtime ${CMAKE_DL_LIBS})
+set_target_properties(aev_pe_session_core PROPERTIES
+  POSITION_INDEPENDENT_CODE ON)
+
+# P0-PE-DLL-01: bounded PE32+ DLL runner using the shared core.  It is not a
+# general EXE loader and not the GUI path; it only parses CLI/JSON.
+add_executable(aev-pe-runner src/pe_runner.cpp)
+target_include_directories(aev-pe-runner PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev-pe-runner PRIVATE aev_pe_session_core)
+
+# P0-PE-GUI-01: versioned C ABI consumed in-process by the compat/native GUI
+# harness.  This library is a thin type/error/handle wrapper over the same
+# core; it does not parse CLI JSON or reimplement execution.
+add_library(aev_pe_session SHARED src/pe_session.cpp)
+target_include_directories(aev_pe_session PRIVATE ${AEV_INCLUDE_DIR})
+target_link_libraries(aev_pe_session PRIVATE aev_pe_session_core)
+set_target_properties(aev_pe_session PROPERTIES
+  BUILD_RPATH "${CMAKE_BINARY_DIR}"
+  INSTALL_RPATH "@loader_path")
 
 # Reusable C ABI for the GUI path.  The shared library exports only the
 # aev_bridge_* API; all Guest execution still goes through the same AOT/JIT
@@ -353,5 +372,14 @@ add_test(NAME p0_pe_dll
           ${CMAKE_CURRENT_SOURCE_DIR}
 )
 set_tests_properties(p0_pe_dll PROPERTIES
+  ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+  TIMEOUT 900)
+
+add_test(NAME p0_pe_session
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_pe_session_test.sh
+          ${CMAKE_CURRENT_BINARY_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(p0_pe_session PROPERTIES
   ENVIRONMENT "DYLD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
   TIMEOUT 900)
