@@ -13,7 +13,9 @@
 - 模型：所有主控/实施/QA/审查会话必须核对 OpenCode Go / DeepSeek V4.1 Flash / Max；只使用桌面端原生会话/子 agent，不执行 `opencode run` 或 CLI 模型 worker；worker 不递归派生。
 - 实际会话（`session_v2` 只读查询，`opencode-go / deepseek-v4.1-flash / variant=max`）：
   - 主控 `ses_e4b311c2cffdJYcN88U4skhtsd`（coordinator）。
-  - compiler/platform/QA/reviewer 会话：派发后追加记录（见 `.local/results/P0-PE-SESSION-FIX-01/models.json`）。
+  - platform `ses_e4b29fd0affeYDDEEG7Rw0dI3U`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-platform`。
+  - compiler `ses_e4b29fd07ffee99y5B2I62Wmj4`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-compiler`。
+  - QA/reviewer 会话：最终提交冻结后派发并追加记录（见 `.local/results/P0-PE-SESSION-FIX-01/models.json`）。
 
 ## 并行隔离
 
