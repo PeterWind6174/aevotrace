@@ -120,6 +120,7 @@ class NativeBackend:
         self.action_target = NativeActionTarget.alloc().initWithBackend_(self)
         self.edit_delegate = NativeEditDelegate.alloc().initWithBackend_(self)
         self.button_handles: dict[int, int] = {}
+        self.edit_handles: dict[int, int] = {}
         self.menu_items: dict[int, tuple[object, str]] = {}
         self.main_menu = None
         self.main_handle = 0
@@ -168,6 +169,7 @@ class NativeBackend:
             view.setFont_(NSFont.systemFontOfSize_(13))
             view.setDelegate_(self.edit_delegate)
             self.edit_handle = handle
+            self.edit_handles[objc.pyobjc_id(view)] = handle
         elif kind == "button":
             view = NSButton.alloc().initWithFrame_(rect)
             view.setTitle_(text)
@@ -324,7 +326,12 @@ class NativeBackend:
         self.edit_delegate.controlTextDidChange_(note)
 
     def on_edit_changed(self, sender):
-        handle = getattr(self, "edit_handle", None)
+        sender_id = objc.pyobjc_id(sender) if sender is not None else None
+        handle = self.edit_handles.get(sender_id) if sender_id is not None else None
+        if handle is None:
+            # Preserve the old single-edit COFF path when a caller invokes the
+            # delegate without a registered sender object.
+            handle = getattr(self, "edit_handle", None)
         if handle is None:
             raise UnsupportedApi("native edit change with no registered edit control")
         info = self.host.windows[handle]
