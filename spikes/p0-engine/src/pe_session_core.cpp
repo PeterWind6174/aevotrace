@@ -516,6 +516,14 @@ int64_t SessionImpl::dispatch_thunk(void *opaque, GuestState *s, uint64_t rip) {
     return rc;
 }
 
+static bool aot_io_failure(const std::string *error) {
+    if (!error) return false;
+    return error->rfind("dlopen AOT failed", 0) == 0 ||
+           error->rfind("cannot open", 0) == 0 ||
+           error->rfind("cannot read", 0) == 0 ||
+           error->rfind("cannot hash AOT artifact", 0) == 0;
+}
+
 SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error) {
     if (loaded) {
         if (error) *error = "session is already loaded";
@@ -552,8 +560,10 @@ SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error)
     if (!config.aot_path.empty()) {
         std::string kind;
         if (!peek_aot_kind(config.aot_path, &kind, err)) {
+            SessionStatus status = aot_io_failure(err) ? SessionStatus::Load
+                                                       : SessionStatus::AbiMismatch;
             cleanup();
-            return SessionStatus::AbiMismatch;
+            return status;
         }
         if (kind != AEV_MODULE_KIND_PE64) {
             if (err) *err = "AOT module kind is not PE: " + kind;
@@ -562,8 +572,10 @@ SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error)
         }
         uint64_t artifact_base = 0;
         if (!peek_aot_load_base(config.aot_path, &artifact_base, err)) {
+            SessionStatus status = aot_io_failure(err) ? SessionStatus::Load
+                                                       : SessionStatus::AbiMismatch;
             cleanup();
-            return SessionStatus::AbiMismatch;
+            return status;
         }
         if (load_base == 0) {
             load_base = artifact_base;
@@ -652,8 +664,10 @@ SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error)
         if (!load_aot_file(&module, entry_export, all_blocks, &aot,
                            &selected_blocks, artifact_sha, config.aot_path,
                            err)) {
+            SessionStatus status = aot_io_failure(err) ? SessionStatus::Load
+                                                       : SessionStatus::AbiMismatch;
             cleanup();
-            return SessionStatus::AbiMismatch;
+            return status;
         }
         if (module.load_base != aot.load_base) {
             if (err) *err = "artifact load_base does not match requested load_base";

@@ -588,8 +588,14 @@ def main() -> int:
 
         status, handle, error = drv.create(
             drv.config(aot=drv.art / "missing.dylib"))
-        drv.check(status == 4 and handle == 0,
-                  f"missing AOT -> ABI_MISMATCH (got {status}: {error})")
+        drv.check(status == 3 and handle == 0,
+                  f"missing AOT file -> LOAD (got {status}: {error})")
+
+        bogus_aot = drv.art / "bogus_aot.dylib"
+        bogus_aot.write_bytes(b"not a Mach-O dylib")
+        status, handle, error = drv.create(drv.config(aot=bogus_aot))
+        drv.check(status == 3 and handle == 0,
+                  f"unloadable AOT file -> LOAD (got {status}: {error})")
 
         status, handle, error = drv.create(
             drv.config(aot=drv.art / "missing.dylib", entry=None))
@@ -616,8 +622,8 @@ def main() -> int:
         drv.check(len(probes) == 8 and len(set(probes)) == 8,
                   "eight distinct generation handles")
         status, handle, error = drv.create(drv.config())
-        drv.check(status == 12 and handle == 0 and "table full" in error,
-                  f"ninth session -> INTERNAL table full ({status}: {error})")
+        drv.check(status == 2 and handle == 0 and "table full" in error,
+                  f"ninth session -> INVALID_ARGUMENT table full ({status}: {error})")
         first_probe = probes[0] if probes else 0
         for handle in probes:
             drv.check(lib.aev_pe_session_destroy(handle) == 0,

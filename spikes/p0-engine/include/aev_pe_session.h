@@ -29,6 +29,8 @@ extern "C" {
 #define AEV_PE_SESSION_ABI_VERSION 1u
 #define AEV_PE_SESSION_MAX_ARGS 4u
 #define AEV_PE_SESSION_MAX_SLOTS 8u
+/* Includes the terminating NUL: at most 511 name bytes are representable in
+ * this bounded P0 ABI; longer PE names are truncated in query outputs. */
 #define AEV_PE_SESSION_MAX_NAME 512u
 
 typedef uint64_t AevPeSession; /* 0 is invalid */
@@ -55,8 +57,11 @@ typedef struct AevPeSessionConfig {
     uint32_t abi_version;       /* must equal AEV_PE_SESSION_ABI_VERSION */
     const char *dll_path;       /* required */
     const char *registry_path;  /* required */
-    const char *aot_path;       /* NULL: JIT-only */
-    const char *entry_export;   /* required with aot_path; NULL: first named */
+    const char *aot_path;       /* NULL/empty: JIT-only */
+    /* With aot_path, entry_export must be non-NULL/non-empty and is the
+     * artifact-bound entry.  Without aot_path, NULL/empty selects the first
+     * named PE export in PE export-table order. */
+    const char *entry_export;
     uint64_t load_base;         /* 0 requires aot_path */
     const char *trace_path;     /* NULL/empty: trace disabled at create */
     const char *scenario;       /* optional trace scenario label */
@@ -65,6 +70,12 @@ typedef struct AevPeSessionConfig {
     uint64_t reserved1;
 } AevPeSessionConfig;
 
+/*
+ * Output structures (AbiInfo excepted): the caller sets struct_size to the
+ * exact ctypes/C sizeof and abi_version to AEV_PE_SESSION_ABI_VERSION; the
+ * library checks the size and overwrites abi_version.  A mismatch returns
+ * ABI_MISMATCH.  AevPeSessionAbiInfo accepts struct_size 0 or its exact size.
+ */
 typedef struct AevPeSessionAbiInfo {
     uint32_t struct_size;
     uint32_t abi_version;       /* AEV_PE_SESSION_ABI_VERSION */
@@ -182,9 +193,13 @@ typedef struct AevPeBlockInfo {
 
 /*
  * Diagnostic observer, called on the owner thread while a Guest call is
- * active.  It must not call any session API (call/destroy return REENTRY);
- * exceptions are caught and never escape the C ABI or change the result.
- * The observer pointer is not retained after the call returns.
+ * active.  set_observer copies this structure; the caller's pointer may be
+ * temporary, but the two function pointers and ctx must remain valid until
+ * set_observer(NULL) or destroy.  on_call_end's result pointer is valid only
+ * during that callback.  in_call remains set through both callbacks, so
+ * call/destroy/trace_open/trace_close/set_observer from a callback returns
+ * REENTRY.  C++ exceptions are caught; callbacks implemented in other
+ * languages must not propagate their own exceptions across this C ABI.
  */
 typedef struct AevPeSessionObserver {
     uint32_t struct_size;       /* must equal sizeof(AevPeSessionObserver) */

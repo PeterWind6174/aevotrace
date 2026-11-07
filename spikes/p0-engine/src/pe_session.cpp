@@ -263,7 +263,7 @@ AevPeSessionStatus aev_pe_session_create(const AevPeSessionConfig *cfg,
         uint64_t handle =
             aev::pe::SessionTable::instance().add(std::move(session));
         if (handle == 0) {
-            return fail(AEV_PE_SESSION_ERR_INTERNAL, err, err_cap,
+            return fail(AEV_PE_SESSION_ERR_INVALID_ARGUMENT, err, err_cap,
                         "session table full");
         }
         *out_handle = handle;

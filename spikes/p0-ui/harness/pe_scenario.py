@@ -15,12 +15,25 @@ import os
 import re
 import sys
 import threading
+from pathlib import Path
 from typing import Optional
 
 from .pe_session import (
     AEV_PE_SESSION_ERR_MEMORY,
     AEV_PE_SESSION_ERR_WRONG_THREAD,
     PeSessionError,
+)
+
+# Shared actual-artifact validator (same module used by supplement/publish);
+# it only reads dylib symbols and does not execute Guest code.
+_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(_ROOT / "spikes" / "p0-engine" / "scripts"))
+from aot_artifact import (  # noqa: E402
+    ArtifactError,
+    load_artifact,
+    manifest_all_blocks,
+    manifest_identity,
+    require_identity,
 )
 
 _RESULT_RE = re.compile(
@@ -508,6 +521,57 @@ class PeScenario:
             self._check("manifest_promoted_not_base",
                         not (set(promoted) & set(base_selected)),
                         "promoted block was already base-selected")
+
+        # Actual base/new artifact validation through the same helper used by
+        # the supplement/publisher consumers; a GUI-mode manifest must not be
+        # accepted on hashes alone.
+        if not self.base_aot or not os.path.isfile(self.base_aot):
+            raise AssertionError("supplemented profile has no actual base AOT")
+        try:
+            base_art = load_artifact(self.base_aot)
+            new_art = load_artifact(self.aot)
+        except ArtifactError as exc:
+            raise AssertionError(
+                f"actual base/new AOT load failed: {exc}") from exc
+        manifest_all = manifest_all_blocks(manifest)
+        expected_identity = manifest_identity(manifest)
+        expected_identity["guest_state_size"] = 296
+        expected_identity["all_blocks"] = manifest_all
+        expected_identity["selected_blocks"] = list(base_art.selected_blocks)
+        try:
+            require_identity(base_art, expected_identity)
+            new_expected = dict(expected_identity)
+            new_expected["selected_blocks"] = [int(x) for x in selected]
+            require_identity(new_art, new_expected)
+        except ArtifactError as exc:
+            raise AssertionError(
+                f"actual base/new AOT identity mismatch: {exc}") from exc
+        self._check("manifest_base_selected_actual",
+                    list(base_art.selected_blocks) == (base_selected or []),
+                    f"{list(base_art.selected_blocks)} != {base_selected}")
+        self._check("manifest_new_selected_actual",
+                    list(new_art.selected_blocks) == sorted(selected),
+                    f"{list(new_art.selected_blocks)} != {sorted(selected)}")
+        self._check("manifest_base_sha_actual",
+                    base_art.sha256 == sha256_file(self.base_aot),
+                    "base artifact SHA mismatch")
+        self._check("manifest_new_sha_actual",
+                    new_art.sha256 == sha256_file(self.aot),
+                    "new artifact SHA mismatch")
+        self._check("manifest_base_all_actual",
+                    base_art.all_blocks == manifest_all,
+                    "base all-block table mismatch")
+        self._check("manifest_new_all_actual",
+                    new_art.all_blocks == manifest_all,
+                    "new all-block table mismatch")
+        expected_promoted = sorted(set(selected) - set(base_art.selected_blocks))
+        expected_demoted = sorted(set(base_art.selected_blocks) - set(selected))
+        self._check("manifest_promoted_actual",
+                    promoted == expected_promoted,
+                    f"{promoted} != {expected_promoted}")
+        self._check("manifest_demoted_actual",
+                    demoted == expected_demoted,
+                    f"{demoted} != {expected_demoted}")
         self.logger.event(
             "pe.manifest_validated",
             manifest_path=self.manifest_path,
@@ -538,6 +602,33 @@ class PeScenario:
                     captured.get("status") == AEV_PE_SESSION_ERR_WRONG_THREAD,
                     f"captured={captured}")
         self.logger.event("pe.wrong_thread_probe", captured=captured)
+
+    def _prepare_valid_read(self) -> dict:
+        """Exercise the ReadAt block successfully for the supplement trace.
+
+        The negative button intentionally faults; a trace containing a failed
+        call_end cannot be fed to the offline supplement validator.  Before
+        closing the trace we read the real cursor address exported by the DLL,
+        so the same ReadAt block is AOT-selected and the later negative fault
+        path does not require JIT.
+        """
+        if self.host.session is None:
+            return {}
+        address_result = self.host.session.call("AevDllCursorAddress")
+        address = int(address_result["rax"])
+        read_result = self.host.session.call("AevDllReadAt", [address])
+        record = {
+            "address": f"0x{address:x}",
+            "value": read_result["rax_i32"],
+            "value_raw": read_result["rax"],
+            "address_call_index": address_result["call_index"],
+            "read_call_index": read_result["call_index"],
+        }
+        self._check("valid_read_for_supplement",
+                    read_result["status"] == 0 and address != 0,
+                    f"address=0x{address:x} status={read_result['status']}")
+        self.logger.event("pe.valid_read_for_supplement", **record)
+        return record
 
     # -- run -----------------------------------------------------------
     def run(self) -> dict:
@@ -770,6 +861,13 @@ class PeScenario:
                     f"{loop_end['calls_text']} != {oracle.calls}")
         self._screenshot(f"03-after-100-{self.backend.name}.png")
 
+        # Successful ReadAt for trace/AOT coverage (the fault path uses the
+        # same block later).  Close the trace before the intentional MEMORY
+        # fault so the supplement tool never sees a failed call_end record.
+        valid_read = self._prepare_valid_read()
+        self.negative["valid_read"] = valid_read
+        trace_proof = self._analyze_trace()
+
         # Negative real-button path: AevDllReadAt(0xDEAD0000) -> MEMORY.
         before = self.host.read_state()
         self.backend.set_edit_text(self.host.bad_addr_handle, "0xDEAD0000")
@@ -855,7 +953,6 @@ class PeScenario:
                         str(info.get("aot_present")))
             self._validate_manifest()
 
-        trace_proof = self._analyze_trace()
         self._wrong_thread_check()
 
         # Anti-substitution / backend proof.
