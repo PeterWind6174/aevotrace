@@ -57,6 +57,36 @@ int host_update(void *ctx, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3,
     return 0;
 }
 
+/* The only HostImport implementation exposed by the PE session core.  A
+ * registry declaration may map an import here only when its id, arity and ABI
+ * describe this exact callable signature; no argument is ignored or defaulted
+ * and the supported set is not widened beyond this entry. */
+struct HostImplementation {
+    const char *module;
+    const char *symbol;
+    uint64_t id;
+    uint32_t args;
+    const char *abi;
+    int (*fn)(void *, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t *);
+};
+
+const HostImplementation kHostImplementations[] = {
+    {"aevhost.dll", "AevUpdate", 1, 2, "win64-u64", &host_update},
+};
+
+const HostImplementation *find_host_implementation(uint64_t id) {
+    for (const auto &impl : kHostImplementations) {
+        if (impl.id == id) return &impl;
+    }
+    return nullptr;
+}
+
+std::string host_signature(const HostImplementation &impl) {
+    return std::string(impl.module) + "!" + impl.symbol + " id=" +
+           std::to_string(impl.id) + " args=" + std::to_string(impl.args) +
+           " abi=" + impl.abi;
+}
+
 struct AotInfo {
     void *handle = nullptr;
     AotRunFn run = nullptr;
@@ -638,18 +668,9 @@ SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error)
     std::sort(all_blocks.begin(), all_blocks.end());
 
     for (const auto &imp : module.unique_imports) {
-        if (imp.host_import_id == 1) {
-            HostImpl impl;
-            impl.id = 1;
-            impl.args = 2;
-            impl.ctx = nullptr;
-            void *ctx = impl.ctx;
-            impl.fn = [ctx](uint64_t a0, uint64_t a1, uint64_t a2,
-                            uint64_t a3, uint64_t *out) {
-                return host_update(ctx, a0, a1, a2, a3, out);
-            };
-            host_by_id[1] = impl;
-        } else {
+        const HostImplementation *impl =
+            find_host_implementation(imp.host_import_id);
+        if (!impl) {
             if (err) {
                 *err = "no host implementation for import id " +
                        std::to_string(imp.host_import_id);
@@ -657,6 +678,29 @@ SessionStatus SessionImpl::load(const SessionConfig &config, std::string *error)
             cleanup();
             return SessionStatus::UnknownImport;
         }
+        if (imp.args != impl->args || imp.abi != impl->abi) {
+            if (err) {
+                *err = "host import signature mismatch for " + imp.module + "!" +
+                       imp.symbol + " (id=" +
+                       std::to_string(imp.host_import_id) + "): declared args=" +
+                       std::to_string(imp.args) + " abi=" + imp.abi +
+                       ", expected args=" + std::to_string(impl->args) +
+                       " abi=" + impl->abi + " (" + host_signature(*impl) +
+                       ")";
+            }
+            cleanup();
+            return SessionStatus::UnknownImport;
+        }
+        HostImpl host;
+        host.id = impl->id;
+        host.args = impl->args;
+        host.ctx = nullptr;
+        void *ctx = host.ctx;
+        host.fn = [ctx, impl](uint64_t a0, uint64_t a1, uint64_t a2,
+                              uint64_t a3, uint64_t *out) {
+            return impl->fn(ctx, a0, a1, a2, a3, out);
+        };
+        host_by_id[impl->id] = host;
         imports_by_thunk[imp.thunk_va] = &imp;
     }
 

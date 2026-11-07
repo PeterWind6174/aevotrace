@@ -585,6 +585,122 @@ def main() -> int:
         status, handle, error = drv.create(drv.config(registry=bad_host))
         drv.check(status == 5 and handle == 0,
                   f"registry ID without host impl -> UNKNOWN_IMPORT (got {status}: {error})")
+        drv.check("import id 2" in error,
+                  f"unknown host import ID diagnostic ({error})")
+
+        # ------------------------- F2: HostImport implementation signature
+        # The fixed implementation is aevhost.dll!AevUpdate (id=1, args=2,
+        # win64-u64).  A syntactically valid registry declaration with a
+        # different arity must fail closed before JIT/trace/Guest execution.
+        arity_registries = {}
+        for declared_args in (0, 1, 3, 4):
+            registry = drv.art / f"host_args_{declared_args}.aevimports"
+            registry.write_text(
+                f"aevhost.dll|AevUpdate|1|{declared_args}|win64-u64\n")
+            arity_registries[declared_args] = registry
+            rejected_trace = drv.art / f"host_args_{declared_args}.trace.jsonl"
+            if rejected_trace.exists():
+                rejected_trace.unlink()
+            status, handle, error = drv.create(
+                drv.config(registry=registry, trace=rejected_trace))
+            drv.check(status == 5 and handle == 0,
+                      f"HostImport args={declared_args} rejected as "
+                      f"UNKNOWN_IMPORT (got {status}: {error})")
+            drv.check(
+                f"declared args={declared_args} abi=win64-u64" in error and
+                "expected args=2 abi=win64-u64" in error,
+                f"HostImport args={declared_args} diagnostic includes "
+                f"declared and expected signature ({error})")
+            drv.check(not rejected_trace.exists(),
+                      f"HostImport args={declared_args} rejected before trace")
+            if handle:
+                lib.aev_pe_session_destroy(handle)
+
+        bad_host_abi = drv.art / "badhostabi.aevimports"
+        bad_host_abi.write_text(
+            "aevhost.dll|AevUpdate|1|2|definitely-unsupported-abi\n")
+        status, handle, error = drv.create(drv.config(registry=bad_host_abi))
+        drv.check(status == 3 and handle == 0 and "unsupported ABI" in error,
+                  f"unsupported HostImport ABI -> LOAD via parser "
+                  f"(got {status}: {error})")
+
+        # Eight consecutive signature failures must leave every session slot
+        # free; the capacity probe below reuses this and the earlier failures.
+        for attempt in range(8):
+            status, handle, error = drv.create(
+                drv.config(registry=arity_registries[1]))
+            drv.check(status == 5 and handle == 0,
+                      f"signature failure burst {attempt} -> UNKNOWN_IMPORT "
+                      f"(got {status}: {error})")
+            if handle:
+                lib.aev_pe_session_destroy(handle)
+
+        valid_host = drv.art / "host_args_2.aevimports"
+        valid_host.write_text("aevhost.dll|AevUpdate|1|2|win64-u64\n")
+        host_oracle = Oracle()
+        host_oracle.reset(0x1234)
+        status, handle, error = drv.create(drv.config(registry=valid_host))
+        drv.check(status == 0 and handle != 0,
+                  f"args=2 HostImport accepted (got {status}: {error})")
+        if handle:
+            st, c, _ = drv.counts(handle)
+            drv.check(st == 0 and c.load_count == 1 and
+                      c.host_import_calls == 0,
+                      "args=2 session load_count=1 before Guest call")
+            st, r, _ = drv.call(handle, "AevDllReset", (0x1234,))
+            drv.check(st == 0 and r.rax_i32 == 0x1234,
+                      "args=2 Reset result")
+            expected = host_oracle.compute(11, 4, 8)
+            st, r, _ = drv.call(handle, "AevDllCompute", (11, 4, 8))
+            drv.check(st == 0 and r.status == 0 and r.rax_i32 == expected,
+                      f"args=2 Compute matches oracle ({r.rax_i32} == {expected})")
+            st, c, _ = drv.counts(handle)
+            drv.check(st == 0 and c.load_count == 1 and
+                      c.host_import_calls == 1,
+                      "args=2 session keeps load_count=1 and one HostImport")
+            drv.check(lib.aev_pe_session_destroy(handle) == 0,
+                      "destroy args=2 HostImport session")
+
+        # Runner must map the signature failure to status=3 LOAD and keep
+        # --expect-error exit semantics.  No Guest call may be reported.
+        runner_cmd = [
+            str(drv.runner), "--dll", str(drv.pe_dir / "aevguest.dll"),
+            "--registry", str(arity_registries[1]),
+            "--load-base", hex(PREFERRED),
+            "--entry-export", "AevDllCompute",
+            "--call", "AevDllCompute:7,8,3"]
+        proc = subprocess.run(runner_cmd, text=True, capture_output=True)
+        drv.log("runner-host-signature.stdout", proc.stdout)
+        drv.log("runner-host-signature.stderr", proc.stderr)
+        drv.check(proc.returncode == 3,
+                  f"runner signature mismatch exits 3 (got {proc.returncode})")
+        try:
+            runner_json = json.loads(proc.stdout)
+        except json.JSONDecodeError:
+            runner_json = {}
+        runner_error = runner_json.get("error", "")
+        drv.check(runner_json.get("status") == 3 and
+                  runner_json.get("status_name") == "LOAD",
+                  f"runner signature mismatch reports LOAD ({runner_json})")
+        drv.check("declared args=1 abi=win64-u64" in runner_error and
+                  "expected args=2 abi=win64-u64" in runner_error,
+                  f"runner signature mismatch keeps diagnostic ({runner_error})")
+        drv.check("iteration_0" not in runner_json,
+                  "runner signature mismatch never enters Guest")
+        proc = subprocess.run(runner_cmd + ["--expect-error"], text=True,
+                              capture_output=True)
+        drv.log("runner-host-signature-expect.stdout", proc.stdout)
+        drv.log("runner-host-signature-expect.stderr", proc.stderr)
+        drv.check(proc.returncode == 0,
+                  f"runner --expect-error exits 0 (got {proc.returncode})")
+        try:
+            expect_json = json.loads(proc.stdout)
+        except json.JSONDecodeError:
+            expect_json = {}
+        drv.check(expect_json.get("status") == 3 and
+                  expect_json.get("status_name") == "LOAD" and
+                  expect_json.get("expected_error") is True,
+                  f"runner --expect-error keeps LOAD status ({expect_json})")
 
         status, handle, error = drv.create(
             drv.config(aot=drv.art / "missing.dylib"))
