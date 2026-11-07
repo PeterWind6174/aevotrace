@@ -145,3 +145,13 @@ runner 为保持既有 CLI 契约，对 session create/load 的**任何**失败�
 | binary | 模块身份/装载语义会签通过（`ee468f2`） | `reference_stateful_stdout.txt`、Windows 构建 |
 | platform | 实现 `3ee254a`/`950e38f`/`9fd4a67`；coordinator 补充 trace/negative 分离与实际 artifact 校验；最终 GUI QA PASS | `.local/results/P0-PE-GUI-01/gui-*`、QA 报告 |
 | reviewer | 契约审查 CONDITIONAL（B1–B7）；最终实现审查**无阻断、可进入外部复核**（6 项非阻断见主报告） | `ses_e4cba4b71ffeVeld29oUOOSto8`、`ses_e4c388f23ffe1VV6V0hVDaksY5` |
+
+### rev2（P0-PE-SESSION-FIX-01）会签
+
+| 角色 | 结论 | 证据 |
+| --- | --- | --- |
+| coordinator | 冻结 rev2 错误分类/所有权；顺序集成 F1/F2 并注册 wrapper ctest；最终源码 `47b2b7a` | 本文件、`docs/tasks/P0-PE-SESSION-FIX-01.md`、`docs/p0/P0-PE-SESSION-FIX-01-REPORT-20261107.md` |
+| compiler（F2） | 实现 `26c5cf7`：固定实现描述 + id/args/ABI 校验，签名不匹配 `UNKNOWN_IMPORT=5`；基线 241/267（26 fail）→ 267/267 | `.local/results/P0-PE-SESSION-FIX-01/compiler/`、ctest |
+| platform（F1） | 实现 `a4186bd`：候选局部构建、C ABI 成功后才替换；基线 12 checks/2 fail → 436/436 | `.local/results/P0-PE-SESSION-FIX-01/platform/` |
+| QA | 独立构建 `47b2b7a`：ctest 8/8、session 267/267、wrapper 436/436、PE 149/149、语义 791/0、Trace/AOT 78；GUI base 560/561→supp 596/597 零 JIT；COFF 264/264；**PASS（自动验证，无阻断）** | `.local/results/P0-PE-SESSION-FIX-01/qa/REPORT.md` |
+| reviewer | 只读审查 `47b2b7a`：F1/F2 与 rev2 一致，**无阻断**；7 项非阻断（文档/证据同步、真实 stale token、module/symbol 别名、COFF base 口径） | `ses_e4ad18ddfffevkf0ofqugF2BeK`、QA 报告 |

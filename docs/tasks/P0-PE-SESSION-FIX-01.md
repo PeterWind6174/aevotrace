@@ -1,6 +1,6 @@
 # P0-PE-SESSION-FIX-01：PE session observer 生命周期与 HostImport arity 修复
 
-状态：进行中（F1/F2 已实施并顺序集成；wrapper 专项 ctest 已注册；独立 QA 与只读审查待派发）。
+状态：完成（F1/F2 实施、顺序集成、独立 QA PASS、reviewer 无阻断；停在集成分支待外部复核）。
 
 ## 输入与责任
 
@@ -15,17 +15,18 @@
   - 主控 `ses_e4b311c2cffdJYcN88U4skhtsd`（coordinator）。
   - platform `ses_e4b29fd0affeYDDEEG7Rw0dI3U`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-platform`。
   - compiler `ses_e4b29fd07ffee99y5B2I62Wmj4`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-compiler`。
-  - QA/reviewer 会话：最终提交冻结后派发并追加记录（见 `.local/results/P0-PE-SESSION-FIX-01/models.json`）。
+  - QA `ses_e4b07d921ffeon7hWLWRyNsk8C`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-qa`（detached 最终提交）。
+  - reviewer `ses_e4ad18ddfffevkf0ofqugF2BeK`，已 `session_move` 到 `.worktrees/p0-pe-session-fix-review`（只读）。
 
 ## 并行隔离
 
 | 任务 | 分支/worktree | 构建/证据 | 文件 owner | 状态 |
 | --- | --- | --- | --- | --- |
-| 契约/集成 | `p0/pe-session-fix-01` / `.worktrees/p0-pe-session-fix-01` | `.local/build-pe-session-fix-int`；`.local/results/P0-PE-SESSION-FIX-01/integration/` | 契约、任务卡、公共 `CMakeLists.txt`、报告、证据索引 | 进行中 |
+| 契约/集成 | `p0/pe-session-fix-01` / `.worktrees/p0-pe-session-fix-01` | `.local/build-pe-session-fix-int`；`.local/results/P0-PE-SESSION-FIX-01/integration/` | 契约、任务卡、公共 `CMakeLists.txt`、报告、证据索引 | 完成；最终源码 `47b2b7a` |
 | F2 compiler | `p0/pe-session-fix-compiler-01` / `.worktrees/p0-pe-session-fix-compiler` | `.local/build-pe-session-fix-compiler`；`.local/results/P0-PE-SESSION-FIX-01/compiler/` | `spikes/p0-engine/src/pe_session_core.cpp`、`spikes/p0-engine/scripts/pe_session_test.py`（必要时 `pe_dll_test.py` runner 负例） | 完成 `26c5cf7`，已合入 `2228cba` |
 | F1 platform | `p0/pe-session-fix-platform-01` / `.worktrees/p0-pe-session-fix-platform` | `.local/build-pe-session-fix-platform`；`.local/results/P0-PE-SESSION-FIX-01/platform/` | `spikes/p0-ui/harness/pe_session.py`、新增 `spikes/p0-ui/scripts/pe_session_wrapper_test.py` / `run_pe_session_wrapper_test.sh` | 完成 `a4186bd`，已合入 `188f97d` |
-| QA | `.worktrees/p0-pe-session-fix-qa`（detached 最终提交） | 独立 `.local/build-pe-session-fix-qa`；`.local/results/P0-PE-SESSION-FIX-01/qa/` | 只读最终源码，不修改产品文件 | 待派发 |
-| reviewer | 独立只读会话 | 无构建/无写入 | 只读最终提交 | 待派发 |
+| QA | `.worktrees/p0-pe-session-fix-qa`（detached 最终提交） | 独立 `.local/build-pe-session-fix-qa`；`.local/results/P0-PE-SESSION-FIX-01/qa/` | 只读最终源码，不修改产品文件 | **PASS（自动验证，无阻断）** |
+| reviewer | 独立只读会话 | 无构建/无写入 | 只读最终提交 | **无阻断；7 项非阻断（见报告）** |
 
 同一 ABI/CMake/dispatcher/公共构建文件单 owner；coordinator 最后顺序集成并注册新的 wrapper ctest。platform 不修改 engine 公共文件，compiler 不修改 wrapper；QA/reviewer 不修改源码。
 
@@ -37,7 +38,14 @@
 | F2 compiler | `26c5cf7`（`p0/pe-session-fix-compiler-01`） | 显式实现描述 + id/args/ABI 校验；基线新增测试 241/267（26 fail），修复后 267/267；原 233 项通过 |
 | F1 platform | `a4186bd`（`p0/pe-session-fix-platform-01`） | 候选局部构建、成功后才替换；真实 wrapper 基线 12 checks/2 fail，修复后 436/436 |
 | coordinator 顺序集成 | `2228cba`、`188f97d`（`p0/pe-session-fix-01`） | F2 先合入并独立构建 ctest 7/7；F1 后合入并注册 `p0_pe_session_wrapper`，ctest 8/8、wrapper 436/436 |
-| 最终源码提交 | 待 docs/CMake 提交后冻结 | QA 绑定该提交独立复跑 |
+| 最终源码提交 | `47b2b7a`（`p0/pe-session-fix-01`） | QA 绑定此提交全新构建：ctest 8/8、session 267/267、wrapper 436/436、PE 149/149、语义 791/0、Trace/AOT 78 |
+| 独立 QA | `ses_e4b07d921ffeon7hWLWRyNsk8C` | **PASS（自动验证，无阻断）**；F1 probe 99/99、F2 probe 40/40；GUI base 560/561→supp 596/597 零 JIT；COFF 264/264 |
+| reviewer | `ses_e4ad18ddfffevkf0ofqugF2BeK` | **无阻断**；7 项非阻断（证据索引/任务卡/契约会签/模型记录、F1 真实 stale token、F2 module/symbol 别名、COFF base 口径） |
+
+## QA/reviewer 结论摘要
+
+- QA 在 `47b2b7a` 上全新构建：configure/build/ctest rc 0，8/8；`p0_pe_session` 267/267（原 233 项用基线测试文件独立复跑 233/233）；wrapper 436/436；PE 149/149；语义 791/0；Trace/AOT 78。F1 基线旧 wrapper 12 checks/2 fail，修复后 436/436 + QA probe 99/99；F2 基线 args=1 被接受并实际执行，修复后 40/40。GUI base 560/561、supplemented 596/597、load_count=1、AOT 2534/零 JIT；COFF 264/264。Windows 本轮未重跑，复用哈希绑定 reference。
+- reviewer 只读审查 `47b2b7a`：F1/F2 修复与契约 rev2 一致，未发现阻断；测试使用真实 wrapper/dylib/DLL 且基线失败可信。非阻断项：证据索引/任务卡/契约会签/模型记录需同步；F1 缺真实 C stale token 端到端测试；F2 未强制固定 `module!symbol`（契约只要求 id/args/ABI）；COFF base 组使用本轮重建 AOT（行为等价）。
 
 ## 冻结的错误分类与所有权契约（F2/F1）
 

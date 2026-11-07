@@ -106,3 +106,18 @@
 - 原始证据：`.local/results/P0-PE-GUI-01/{gui-base,gui-supp,oldgui-final,artifacts,windows-stateful-compare.log,gui-vs-windows.log,models.json,evidence-manifest.json}`。
 - 独立 QA：QA-behavior/Windows PASS（c18eeec 原始 + c5adf4f 复验，报告 `qa-behavior/REPORT.md`）；QA-artifact/lifecycle PASS（C ABI 455/455、provenance 359/359、observer 17/17、ASAN 已执行路径无报告；报告 `qa-artifact/REPORT.md`）。reviewer 无阻断、建议进入外部复核（非阻断 6 项见主报告 §8）。
 - 未测：人工键鼠/焦点/IME/观感、性能、通用 EXE/Win32/TLS/CRT/SEH/COM/线程、真实应用、运行中失效、分发/公证。
+
+## P0-PE-SESSION-FIX-01（F1/F2 修复、独立 QA PASS、reviewer 无阻断；待外部复核）
+
+- 分支/工作树：`p0/pe-session-fix-01` / `.worktrees/p0-pe-session-fix-01`；基线 `5e79398`（产品源码 `c5adf4f`）；最终源码提交 `47b2b7a86f15ee67274fcf613a352e38791ec140`；main 仍 `c91a3f7`。
+- 外部复核来源：`CODEX-PE-GUI-REVIEW-20261107` F1/P1（observer 生命周期）与 F2/P2（HostImport arity）。
+- 契约：`docs/p0/PE-SESSION-CONTRACT-20261107.md` v1 rev2（HostImport 签名匹配、wrapper observer 生命周期；ABI/结构/状态码编号不变）。
+- 任务卡/报告：`docs/tasks/P0-PE-SESSION-FIX-01.md`、`docs/p0/P0-PE-SESSION-FIX-01-REPORT-20261107.md`。
+- 实施：`26c5cf7`（F2 core/test）、`a4186bd`（F1 wrapper/test）；集成 `2228cba`、`188f97d`、`47b2b7a`（wrapper ctest 注册/文档状态修正）。
+- 构建/回归（最终提交、独立 QA 全新构建）：ctest **8/8**；session **267/267**（基线 233 项在原测试文件上 **233/233** 未缩减）；wrapper **436/436**；PE **149/149**；语义 **791/0**；Trace/AOT **78/0**。
+- F1：旧 wrapper 基线 `12 checks/2 fail`（rejected clear 释放旧回调）；修复后 wrapper 436/436、QA 独立 probe 99/99；非 owner 13、回调内 10、成功替换/清除/destroy、GC 压力覆盖。
+- F2：args=0/1/3/4 → `UNKNOWN_IMPORT=5` 且诊断含声明/期望；args=2 正常；未知 ID 5；非 `win64-u64` 仍 `LOAD=3`；8 次失败不泄漏 slot；runner rc 3/`status=3 LOAD`、`--expect-error` rc 0。基线 args=1 被接受并实际执行。
+- GUI：base compat/native **560/561**（load_count=1、calls 323、host 105、JIT 21/2534、AOT 0）；补充 selected 21/promoted 21/demoted 0；新进程 supplemented **596/597**、AOT 2534、JIT **0/0**、21 个 promoted 块实际 AOT；forced native failure 无回退。旧六组 COFF **264/264**（base 组为本轮重建、行为等价；supp/empty 复用旧 artifact）。
+- Windows：固定 DLL/helper/registry/reference 哈希未变，**本轮未重跑**，复用哈希绑定的 106 行 reference。
+- 原始证据：`.local/results/P0-PE-SESSION-FIX-01/{integration,compiler,platform,qa}/`；模型记录 `.../models.json`。
+- 未测：人工键鼠/焦点/IME/观感、Windows 重跑、ASAN/TSAN、独立 `.app` 打包/签名/公证、无开发工具环境、性能、通用 EXE/Win32/TLS/CRT/SEH/COM、真实应用、运行中失效。
